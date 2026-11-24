@@ -6011,10 +6011,15 @@ service cloud.firestore {
     }, 1500);
   })();
 </script>
-  <!-- =====================================================================
-     THANH ĐIỀU HƯỚNG DỌC, LỊCH THÁNG & MỤC TIÊU MỖI NGƯỜI
+<!-- =====================================================================
+     THANH ĐIỀU HƯỚNG DỌC ĐÓNG/MỞ (☰), LỊCH THÁNG & MỤC TIÊU MỖI NGƯỜI
      ===================================================================== -->
 <style>
+  @keyframes ynwaSidebarSlideIn {
+    from { opacity: 0; transform: translateX(-10px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+
   /* Bố cục 2 cột: Thanh dọc bên trái + Nội dung chính bên phải */
   #ynwa-vertical-layout {
     display: flex;
@@ -6033,11 +6038,17 @@ service cloud.firestore {
       flex-shrink: 0;
       position: sticky;
       top: 1rem;
+      animation: ynwaSidebarSlideIn 0.22s ease-out;
     }
     #ynwa-right-content {
       flex: 1;
       min-width: 0;
     }
+  }
+
+  /* Trạng thái thu gọn thanh dọc */
+  #ynwa-left-sidebar.ynwa-sidebar-collapsed {
+    display: none !important;
   }
 
   /* Chuyển thanh menu ngang gốc thành danh sách nút xếp dọc */
@@ -6074,11 +6085,21 @@ service cloud.firestore {
     let calViewYear = nowInit.getFullYear();
     let calViewMonth = nowInit.getMonth(); // 0 - 11
     let selectedDateStr = formatDateKey(nowInit);
+    let isSidebarCollapsed = localStorage.getItem('ynwa_sidebar_collapsed') === 'true';
 
     let calendarNotesMap = {}; // { 'YYYY-MM-DD': [ { id, text, author } ] }
     let memberGoalsMap = {};   // { uid: { uid, name, goals: [ { id, text, done } ], updatedAt } }
     let unsubscribeGoals = null;
     let unsubscribeCalNotes = null;
+
+    // Biểu tượng 3 dấu gạch ngang SVG
+    const HAMBURGER_SVG = `
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="4" y1="6" x2="20" y2="6"></line>
+        <line x1="4" y1="12" x2="20" y2="12"></line>
+        <line x1="4" y1="18" x2="20" y2="18"></line>
+      </svg>
+    `;
 
     function formatDateKey(dt) {
       const y = dt.getFullYear();
@@ -6113,6 +6134,27 @@ service cloud.firestore {
         isFirebase: false
       };
     }
+
+    // Hàm đóng / mở thanh dọc bên trái
+    function applySidebarCollapseState() {
+      const sidebar = document.getElementById('ynwa-left-sidebar');
+      const reopenBar = document.getElementById('ynwa-sidebar-reopen-bar');
+      if (!sidebar || !reopenBar) return;
+
+      if (isSidebarCollapsed) {
+        sidebar.classList.add('ynwa-sidebar-collapsed');
+        reopenBar.classList.remove('hidden');
+      } else {
+        sidebar.classList.remove('ynwa-sidebar-collapsed');
+        reopenBar.classList.add('hidden');
+      }
+    }
+
+    window.ynwaToggleSidebar = function () {
+      isSidebarCollapsed = !isSidebarCollapsed;
+      localStorage.setItem('ynwa_sidebar_collapsed', String(isSidebarCollapsed));
+      applySidebarCollapseState();
+    };
 
     // Lấy danh sách ngày đã học Pomodoro (từ dữ liệu xếp hạng tuần nếu có)
     function getStudiedDatesSet() {
@@ -6386,7 +6428,6 @@ service cloud.firestore {
         memberGoalsMap[user.uid] = { uid: user.uid, name: user.name, goals: [], updatedAt: Date.now() };
       }
 
-      // Sắp xếp đưa tài khoản của bản thân lên đầu, sau đó là các thành viên khác
       const allList = Object.values(memberGoalsMap).sort((a, b) => {
         if (a.uid === user.uid) return -1;
         if (b.uid === user.uid) return 1;
@@ -6487,7 +6528,6 @@ service cloud.firestore {
 
       try {
         if (window.firebase && firebase.firestore) {
-          // Tải danh sách thành viên phòng để hiển thị đủ tên mọi người
           const usersSnap = await firebase.firestore().collection('users').get();
           usersSnap.forEach(doc => {
             const d = doc.data() || {};
@@ -6502,7 +6542,6 @@ service cloud.firestore {
           });
           renderSidebarMemberGoals();
 
-          // Đồng bộ mục tiêu cá nhân của tất cả thành viên
           if (unsubscribeGoals) unsubscribeGoals();
           unsubscribeGoals = firebase.firestore().collection('member_goals').onSnapshot(snap => {
             snap.forEach(doc => {
@@ -6516,7 +6555,6 @@ service cloud.firestore {
             renderSidebarMemberGoals();
           });
 
-          // Đồng bộ ghi chú lịch chung
           if (unsubscribeCalNotes) unsubscribeCalNotes();
           unsubscribeCalNotes = firebase.firestore().collection('shared_calendar_notes').onSnapshot(snap => {
             snap.forEach(doc => {
@@ -6532,7 +6570,7 @@ service cloud.firestore {
       } catch (e) {}
     }
 
-    // ================= DỰNG KHUNG THANH DỌC BÊN TRÁI =================
+    // ================= DỰNG KHUNG THANH DỌC & NÚT 3 DẤU GẠCH NGANG =================
     function mountVerticalSidebarLayout() {
       if (document.getElementById('ynwa-vertical-layout')) return;
 
@@ -6546,7 +6584,7 @@ service cloud.firestore {
       const commonParent = panelsHost.parentElement;
       if (!commonParent || !navBar) return;
 
-      // Tạo khung 2 cột: Thanh dọc bên trái + Nội dung chính bên phải
+      // Khung 2 cột: Thanh dọc bên trái + Nội dung chính bên phải
       const shell = document.createElement('div');
       shell.id = 'ynwa-vertical-layout';
       shell.className = 'mt-3';
@@ -6555,14 +6593,21 @@ service cloud.firestore {
       leftSidebar.id = 'ynwa-left-sidebar';
       leftSidebar.className = 'space-y-4';
 
-      // Khối 1: Menu điều hướng xếp dọc
+      // Khối 1: Header nút 3 gạch ngang để đóng gọn + Menu điều hướng xếp dọc
       const navCard = document.createElement('div');
       navCard.className = 'pastel-card rounded-3xl p-3.5 bg-white border';
       navCard.style.borderColor = 'var(--border-soft)';
       navCard.innerHTML = `
-        <p class="text-[11px] font-extrabold uppercase tracking-wider px-2 mb-2" style="color: var(--text-muted);">
-          🧭 Danh Mục Góc Học Tập
-        </p>
+        <div class="flex items-center justify-between gap-2 px-1.5 pb-2.5 mb-2.5 border-b" style="border-color: var(--border-soft);">
+          <span class="text-xs font-extrabold uppercase tracking-wider" style="color: var(--primary);">
+            🧭 Danh Mục Góc Học Tập
+          </span>
+          <button type="button" onclick="ynwaToggleSidebar()" title="Đóng thanh bên cho gọn"
+            class="w-8 h-8 rounded-xl border bg-white hover:bg-gray-50 flex items-center justify-center transition shrink-0"
+            style="border-color: var(--border-soft); color: var(--primary);">
+            ${HAMBURGER_SVG}
+          </button>
+        </div>
         <div id="ynwa-vertical-nav-slot"></div>
       `;
 
@@ -6582,10 +6627,23 @@ service cloud.firestore {
       leftSidebar.appendChild(calCard);
       leftSidebar.appendChild(goalsCard);
 
+      // Cột nội dung chính bên phải (kèm thanh mở lại khi thanh bên đang đóng)
       const rightContent = document.createElement('main');
       rightContent.id = 'ynwa-right-content';
 
-      // Chèn khung 2 cột vào trang và di chuyển thanh điều hướng + vùng nội dung vào đúng vị trí
+      const reopenBar = document.createElement('div');
+      reopenBar.id = 'ynwa-sidebar-reopen-bar';
+      reopenBar.className = 'hidden mb-3';
+      reopenBar.innerHTML = `
+        <button type="button" onclick="ynwaToggleSidebar()" title="Mở thanh điều hướng, lịch & mục tiêu"
+          class="inline-flex items-center gap-2 px-3.5 py-2 rounded-2xl bg-white border text-xs font-extrabold shadow-xs hover:bg-gray-50 transition"
+          style="border-color: var(--border-soft); color: var(--primary);">
+          ${HAMBURGER_SVG}
+          <span>Mở Menu, Lịch & Mục Tiêu</span>
+        </button>
+      `;
+      rightContent.appendChild(reopenBar);
+
       commonParent.insertBefore(shell, panelsHost);
       shell.appendChild(leftSidebar);
       shell.appendChild(rightContent);
@@ -6594,6 +6652,7 @@ service cloud.firestore {
       navSlot.appendChild(navBar);
       rightContent.appendChild(panelsHost);
 
+      applySidebarCollapseState();
       initSidebarRealtimeSync();
     }
 
