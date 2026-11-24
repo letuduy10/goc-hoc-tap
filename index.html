@@ -194,6 +194,62 @@
        ===================================================================== -->
   <div id="screen-auth" class="min-h-screen flex items-center justify-center p-4 hidden">
     <div class="pastel-card rounded-3xl max-w-lg w-full p-6 sm:p-8 bg-white animate-pop-in">
+      <!-- MỤC THỜI KHÓA BIỂU CÁ NHÂN -->
+<div id="personal-schedule-section" class="pastel-card rounded-3xl p-5 sm:p-6 bg-white mb-6">
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+    <div>
+      <h3 class="text-lg sm:text-xl font-bold flex items-center gap-2" style="color: var(--primary);">
+        🗓️ Thời Khóa Biểu Cá Nhân
+      </h3>
+      <p class="text-xs font-medium mt-0.5" style="color: var(--text-muted);">
+        Lịch học riêng của bạn — tự động lưu theo tài khoản đang đăng nhập
+      </p>
+    </div>
+    <div class="inline-flex rounded-xl p-1 border self-start sm:self-auto" style="background-color: var(--bg-soft); border-color: var(--border-soft);">
+      <button type="button" id="ps-view-day-btn" onclick="switchPersonalScheduleView('day')" class="px-3 py-1.5 rounded-lg text-xs font-bold transition btn-primary">
+        Theo ngày
+      </button>
+      <button type="button" id="ps-view-week-btn" onclick="switchPersonalScheduleView('week')" class="px-3 py-1.5 rounded-lg text-xs font-bold transition" style="color: var(--text-main);">
+        Cả tuần
+      </button>
+    </div>
+  </div>
+
+  <!-- Form thêm lịch học cá nhân -->
+  <form onsubmit="addPersonalScheduleItem(event)" class="grid grid-cols-1 sm:grid-cols-12 gap-2.5 p-3.5 rounded-2xl border mb-4" style="background-color: var(--bg-soft); border-color: var(--border-soft);">
+    <div class="sm:col-span-2">
+      <select id="ps-day-input" class="w-full px-3 py-2 rounded-xl border text-xs sm:text-sm font-bold bg-white focus:outline-none" style="border-color: var(--border-soft); color: var(--text-main);">
+        <option value="T2">Thứ 2</option>
+        <option value="T3">Thứ 3</option>
+        <option value="T4">Thứ 4</option>
+        <option value="T5">Thứ 5</option>
+        <option value="T6">Thứ 6</option>
+        <option value="T7">Thứ 7</option>
+        <option value="CN">Chủ Nhật</option>
+      </select>
+    </div>
+    <div class="sm:col-span-3">
+      <input type="text" id="ps-time-input" required placeholder="Giờ (VD: 19:30 - 21:00)" class="w-full px-3 py-2 rounded-xl border text-xs sm:text-sm font-semibold bg-white focus:outline-none" style="border-color: var(--border-soft);">
+    </div>
+    <div class="sm:col-span-3">
+      <input type="text" id="ps-subject-input" required maxlength="50" placeholder="Môn học / Nội dung *" class="w-full px-3 py-2 rounded-xl border text-xs sm:text-sm font-semibold bg-white focus:outline-none" style="border-color: var(--border-soft);">
+    </div>
+    <div class="sm:col-span-2">
+      <input type="text" id="ps-note-input" maxlength="60" placeholder="Ghi chú (tùy chọn)" class="w-full px-3 py-2 rounded-xl border text-xs sm:text-sm bg-white focus:outline-none" style="border-color: var(--border-soft);">
+    </div>
+    <div class="sm:col-span-2">
+      <button type="submit" class="btn-primary w-full h-full py-2 px-3 rounded-xl text-xs sm:text-sm font-bold shadow-sm">
+        + Thêm lịch
+      </button>
+    </div>
+  </form>
+
+  <!-- Thanh chọn thứ trong tuần (chế độ Xem theo ngày) -->
+  <div id="ps-day-tabs" class="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-2 mb-3"></div>
+
+  <!-- Khu vực hiển thị danh sách lịch -->
+  <div id="ps-schedule-content"></div>
+</div>
       <!-- Chọn nhanh 3 giao diện ngay ngoài màn hình chào -->
       <div class="flex items-center justify-between mb-5">
         <span class="px-3 py-1 rounded-full text-xs font-extrabold" style="background-color: var(--bg-soft); color: var(--primary);">
@@ -3333,5 +3389,245 @@ service cloud.firestore {
       initFirebaseServices();
     });
   </script>
+<script>
+  (function () {
+    const PS_DAYS = [
+      { key: 'T2', label: 'Thứ 2' },
+      { key: 'T3', label: 'Thứ 3' },
+      { key: 'T4', label: 'Thứ 4' },
+      { key: 'T5', label: 'Thứ 5' },
+      { key: 'T6', label: 'Thứ 6' },
+      { key: 'T7', label: 'Thứ 7' },
+      { key: 'CN', label: 'Chủ Nhật' }
+    ];
 
+    const dayMap = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
+    let psSelectedDay = dayMap[new Date().getDay()] || 'T2';
+    let psCurrentView = 'day';
+    let psItems = [];
+
+    function getPsUserKey() {
+      try {
+        if (window.firebase && firebase.auth && firebase.auth().currentUser) {
+          return 'uid_' + firebase.auth().currentUser.uid;
+        }
+      } catch (e) {}
+      const savedGuest = localStorage.getItem('study_guest_name') || localStorage.getItem('guestName') || 'default_user';
+      return 'guest_' + savedGuest.trim().toLowerCase();
+    }
+
+    function getStorageKey() {
+      return 'ynwa_personal_schedule_' + getPsUserKey();
+    }
+
+    function escapePsHtml(str) {
+      return String(str || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    async function loadPersonalSchedule() {
+      const localData = localStorage.getItem(getStorageKey());
+      psItems = localData ? JSON.parse(localData) : [];
+      renderPersonalSchedule();
+
+      try {
+        if (window.firebase && firebase.auth && firebase.firestore && firebase.auth().currentUser) {
+          const uid = firebase.auth().currentUser.uid;
+          const doc = await firebase.firestore().collection('personal_schedules').doc(uid).get();
+          if (doc.exists && Array.isArray(doc.data().items)) {
+            psItems = doc.data().items;
+            localStorage.setItem(getStorageKey(), JSON.stringify(psItems));
+            renderPersonalSchedule();
+          }
+        }
+      } catch (e) {}
+    }
+
+    async function savePersonalSchedule() {
+      localStorage.setItem(getStorageKey(), JSON.stringify(psItems));
+      try {
+        if (window.firebase && firebase.auth && firebase.firestore && firebase.auth().currentUser) {
+          const uid = firebase.auth().currentUser.uid;
+          await firebase.firestore().collection('personal_schedules').doc(uid).set({
+            items: psItems,
+            updatedAt: new Date().toISOString()
+          }, { merge: true });
+        }
+      } catch (e) {}
+    }
+
+    window.switchPersonalScheduleView = function (view) {
+      psCurrentView = view;
+      const dayBtn = document.getElementById('ps-view-day-btn');
+      const weekBtn = document.getElementById('ps-view-week-btn');
+      const dayTabs = document.getElementById('ps-day-tabs');
+
+      if (view === 'day') {
+        dayBtn.classList.add('btn-primary');
+        dayBtn.style.color = '#FFFFFF';
+        weekBtn.classList.remove('btn-primary');
+        weekBtn.style.color = 'var(--text-main)';
+        dayTabs.classList.remove('hidden');
+      } else {
+        weekBtn.classList.add('btn-primary');
+        weekBtn.style.color = '#FFFFFF';
+        dayBtn.classList.remove('btn-primary');
+        dayBtn.style.color = 'var(--text-main)';
+        dayTabs.classList.add('hidden');
+      }
+      renderPersonalSchedule();
+    };
+
+    window.selectPersonalScheduleDay = function (dayKey) {
+      psSelectedDay = dayKey;
+      const selectEl = document.getElementById('ps-day-input');
+      if (selectEl) selectEl.value = dayKey;
+      renderPersonalSchedule();
+    };
+
+    window.addPersonalScheduleItem = function (e) {
+      e.preventDefault();
+      const day = document.getElementById('ps-day-input').value;
+      const time = document.getElementById('ps-time-input').value.trim();
+      const subject = document.getElementById('ps-subject-input').value.trim();
+      const note = document.getElementById('ps-note-input').value.trim();
+      if (!time || !subject) return;
+
+      psItems.push({
+        id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+        day,
+        time,
+        subject,
+        note
+      });
+
+      document.getElementById('ps-time-input').value = '';
+      document.getElementById('ps-subject-input').value = '';
+      document.getElementById('ps-note-input').value = '';
+      psSelectedDay = day;
+
+      savePersonalSchedule();
+      renderPersonalSchedule();
+      if (typeof showToast === 'function') showToast('✅ Đã thêm vào thời khóa biểu cá nhân!');
+    };
+
+    window.deletePersonalScheduleItem = function (id) {
+      psItems = psItems.filter(item => item.id !== id);
+      savePersonalSchedule();
+      renderPersonalSchedule();
+    };
+
+    function renderPersonalSchedule() {
+      const tabsEl = document.getElementById('ps-day-tabs');
+      const contentEl = document.getElementById('ps-schedule-content');
+      if (!tabsEl || !contentEl) return;
+
+      tabsEl.innerHTML = PS_DAYS.map(d => {
+        const count = psItems.filter(i => i.day === d.key).length;
+        const active = d.key === psSelectedDay;
+        return `
+          <button type="button" onclick="selectPersonalScheduleDay('${d.key}')"
+            class="px-3.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap border transition flex items-center gap-1.5"
+            style="${active
+              ? 'background-color: var(--primary); color: #FFFFFF; border-color: var(--primary);'
+              : 'background-color: var(--bg-soft); color: var(--text-main); border-color: var(--border-soft);'}">
+            <span>${d.label}</span>
+            ${count > 0 ? `<span class="px-1.5 py-0.2 rounded-full text-[10px]" style="${active ? 'background: rgba(255,255,255,0.25); color: #fff;' : 'background: var(--bg-card); color: var(--primary);'}">${count}</span>` : ''}
+          </button>
+        `;
+      }).join('');
+
+      if (psCurrentView === 'day') {
+        const dayItems = psItems
+          .filter(i => i.day === psSelectedDay)
+          .sort((a, b) => a.time.localeCompare(b.time));
+
+        if (dayItems.length === 0) {
+          const dayName = (PS_DAYS.find(d => d.key === psSelectedDay) || {}).label || psSelectedDay;
+          contentEl.innerHTML = `
+            <div class="text-center py-7 px-4 rounded-2xl border border-dashed" style="border-color: var(--border-soft); color: var(--text-muted);">
+              <p class="text-xs sm:text-sm font-semibold">Chưa có lịch học cá nhân nào cho ${dayName}.</p>
+              <p class="text-[11px] mt-1">Điền khung giờ và môn học ở phía trên để bắt đầu nhé!</p>
+            </div>
+          `;
+          return;
+        }
+
+        contentEl.innerHTML = `
+          <div class="space-y-2.5">
+            ${dayItems.map(item => `
+              <div class="flex items-center justify-between gap-3 p-3.5 rounded-2xl border transition" style="background-color: var(--bg-soft); border-color: var(--border-soft);">
+                <div class="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-3 min-w-0">
+                  <span class="px-2.5 py-1 rounded-lg text-xs font-extrabold whitespace-nowrap self-start" style="background-color: var(--bg-card); color: var(--primary); border: 1px solid var(--border-soft);">
+                    ⏰ ${escapePsHtml(item.time)}
+                  </span>
+                  <div class="min-w-0">
+                    <p class="text-sm font-bold truncate" style="color: var(--text-main);">${escapePsHtml(item.subject)}</p>
+                    ${item.note ? `<p class="text-xs truncate" style="color: var(--text-muted);">📝 ${escapePsHtml(item.note)}</p>` : ''}
+                  </div>
+                </div>
+                <button type="button" onclick="deletePersonalScheduleItem('${item.id}')" title="Xóa lịch này"
+                  class="px-2.5 py-1.5 rounded-xl text-xs font-bold border bg-white hover:bg-gray-50 shrink-0 transition"
+                  style="border-color: var(--border-soft); color: var(--text-muted);">
+                  Xóa
+                </button>
+              </div>
+            `).join('')}
+          </div>
+        `;
+      } else {
+        contentEl.innerHTML = `
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            ${PS_DAYS.map(d => {
+              const list = psItems
+                .filter(i => i.day === d.key)
+                .sort((a, b) => a.time.localeCompare(b.time));
+              return `
+                <div class="p-3.5 rounded-2xl border flex flex-col" style="background-color: var(--bg-soft); border-color: var(--border-soft);">
+                  <div class="flex items-center justify-between pb-2 mb-2 border-b" style="border-color: var(--border-soft);">
+                    <span class="text-xs font-extrabold" style="color: var(--primary);">${d.label}</span>
+                    <span class="text-[11px] font-bold" style="color: var(--text-muted);">${list.length} ca</span>
+                  </div>
+                  ${list.length === 0
+                    ? `<p class="text-[11px] italic py-3 text-center" style="color: var(--text-muted);">Trống lịch</p>`
+                    : `<div class="space-y-2">
+                        ${list.map(item => `
+                          <div class="p-2.5 rounded-xl bg-white border relative group" style="border-color: var(--border-soft);">
+                            <div class="flex items-center justify-between gap-1">
+                              <span class="text-[11px] font-extrabold" style="color: var(--primary);">${escapePsHtml(item.time)}</span>
+                              <button type="button" onclick="deletePersonalScheduleItem('${item.id}')" class="text-[10px] font-bold px-1.5 rounded hover:bg-gray-100" style="color: var(--text-muted);">✕</button>
+                            </div>
+                            <p class="text-xs font-bold mt-0.5" style="color: var(--text-main);">${escapePsHtml(item.subject)}</p>
+                            ${item.note ? `<p class="text-[11px] mt-0.5" style="color: var(--text-muted);">${escapePsHtml(item.note)}</p>` : ''}
+                          </div>
+                        `).join('')}
+                      </div>`
+                  }
+                </div>
+              `;
+            }).join('')}
+          </div>
+        `;
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+      const selectEl = document.getElementById('ps-day-input');
+      if (selectEl) selectEl.value = psSelectedDay;
+      loadPersonalSchedule();
+      setTimeout(function () {
+        try {
+          if (window.firebase && firebase.auth) {
+            firebase.auth().onAuthStateChanged(function () {
+              loadPersonalSchedule();
+            });
+          }
+        } catch (e) {}
+      }, 800);
+    });
+  })();
+</script>
 </body></html>
