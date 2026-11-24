@@ -4918,4 +4918,1097 @@ service cloud.firestore {
     }, 1500);
   })();
 </script>
+  <!-- =====================================================================
+     TÍNH NĂNG NHIỆM VỤ HÀNG TUẦN, BẢNG XẾP HẠNG & CÚP NHẤT TUẦN
+     ===================================================================== -->
+<script>
+  (function () {
+    const POINTS_PER_POMODORO_MIN = 2; // 1 phút Pomodoro = 2 Điểm Tuần (1 giờ = 120 điểm)
+
+    const WEEKLY_QUESTS = [
+      {
+        id: 'wq_pomo_60',
+        icon: '🌱',
+        title: 'Khởi Động Tuần Mới',
+        desc: 'Học đủ 1 giờ (60 phút) bằng đồng hồ Pomodoro trong tuần',
+        type: 'minutes',
+        target: 60,
+        points: 50,
+        coins: 60
+      },
+      {
+        id: 'wq_pomo_180',
+        icon: '🔥',
+        title: 'Chiến Binh Bền Bỉ',
+        desc: 'Tích lũy 3 giờ (180 phút) Pomodoro trong tuần',
+        type: 'minutes',
+        target: 180,
+        points: 120,
+        coins: 150
+      },
+      {
+        id: 'wq_pomo_420',
+        icon: '📚',
+        title: 'Học Bá Chăm Chỉ',
+        desc: 'Đạt mốc 7 giờ (420 phút) học Pomodoro trong tuần',
+        type: 'minutes',
+        target: 420,
+        points: 250,
+        coins: 300
+      },
+      {
+        id: 'wq_pomo_900',
+        icon: '👑',
+        title: 'Thần Đồng Tập Trung',
+        desc: 'Chinh phục 15 giờ (900 phút) Pomodoro trong tuần',
+        type: 'minutes',
+        target: 900,
+        points: 500,
+        coins: 600
+      },
+      {
+        id: 'wq_days_3',
+        icon: '📅',
+        title: 'Giữ Nhịp Đều Đặn',
+        desc: 'Bấm đồng hồ Pomodoro học ít nhất 3 ngày khác nhau trong tuần',
+        type: 'days',
+        target: 3,
+        points: 100,
+        coins: 120
+      },
+      {
+        id: 'wq_days_5',
+        icon: '⚡',
+        title: 'Kỷ Luật Thép',
+        desc: 'Duy trì học Pomodoro ít nhất 5 ngày khác nhau trong tuần',
+        type: 'days',
+        target: 5,
+        points: 200,
+        coins: 250
+      }
+    ];
+
+    let activeRankSubTab = 'leaderboard'; // 'leaderboard' | 'quests' | 'trophies'
+    let selectedAdminTargetUid = '';
+    let allMembersWeeklyMap = {};
+    let weeklyChampionsHistory = [];
+    let unsubscribeLeaderboard = null;
+    let unsubscribeChampions = null;
+
+    // Tính mã tuần ISO (Thứ 2 -> Chủ Nhật)
+    function getWeekInfo(offsetWeeks) {
+      const now = new Date();
+      if (offsetWeeks) now.setDate(now.getDate() + offsetWeeks * 7);
+      const d = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
+      const dayNum = d.getUTCDay() || 7;
+      d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+      const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+      const weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+      const weekKey = `${d.getUTCFullYear()}-W${String(weekNo).padStart(2, '0')}`;
+
+      // Tính ngày Thứ 2 và Chủ Nhật của tuần đó
+      const local = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const localDay = local.getDay() || 7;
+      const monday = new Date(local);
+      monday.setDate(local.getDate() - localDay + 1);
+      const sunday = new Date(monday);
+      sunday.setDate(monday.getDate() + 6);
+
+      const fmt = (dt) => `${String(dt.getDate()).padStart(2, '0')}/${String(dt.getMonth() + 1).padStart(2, '0')}`;
+      const label = `Tuần ${weekNo} (${fmt(monday)} – ${fmt(sunday)}/${sunday.getFullYear()})`;
+      return { weekKey, weekNo, label };
+    }
+
+    function getTodayDateStr() {
+      const now = new Date();
+      return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    }
+
+    function formatHoursMinutes(totalMins) {
+      const mins = Math.max(0, Math.floor(Number(totalMins) || 0));
+      const h = Math.floor(mins / 60);
+      const m = mins % 60;
+      if (h === 0) return `${m} phút`;
+      if (m === 0) return `${h} giờ`;
+      return `${h}g ${m}p`;
+    }
+
+    function escapeHtmlSafe(str) {
+      return String(str || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    function isAdminUser() {
+      const adminBtn = Array.from(document.querySelectorAll('button')).find(
+        b => b.textContent && b.textContent.includes('Quản Trị Admin') && !b.classList.contains('hidden')
+      );
+      if (adminBtn) return true;
+      return (document.body ? document.body.innerText : '').includes('👑 Admin');
+    }
+
+    function getCurrentUserIdentity() {
+      try {
+        if (window.firebase && firebase.auth && firebase.auth().currentUser) {
+          const u = firebase.auth().currentUser;
+          return {
+            uid: u.uid,
+            name: u.displayName || (u.email ? u.email.split('@')[0] : 'Thành viên'),
+            email: u.email || '',
+            isFirebase: true
+          };
+        }
+      } catch (e) {}
+      const guest = localStorage.getItem('study_guest_name') || localStorage.getItem('guestName') || 'Bạn';
+      return {
+        uid: 'guest_' + guest.trim().toLowerCase(),
+        name: guest.trim() || 'Bạn',
+        email: '',
+        isFirebase: false
+      };
+    }
+
+    function getLocalWeeklyStorageKey(uid) {
+      return 'ynwa_weekly_rank_v1_' + uid;
+    }
+
+    function createEmptyWeeklyRecord(user, weekKey, oldRecord) {
+      return {
+        uid: user.uid,
+        name: user.name,
+        email: user.email || '',
+        weekKey: weekKey,
+        pomodoroMinutes: 0,
+        activeDays: [],
+        completedQuests: [],
+        claimedQuests: [],
+        adminBonusPoints: 0,
+        trophiesCount: oldRecord ? Number(oldRecord.trophiesCount || 0) : 0,
+        trophyWeeks: oldRecord && Array.isArray(oldRecord.trophyWeeks) ? oldRecord.trophyWeeks : [],
+        lastAdminNote: '',
+        updatedAt: Date.now()
+      };
+    }
+
+    function normalizeWeeklyRecord(raw, user) {
+      const currentWeek = getWeekInfo(0).weekKey;
+      const base = createEmptyWeeklyRecord(user, currentWeek, raw);
+      if (!raw) return base;
+
+      // Nếu dữ liệu thuộc tuần cũ -> reset tiến độ tuần mới nhưng giữ nguyên tổng số Cúp Nhất Tuần
+      if (raw.weekKey && raw.weekKey !== currentWeek) {
+        return createEmptyWeeklyRecord(user, currentWeek, raw);
+      }
+
+      return Object.assign(base, raw, {
+        uid: raw.uid || user.uid,
+        name: raw.name || user.name,
+        weekKey: currentWeek,
+        pomodoroMinutes: Number(raw.pomodoroMinutes || 0),
+        activeDays: Array.isArray(raw.activeDays) ? raw.activeDays : [],
+        completedQuests: Array.isArray(raw.completedQuests) ? raw.completedQuests : [],
+        claimedQuests: Array.isArray(raw.claimedQuests) ? raw.claimedQuests : [],
+        adminBonusPoints: Number(raw.adminBonusPoints || 0),
+        trophiesCount: Number(raw.trophiesCount || 0),
+        trophyWeeks: Array.isArray(raw.trophyWeeks) ? raw.trophyWeeks : []
+      });
+    }
+
+    // Tính tổng điểm tuần của 1 thành viên
+    function calculateWeeklyTotalPoints(rec) {
+      const pomoPts = Math.floor(Number(rec.pomodoroMinutes || 0) * POINTS_PER_POMODORO_MIN);
+      const completed = Array.isArray(rec.completedQuests) ? rec.completedQuests : [];
+      const questPts = WEEKLY_QUESTS
+        .filter(q => completed.includes(q.id))
+        .reduce((sum, q) => sum + q.points, 0);
+      const adminPts = Number(rec.adminBonusPoints || 0);
+      return {
+        pomoPts,
+        questPts,
+        adminPts,
+        total: Math.max(0, pomoPts + questPts + adminPts)
+      };
+    }
+
+    // Đọc tổng phút Pomodoro tích lũy hiện tại trên trang
+    function readAccumulatedPomodoroMinutes() {
+      const text = document.body ? document.body.innerText : '';
+      const m = text.match(/(\d+)\s*phút tích lũy/i);
+      if (m && m[1]) {
+        const val = parseInt(m[1], 10);
+        if (!isNaN(val)) return val;
+      }
+      return null;
+    }
+
+    // Cộng thêm Xu Cá vào ví Nuôi Mèo nếu người dùng đang dùng tính năng Nuôi Mèo
+    async function rewardCatCoins(uid, coinAmount, reasonText) {
+      if (!coinAmount || coinAmount <= 0) return;
+      try {
+        const localCatKey = 'ynwa_talking_cat_v2_' + (uid.startsWith('guest_') ? uid : 'uid_' + uid);
+        const rawCat = localStorage.getItem(localCatKey);
+        if (rawCat) {
+          const catObj = JSON.parse(rawCat);
+          catObj.bonusCoins = Number(catObj.bonusCoins || 0) + coinAmount;
+          localStorage.setItem(localCatKey, JSON.stringify(catObj));
+        }
+        if (window.firebase && firebase.firestore && !uid.startsWith('guest_')) {
+          const ref = firebase.firestore().collection('cat_pets_v2').doc(uid);
+          const snap = await ref.get();
+          const curBonus = snap.exists ? Number(snap.data().bonusCoins || 0) : 0;
+          await ref.set({
+            bonusCoins: curBonus + coinAmount,
+            lastGift: {
+              id: Date.now(),
+              amount: coinAmount,
+              reason: reasonText || 'Thưởng Nhiệm Vụ Tuần'
+            }
+          }, { merge: true });
+        }
+      } catch (e) {}
+    }
+
+    // Tự động kiểm tra hoàn thành các nhiệm vụ dựa trên số phút & số ngày học Pomodoro
+    function evaluateAutoQuestCompletion(rec) {
+      let changed = false;
+      const mins = Number(rec.pomodoroMinutes || 0);
+      const daysCount = Array.isArray(rec.activeDays) ? rec.activeDays.length : 0;
+      const completed = new Set(rec.completedQuests || []);
+
+      WEEKLY_QUESTS.forEach(q => {
+        if (completed.has(q.id)) return;
+        const currentVal = q.type === 'minutes' ? mins : daysCount;
+        if (currentVal >= q.target) {
+          completed.add(q.id);
+          changed = true;
+        }
+      });
+
+      if (changed) {
+        rec.completedQuests = Array.from(completed);
+      }
+      return changed;
+    }
+
+    async function saveWeeklyRecord(rec) {
+      rec.updatedAt = Date.now();
+      allMembersWeeklyMap[rec.uid] = rec;
+      localStorage.setItem(getLocalWeeklyStorageKey(rec.uid), JSON.stringify(rec));
+
+      try {
+        if (window.firebase && firebase.firestore && !rec.uid.startsWith('guest_')) {
+          await firebase.firestore().collection('weekly_leaderboard').doc(rec.uid).set(rec, { merge: true });
+        }
+      } catch (e) {}
+    }
+
+    // Đồng bộ phút bấm đồng hồ Pomodoro theo thời gian thực
+    async function syncPomodoroDelta() {
+      const user = getCurrentUserIdentity();
+      const currentTotal = readAccumulatedPomodoroMinutes();
+      if (currentTotal === null) return;
+
+      const baselineKey = 'ynwa_pomo_last_total_' + user.uid;
+      const storedLast = localStorage.getItem(baselineKey);
+
+      let rec = allMembersWeeklyMap[user.uid];
+      if (!rec) {
+        try {
+          const saved = localStorage.getItem(getLocalWeeklyStorageKey(user.uid));
+          rec = normalizeWeeklyRecord(saved ? JSON.parse(saved) : null, user);
+        } catch (e) {
+          rec = createEmptyWeeklyRecord(user, getWeekInfo(0).weekKey, null);
+        }
+        allMembersWeeklyMap[user.uid] = rec;
+      }
+
+      if (storedLast === null) {
+        localStorage.setItem(baselineKey, String(currentTotal));
+        if (evaluateAutoQuestCompletion(rec)) {
+          await saveWeeklyRecord(rec);
+          renderWeeklyRankTab();
+        }
+        return;
+      }
+
+      const lastVal = parseInt(storedLast, 10);
+      if (!isNaN(lastVal) && currentTotal > lastVal) {
+        const delta = currentTotal - lastVal;
+        localStorage.setItem(baselineKey, String(currentTotal));
+
+        rec.pomodoroMinutes = Number(rec.pomodoroMinutes || 0) + delta;
+        const today = getTodayDateStr();
+        if (!rec.activeDays.includes(today)) {
+          rec.activeDays.push(today);
+        }
+        evaluateAutoQuestCompletion(rec);
+        await saveWeeklyRecord(rec);
+        renderWeeklyRankTab();
+      } else if (!isNaN(lastVal) && currentTotal < lastVal) {
+        localStorage.setItem(baselineKey, String(currentTotal));
+      }
+    }
+
+    // Tải dữ liệu tất cả thành viên & lịch sử cúp tuần
+    async function initWeeklyLeaderboardData() {
+      const user = getCurrentUserIdentity();
+      try {
+        const localRaw = localStorage.getItem(getLocalWeeklyStorageKey(user.uid));
+        const myRec = normalizeWeeklyRecord(localRaw ? JSON.parse(localRaw) : null, user);
+        evaluateAutoQuestCompletion(myRec);
+        allMembersWeeklyMap[user.uid] = myRec;
+        if (!selectedAdminTargetUid) selectedAdminTargetUid = user.uid;
+      } catch (e) {}
+
+      renderWeeklyRankTab();
+
+      try {
+        if (window.firebase && firebase.firestore) {
+          // Lấy danh sách user để đảm bảo mọi thành viên đều có mặt trên BXH
+          const usersSnap = await firebase.firestore().collection('users').get();
+          usersSnap.forEach(doc => {
+            const d = doc.data() || {};
+            const uObj = {
+              uid: doc.id,
+              name: d.name || d.displayName || d.username || (d.email ? d.email.split('@')[0] : 'Thành viên'),
+              email: d.email || ''
+            };
+            if (!allMembersWeeklyMap[doc.id]) {
+              allMembersWeeklyMap[doc.id] = createEmptyWeeklyRecord(uObj, getWeekInfo(0).weekKey, null);
+            } else {
+              allMembersWeeklyMap[doc.id].name = uObj.name;
+              allMembersWeeklyMap[doc.id].email = uObj.email;
+            }
+          });
+
+          // Đảm bảo hồ sơ của chính mình tồn tại trên Firestore
+          if (user.isFirebase && allMembersWeeklyMap[user.uid]) {
+            await saveWeeklyRecord(allMembersWeeklyMap[user.uid]);
+          }
+
+          // Lắng nghe realtime Bảng Xếp Hạng Tuần
+          if (unsubscribeLeaderboard) unsubscribeLeaderboard();
+          unsubscribeLeaderboard = firebase.firestore().collection('weekly_leaderboard').onSnapshot(snap => {
+            snap.forEach(doc => {
+              const data = doc.data() || {};
+              const uInfo = {
+                uid: doc.id,
+                name: data.name || (allMembersWeeklyMap[doc.id] && allMembersWeeklyMap[doc.id].name) || 'Thành viên',
+                email: data.email || ''
+              };
+              const norm = normalizeWeeklyRecord(data, uInfo);
+              evaluateAutoQuestCompletion(norm);
+              allMembersWeeklyMap[doc.id] = norm;
+              if (doc.id === user.uid) {
+                localStorage.setItem(getLocalWeeklyStorageKey(user.uid), JSON.stringify(norm));
+              }
+            });
+            renderWeeklyRankTab();
+          });
+
+          // Lắng nghe Lịch Sử Cúp Nhất Tuần
+          if (unsubscribeChampions) unsubscribeChampions();
+          unsubscribeChampions = firebase.firestore().collection('weekly_champions').onSnapshot(snap => {
+            const arr = [];
+            snap.forEach(doc => arr.push(doc.data()));
+            arr.sort((a, b) => String(b.weekKey || '').localeCompare(String(a.weekKey || '')));
+            weeklyChampionsHistory = arr;
+            renderWeeklyRankTab();
+          });
+        }
+      } catch (e) {}
+    }
+
+    // Thành viên tự bấm nhận thưởng khi nhiệm vụ đã hoàn thành
+    window.claimWeeklyQuestReward = async function (questId) {
+      const user = getCurrentUserIdentity();
+      const rec = allMembersWeeklyMap[user.uid];
+      const quest = WEEKLY_QUESTS.find(q => q.id === questId);
+      if (!rec || !quest) return;
+
+      if (!rec.completedQuests.includes(questId)) {
+        if (typeof showToast === 'function') showToast('⚠️ Bạn chưa hoàn thành nhiệm vụ này!');
+        return;
+      }
+      if (rec.claimedQuests.includes(questId)) return;
+
+      rec.claimedQuests.push(questId);
+      await saveWeeklyRecord(rec);
+      await rewardCatCoins(user.uid, quest.coins, `Nhiệm vụ tuần: ${quest.title}`);
+      renderWeeklyRankTab();
+      if (typeof showToast === 'function') {
+        showToast(`🎉 Đã nhận +${quest.points} Điểm Tuần & +${quest.coins} Xu Cá!`);
+      }
+    };
+
+    // ================= CHỨC NĂNG QUẢN TRỊ ADMIN =================
+    window.selectAdminWeeklyMember = function (uid) {
+      selectedAdminTargetUid = uid;
+      renderWeeklyRankTab();
+    };
+
+    window.adminToggleMemberQuest = async function (targetUid, questId) {
+      if (!isAdminUser()) return;
+      const rec = allMembersWeeklyMap[targetUid];
+      const quest = WEEKLY_QUESTS.find(q => q.id === questId);
+      if (!rec || !quest) return;
+
+      const idx = rec.completedQuests.indexOf(questId);
+      if (idx >= 0) {
+        // Hủy hoàn thành nhiệm vụ
+        rec.completedQuests.splice(idx, 1);
+        rec.claimedQuests = rec.claimedQuests.filter(id => id !== questId);
+        await saveWeeklyRecord(rec);
+        renderWeeklyRankTab();
+        if (typeof showToast === 'function') {
+          showToast(`↩️ Đã hủy hoàn thành "${quest.title}" của ${rec.name}`);
+        }
+      } else {
+        // Đánh dấu hoàn thành & tự động trao luôn Xu Cá
+        rec.completedQuests.push(questId);
+        if (!rec.claimedQuests.includes(questId)) {
+          rec.claimedQuests.push(questId);
+          await rewardCatCoins(targetUid, quest.coins, `Admin duyệt NV: ${quest.title}`);
+        }
+        await saveWeeklyRecord(rec);
+        renderWeeklyRankTab();
+        if (typeof showToast === 'function') {
+          showToast(`✅ Đã duyệt hoàn thành "${quest.title}" (+${quest.points} điểm) cho ${rec.name}!`);
+        }
+      }
+    };
+
+    window.adminAdjustMemberWeeklyStats = async function (targetUid) {
+      if (!isAdminUser()) return;
+      const rec = allMembersWeeklyMap[targetUid];
+      if (!rec) return;
+
+      const ptsInp = document.getElementById('admin-wk-pts-input');
+      const minsInp = document.getElementById('admin-wk-mins-input');
+      const noteInp = document.getElementById('admin-wk-note-input');
+
+      const addPts = ptsInp ? parseInt(ptsInp.value, 10) || 0 : 0;
+      const addMins = minsInp ? parseInt(minsInp.value, 10) || 0 : 0;
+      const note = noteInp ? noteInp.value.trim() : '';
+
+      if (addPts === 0 && addMins === 0) {
+        if (typeof showToast === 'function') showToast('⚠️ Hãy nhập số Điểm Tuần hoặc Phút Pomodoro cần cộng/trừ.');
+        return;
+      }
+
+      rec.adminBonusPoints = Number(rec.adminBonusPoints || 0) + addPts;
+      rec.pomodoroMinutes = Math.max(0, Number(rec.pomodoroMinutes || 0) + addMins);
+      if (addMins > 0) {
+        const today = getTodayDateStr();
+        if (!rec.activeDays.includes(today)) rec.activeDays.push(today);
+      }
+      if (note) rec.lastAdminNote = note;
+
+      evaluateAutoQuestCompletion(rec);
+      await saveWeeklyRecord(rec);
+      if (ptsInp) ptsInp.value = '0';
+      if (minsInp) minsInp.value = '0';
+      if (noteInp) noteInp.value = '';
+      renderWeeklyRankTab();
+
+      if (typeof showToast === 'function') {
+        showToast(`⭐ Đã cập nhật điểm/giờ học tuần cho ${rec.name}!`);
+      }
+    };
+
+    // Admin chốt & trao Cúp Nhất Tuần cho Quán Quân tuần hiện tại (hoặc thành viên đang chọn)
+    window.adminCrownWeeklyChampion = async function (targetUid) {
+      if (!isAdminUser()) return;
+      const rec = allMembersWeeklyMap[targetUid];
+      if (!rec) return;
+
+      const weekInfo = getWeekInfo(0);
+      const stats = calculateWeeklyTotalPoints(rec);
+      const adminUser = getCurrentUserIdentity();
+
+      // Nếu tuần này từng trao cho người khác trước đó thì trừ cúp cũ của người đó để tránh trùng
+      const existingChamp = weeklyChampionsHistory.find(c => c.weekKey === weekInfo.weekKey);
+      if (existingChamp && existingChamp.winnerUid && existingChamp.winnerUid !== targetUid) {
+        const prevWinner = allMembersWeeklyMap[existingChamp.winnerUid];
+        if (prevWinner) {
+          prevWinner.trophiesCount = Math.max(0, Number(prevWinner.trophiesCount || 0) - 1);
+          prevWinner.trophyWeeks = (prevWinner.trophyWeeks || []).filter(w => w !== weekInfo.weekKey);
+          await saveWeeklyRecord(prevWinner);
+        }
+      }
+
+      if (!rec.trophyWeeks.includes(weekInfo.weekKey)) {
+        rec.trophyWeeks.push(weekInfo.weekKey);
+        rec.trophiesCount = Number(rec.trophiesCount || 0) + 1;
+      }
+      await saveWeeklyRecord(rec);
+
+      const champRecord = {
+        weekKey: weekInfo.weekKey,
+        weekLabel: weekInfo.label,
+        winnerUid: rec.uid,
+        winnerName: rec.name,
+        pomodoroMinutes: rec.pomodoroMinutes,
+        totalScore: stats.total,
+        awardedAt: Date.now(),
+        awardedBy: adminUser.name
+      };
+
+      const idx = weeklyChampionsHistory.findIndex(c => c.weekKey === weekInfo.weekKey);
+      if (idx >= 0) weeklyChampionsHistory[idx] = champRecord;
+      else weeklyChampionsHistory.unshift(champRecord);
+
+      try {
+        if (window.firebase && firebase.firestore) {
+          await firebase.firestore().collection('weekly_champions').doc(weekInfo.weekKey).set(champRecord, { merge: true });
+        }
+      } catch (e) {}
+
+      renderWeeklyRankTab();
+      if (typeof showToast === 'function') {
+        showToast(`🏆 Đã trao Cúp Nhất ${weekInfo.label} cho ${rec.name}!`);
+      }
+    };
+
+    window.switchWeeklySubTab = function (subTab) {
+      activeRankSubTab = subTab;
+      renderWeeklyRankTab();
+    };
+
+    function buildAdminWeeklyControlHtml(sortedMembers) {
+      if (sortedMembers.length === 0) return '';
+      if (!selectedAdminTargetUid || !allMembersWeeklyMap[selectedAdminTargetUid]) {
+        selectedAdminTargetUid = sortedMembers[0].uid;
+      }
+      const target = allMembersWeeklyMap[selectedAdminTargetUid];
+      const targetStats = calculateWeeklyTotalPoints(target);
+
+      return `
+        <div class="pastel-card rounded-3xl p-5 bg-white border mb-6" style="border-color: var(--border-soft);">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+            <div>
+              <h3 class="text-base sm:text-lg font-extrabold flex items-center gap-2" style="color: var(--primary);">
+                🛡️ Bảng Quản Trị Nhiệm Vụ, Điểm Tuần & Cúp Vô Địch (Admin)
+              </h3>
+              <p class="text-xs font-medium" style="color: var(--text-muted);">
+                Chọn thành viên để đánh dấu hoàn thành nhiệm vụ, cấp/trừ điểm tuần hoặc trao Cúp Nhất Tuần
+              </p>
+            </div>
+            <button type="button" onclick="adminCrownWeeklyChampion('${escapeHtmlSafe(target.uid)}')"
+              class="btn-primary px-3.5 py-2 rounded-xl text-xs font-extrabold shadow-xs self-start sm:self-auto">
+              🏆 Trao Cúp Nhất Tuần cho ${escapeHtmlSafe(target.name)}
+            </button>
+          </div>
+
+          <!-- Chọn thành viên & Cấp điểm / phút Pomodoro -->
+          <div class="grid grid-cols-1 lg:grid-cols-12 gap-3 p-3.5 rounded-2xl border mb-4"
+            style="background-color: var(--bg-soft); border-color: var(--border-soft);">
+            <div class="lg:col-span-4">
+              <label class="block text-[11px] font-bold mb-1" style="color: var(--text-muted);">
+                1. Chọn thành viên cần thao tác
+              </label>
+              <select onchange="selectAdminWeeklyMember(this.value)"
+                class="w-full px-3 py-2 rounded-xl border text-xs font-extrabold bg-white focus:outline-none"
+                style="border-color: var(--border-soft); color: var(--text-main);">
+                ${sortedMembers.map((m, idx) => `
+                  <option value="${escapeHtmlSafe(m.uid)}" ${m.uid === target.uid ? 'selected' : ''}>
+                    #${idx + 1} ${escapeHtmlSafe(m.name)} (${calculateWeeklyTotalPoints(m).total} điểm • 🏆 ${m.trophiesCount || 0})
+                  </option>
+                `).join('')}
+              </select>
+            </div>
+
+            <div class="lg:col-span-2">
+              <label class="block text-[11px] font-bold mb-1" style="color: var(--text-muted);">
+                2. Cấp/Trừ Điểm Tuần
+              </label>
+              <input type="number" id="admin-wk-pts-input" value="100" step="10"
+                class="w-full px-3 py-2 rounded-xl border text-xs font-extrabold bg-white focus:outline-none"
+                style="border-color: var(--border-soft); color: var(--primary);">
+            </div>
+
+            <div class="lg:col-span-2">
+              <label class="block text-[11px] font-bold mb-1" style="color: var(--text-muted);">
+                3. Cộng/Trừ Phút Pomo
+              </label>
+              <input type="number" id="admin-wk-mins-input" value="0" step="15"
+                class="w-full px-3 py-2 rounded-xl border text-xs font-extrabold bg-white focus:outline-none"
+                style="border-color: var(--border-soft); color: var(--text-main);">
+            </div>
+
+            <div class="lg:col-span-2">
+              <label class="block text-[11px] font-bold mb-1" style="color: var(--text-muted);">
+                Ghi chú lý do
+              </label>
+              <input type="text" id="admin-wk-note-input" placeholder="VD: Thưởng tích cực..." maxlength="36"
+                class="w-full px-3 py-2 rounded-xl border text-xs bg-white focus:outline-none"
+                style="border-color: var(--border-soft);">
+            </div>
+
+            <div class="lg:col-span-2 flex items-end">
+              <button type="button" onclick="adminAdjustMemberWeeklyStats('${escapeHtmlSafe(target.uid)}')"
+                class="btn-primary w-full py-2 px-3 rounded-xl text-xs font-extrabold">
+                ✨ Cập Nhật Điểm
+              </button>
+            </div>
+          </div>
+
+          <!-- Danh sách bật/tắt hoàn thành từng nhiệm vụ tuần của thành viên đang chọn -->
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <p class="text-xs font-extrabold" style="color: var(--text-main);">
+                📋 Đánh dấu Nhiệm Vụ Tuần của <span style="color: var(--primary);">${escapeHtmlSafe(target.name)}</span>
+                (Hiện có: ${targetStats.total.toLocaleString('vi-VN')} điểm • ${formatHoursMinutes(target.pomodoroMinutes)} Pomodoro):
+              </p>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+              ${WEEKLY_QUESTS.map(q => {
+                const isDone = (target.completedQuests || []).includes(q.id);
+                return `
+                  <div class="p-2.5 rounded-2xl border flex items-center justify-between gap-2 bg-white"
+                    style="border-color: ${isDone ? 'var(--primary-light)' : 'var(--border-soft)'};">
+                    <div class="min-w-0">
+                      <p class="text-xs font-bold truncate" style="color: var(--text-main);">${q.icon} ${q.title}</p>
+                      <p class="text-[11px]" style="color: var(--text-muted);">+${q.points} điểm • +${q.coins} Xu</p>
+                    </div>
+                    <button type="button" onclick="adminToggleMemberQuest('${escapeHtmlSafe(target.uid)}', '${q.id}')"
+                      class="px-2.5 py-1.5 rounded-xl text-[11px] font-extrabold whitespace-nowrap shrink-0 transition ${isDone ? 'btn-primary' : 'btn-soft'}">
+                      ${isDone ? '✅ Đã xong' : '⬜ Đánh dấu'}
+                    </button>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderWeeklyRankTab() {
+      const panel = document.getElementById('tab-weekly-rank');
+      if (!panel) return;
+
+      const user = getCurrentUserIdentity();
+      const weekInfo = getWeekInfo(0);
+      const adminMode = isAdminUser();
+
+      // Sắp xếp thành viên theo Tổng Điểm Tuần -> Phút Pomodoro Tuần -> Số Cúp
+      const sortedMembers = Object.values(allMembersWeeklyMap).sort((a, b) => {
+        const sa = calculateWeeklyTotalPoints(a).total;
+        const sb = calculateWeeklyTotalPoints(b).total;
+        if (sb !== sa) return sb - sa;
+        if ((b.pomodoroMinutes || 0) !== (a.pomodoroMinutes || 0)) {
+          return (b.pomodoroMinutes || 0) - (a.pomodoroMinutes || 0);
+        }
+        return (b.trophiesCount || 0) - (a.trophiesCount || 0);
+      });
+
+      const myRec = allMembersWeeklyMap[user.uid] || createEmptyWeeklyRecord(user, weekInfo.weekKey, null);
+      const myStats = calculateWeeklyTotalPoints(myRec);
+      const myRankIdx = sortedMembers.findIndex(m => m.uid === user.uid);
+      const myRankDisplay = myRankIdx >= 0 ? `#${myRankIdx + 1}` : '#1';
+
+      // Bảng tổng sắp Cúp Nhất Tuần theo từng thành viên
+      const trophyRanking = [...sortedMembers]
+        .filter(m => (m.trophiesCount || 0) > 0)
+        .sort((a, b) => (b.trophiesCount || 0) - (a.trophiesCount || 0));
+
+      panel.innerHTML = `
+        ${adminMode ? buildAdminWeeklyControlHtml(sortedMembers) : ''}
+
+        <!-- BANNER TỔNG QUAN TUẦN HIỆN TẠI -->
+        <div class="pastel-card rounded-3xl p-5 sm:p-6 bg-white mb-6">
+          <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-extrabold mb-2"
+                style="background-color: var(--bg-soft); color: var(--primary);">
+                <span>📆 ${weekInfo.label}</span>
+                <span>•</span>
+                <span>1 phút Pomodoro = ${POINTS_PER_POMODORO_MIN} điểm</span>
+              </div>
+              <h2 class="text-xl sm:text-2xl font-extrabold" style="color: var(--primary);">
+                🏆 Đua Top Tuần & Nhiệm Vụ Pomodoro
+              </h2>
+              <p class="text-xs sm:text-sm mt-1" style="color: var(--text-muted);">
+                Học bằng đồng hồ Pomodoro để tích lũy giờ học, hoàn thành nhiệm vụ tuần và giành Cúp Nhất Tuần!
+              </p>
+            </div>
+
+            <!-- Thẻ tóm tắt thành tích của bản thân -->
+            <div class="grid grid-cols-3 gap-2.5 p-3.5 rounded-2xl border shrink-0"
+              style="background-color: var(--bg-soft); border-color: var(--border-soft);">
+              <div class="text-center px-2">
+                <p class="text-[11px] font-bold" style="color: var(--text-muted);">Hạng của bạn</p>
+                <p class="text-lg sm:text-xl font-extrabold mt-0.5" style="color: var(--primary);">${myRankDisplay}</p>
+              </div>
+              <div class="text-center px-2 border-x" style="border-color: var(--border-soft);">
+                <p class="text-[11px] font-bold" style="color: var(--text-muted);">Điểm tuần này</p>
+                <p class="text-lg sm:text-xl font-extrabold mt-0.5" style="color: var(--primary);">${myStats.total.toLocaleString('vi-VN')}</p>
+              </div>
+              <div class="text-center px-2">
+                <p class="text-[11px] font-bold" style="color: var(--text-muted);">Cúp Nhất Tuần</p>
+                <p class="text-lg sm:text-xl font-extrabold mt-0.5" style="color: #D97706;">🏆 ${myRec.trophiesCount || 0}</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Thanh chuyển đổi 3 phân mục -->
+          <div class="flex flex-wrap gap-2 mt-5 pt-4 border-t" style="border-color: var(--border-soft);">
+            <button type="button" onclick="switchWeeklySubTab('leaderboard')"
+              class="px-4 py-2 rounded-xl text-xs sm:text-sm font-extrabold transition ${activeRankSubTab === 'leaderboard' ? 'btn-primary' : 'btn-soft'}">
+              📊 Bảng Xếp Hạng Tuần (${sortedMembers.length})
+            </button>
+            <button type="button" onclick="switchWeeklySubTab('quests')"
+              class="px-4 py-2 rounded-xl text-xs sm:text-sm font-extrabold transition ${activeRankSubTab === 'quests' ? 'btn-primary' : 'btn-soft'}">
+              🎯 Nhiệm Vụ Hàng Tuần (${(myRec.completedQuests || []).length}/${WEEKLY_QUESTS.length})
+            </button>
+            <button type="button" onclick="switchWeeklySubTab('trophies')"
+              class="px-4 py-2 rounded-xl text-xs sm:text-sm font-extrabold transition ${activeRankSubTab === 'trophies' ? 'btn-primary' : 'btn-soft'}">
+              🏆 Thống Kê Cúp Nhất Tuần (${weeklyChampionsHistory.length})
+            </button>
+          </div>
+        </div>
+
+        <!-- PHÂN MỤC 1: BẢNG XẾP HẠNG THÀNH VIÊN -->
+        ${activeRankSubTab === 'leaderboard' ? `
+          <div class="space-y-6">
+            <!-- Bục Vinh Quang Top 3 -->
+            ${sortedMembers.length > 0 ? `
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                ${sortedMembers.slice(0, 3).map((m, idx) => {
+                  const st = calculateWeeklyTotalPoints(m);
+                  const medals = ['🥇 Hạng 1 — Ứng Cử Viên Cúp Tuần', '🥈 Hạng 2', '🥉 Hạng 3'];
+                  const isMe = m.uid === user.uid;
+                  return `
+                    <div class="pastel-card rounded-3xl p-5 bg-white border relative overflow-hidden"
+                      style="border-color: ${idx === 0 ? '#FBBF24' : 'var(--border-soft)'};">
+                      <div class="flex items-center justify-between gap-2 mb-3">
+                        <span class="px-3 py-1 rounded-full text-xs font-extrabold ${idx === 0 ? 'bg-amber-100 text-amber-800' : 'btn-soft'}">
+                          ${medals[idx]}
+                        </span>
+                        <span class="px-2.5 py-1 rounded-full text-xs font-extrabold bg-amber-50 text-amber-700 border border-amber-200">
+                          🏆 ${m.trophiesCount || 0} Cúp
+                        </span>
+                      </div>
+                      <div class="flex items-center gap-3">
+                        <div class="w-12 h-12 rounded-2xl flex items-center justify-center text-lg font-extrabold text-white shrink-0"
+                          style="background-color: ${idx === 0 ? '#F59E0B' : 'var(--primary)'};">
+                          ${escapeHtmlSafe((m.name || 'U').charAt(0).toUpperCase())}
+                        </div>
+                        <div class="min-w-0">
+                          <h4 class="text-base font-extrabold truncate" style="color: var(--text-main);">
+                            ${escapeHtmlSafe(m.name)} ${isMe ? '<span class="text-xs font-bold text-blue-600">(Bạn)</span>' : ''}
+                          </h4>
+                          <p class="text-xs font-semibold mt-0.5" style="color: var(--text-muted);">
+                            ⏱️ Pomodoro: <strong style="color: var(--primary);">${formatHoursMinutes(m.pomodoroMinutes)}</strong> (${m.pomodoroMinutes}p)
+                          </p>
+                        </div>
+                      </div>
+                      <div class="mt-4 pt-3 border-t flex items-center justify-between text-xs font-bold"
+                        style="border-color: var(--border-soft);">
+                        <span style="color: var(--text-muted);">
+                          NV: ${(m.completedQuests || []).length}/${WEEKLY_QUESTS.length} • Admin: ${st.adminPts >= 0 ? '+' + st.adminPts : st.adminPts}đ
+                        </span>
+                        <span class="text-sm font-extrabold" style="color: var(--primary);">
+                          ${st.total.toLocaleString('vi-VN')} điểm
+                        </span>
+                      </div>
+                    </div>
+                  `;
+                }).join('')}
+              </div>
+            ` : ''}
+
+            <!-- Bảng Chi Tiết Toàn Bộ Thành Viên -->
+            <div class="pastel-card rounded-3xl p-5 sm:p-6 bg-white overflow-x-auto">
+              <h3 class="text-base sm:text-lg font-extrabold mb-4" style="color: var(--primary);">
+                📋 Bảng Xếp Hạng Chi Tiết Tuần Này
+              </h3>
+              <table class="w-full text-left border-collapse min-w-[640px]">
+                <thead>
+                  <tr class="border-b text-xs uppercase" style="border-color: var(--border-soft); color: var(--text-muted);">
+                    <th class="py-3 px-3">Hạng</th>
+                    <th class="py-3 px-3">Thành viên</th>
+                    <th class="py-3 px-3">Giờ Học Pomodoro</th>
+                    <th class="py-3 px-3">Nhiệm Vụ Tuần</th>
+                    <th class="py-3 px-3">Điểm Admin</th>
+                    <th class="py-3 px-3">Tổng Điểm Tuần</th>
+                    <th class="py-3 px-3 text-right">Cúp Nhất Tuần</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y text-xs sm:text-sm" style="border-color: var(--border-soft);">
+                  ${sortedMembers.map((m, idx) => {
+                    const st = calculateWeeklyTotalPoints(m);
+                    const isMe = m.uid === user.uid;
+                    const rankBadge = idx === 0 ? '🥇' : (idx === 1 ? '🥈' : (idx === 2 ? '🥉' : `#${idx + 1}`));
+                    return `
+                      <tr class="${isMe ? 'bg-blue-50/60' : 'hover:bg-gray-50/70'} transition">
+                        <td class="py-3.5 px-3 font-extrabold text-base">${rankBadge}</td>
+                        <td class="py-3.5 px-3">
+                          <div class="font-extrabold" style="color: var(--text-main);">
+                            ${escapeHtmlSafe(m.name)}
+                            ${isMe ? '<span class="ml-1.5 px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-blue-100 text-blue-700">Bạn</span>' : ''}
+                          </div>
+                          ${m.lastAdminNote ? `<div class="text-[11px] text-amber-700 mt-0.5">💬 ${escapeHtmlSafe(m.lastAdminNote)}</div>` : ''}
+                        </td>
+                        <td class="py-3.5 px-3 font-bold" style="color: var(--primary);">
+                          ⏱️ ${formatHoursMinutes(m.pomodoroMinutes)}
+                          <span class="text-xs font-normal block" style="color: var(--text-muted);">(${m.pomodoroMinutes} phút = ${st.pomoPts}đ)</span>
+                        </td>
+                        <td class="py-3.5 px-3 font-bold">
+                          <span class="px-2.5 py-1 rounded-xl border bg-white" style="border-color: var(--border-soft);">
+                            ✅ ${(m.completedQuests || []).length}/${WEEKLY_QUESTS.length} (+${st.questPts}đ)
+                          </span>
+                        </td>
+                        <td class="py-3.5 px-3 font-bold ${st.adminPts > 0 ? 'text-emerald-600' : (st.adminPts < 0 ? 'text-rose-600' : '')}">
+                          ${st.adminPts > 0 ? '+' + st.adminPts : st.adminPts} điểm
+                        </td>
+                        <td class="py-3.5 px-3 font-extrabold text-base" style="color: var(--primary);">
+                          ${st.total.toLocaleString('vi-VN')} đ
+                        </td>
+                        <td class="py-3.5 px-3 text-right">
+                          <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-extrabold bg-amber-100 text-amber-800">
+                            🏆 ${m.trophiesCount || 0} cúp
+                          </span>
+                        </td>
+                      </tr>
+                    `;
+                  }).join('')}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ` : ''}
+
+        <!-- PHÂN MỤC 2: NHIỆM VỤ HÀNG TUẦN -->
+        ${activeRankSubTab === 'quests' ? `
+          <div class="pastel-card rounded-3xl p-5 sm:p-6 bg-white">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-5">
+              <div>
+                <h3 class="text-lg font-extrabold" style="color: var(--primary);">
+                  🎯 Danh Sách Nhiệm Vụ Hàng Tuần (${weekInfo.label})
+                </h3>
+                <p class="text-xs" style="color: var(--text-muted);">
+                  Tiến độ tự động cập nhật mỗi khi bạn hoàn thành phiên bấm đồng hồ Pomodoro (hoặc được Admin duyệt)
+                </p>
+              </div>
+              <div class="px-3.5 py-2 rounded-2xl border text-xs font-bold"
+                style="background-color: var(--bg-soft); border-color: var(--border-soft); color: var(--primary);">
+                Tuần này bạn đã học: <strong>${formatHoursMinutes(myRec.pomodoroMinutes)}</strong> (${(myRec.activeDays || []).length} ngày)
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              ${WEEKLY_QUESTS.map(q => {
+                const curVal = q.type === 'minutes' ? Number(myRec.pomodoroMinutes || 0) : (myRec.activeDays || []).length;
+                const pct = Math.min(100, Math.round((curVal / q.target) * 100));
+                const isCompleted = (myRec.completedQuests || []).includes(q.id);
+                const isClaimed = (myRec.claimedQuests || []).includes(q.id);
+                const unit = q.type === 'minutes' ? 'phút' : 'ngày';
+
+                return `
+                  <div class="p-4 rounded-2xl border flex flex-col justify-between gap-3"
+                    style="background-color: var(--bg-soft); border-color: ${isCompleted ? 'var(--primary-light)' : 'var(--border-soft)'};">
+                    <div class="flex items-start justify-between gap-3">
+                      <div class="flex items-start gap-3">
+                        <div class="w-11 h-11 rounded-2xl bg-white border flex items-center justify-center text-2xl shrink-0"
+                          style="border-color: var(--border-soft);">
+                          ${q.icon}
+                        </div>
+                        <div>
+                          <h4 class="text-sm font-extrabold" style="color: var(--text-main);">${q.title}</h4>
+                          <p class="text-xs mt-0.5" style="color: var(--text-muted);">${q.desc}</p>
+                          <div class="flex flex-wrap items-center gap-1.5 mt-2">
+                            <span class="px-2 py-0.5 rounded-lg text-[11px] font-extrabold bg-white border"
+                              style="border-color: var(--border-soft); color: var(--primary);">
+                              +${q.points} Điểm Tuần
+                            </span>
+                            <span class="px-2 py-0.5 rounded-lg text-[11px] font-extrabold bg-white border text-amber-700"
+                              style="border-color: var(--border-soft);">
+                              +🐟 ${q.coins} Xu Cá
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div class="shrink-0">
+                        ${isCompleted
+                          ? (isClaimed
+                            ? `<span class="px-3 py-1.5 rounded-xl text-xs font-extrabold btn-soft inline-block">✅ Đã hoàn thành</span>`
+                            : `<button type="button" onclick="claimWeeklyQuestReward('${q.id}')" class="px-3 py-1.5 rounded-xl text-xs font-extrabold btn-primary shadow-xs">🎁 Nhận thưởng</button>`)
+                          : `<span class="px-2.5 py-1 rounded-xl text-xs font-bold bg-white border" style="border-color: var(--border-soft); color: var(--text-muted);">${Math.min(curVal, q.target)}/${q.target} ${unit}</span>`
+                        }
+                      </div>
+                    </div>
+
+                    <div>
+                      <div class="flex justify-between text-[11px] font-bold mb-1" style="color: var(--text-muted);">
+                        <span>Tiến độ: ${Math.min(curVal, q.target)} / ${q.target} ${unit}</span>
+                        <span style="color: var(--primary);">${isCompleted ? '100%' : pct + '%'}</span>
+                      </div>
+                      <div class="w-full h-2 rounded-full overflow-hidden bg-white">
+                        <div class="h-full rounded-full transition-all"
+                          style="width: ${isCompleted ? 100 : pct}%; background-color: var(--primary);"></div>
+                      </div>
+                    </div>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          </div>
+        ` : ''}
+
+        <!-- PHÂN MỤC 3: THỐNG KÊ AI ĐẠT CÚP NHẤT TUẦN CỦA CÁC TUẦN -->
+        ${activeRankSubTab === 'trophies' ? `
+          <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <!-- Bảng Tổng Sắp Số Cúp Nhất Tuần -->
+            <div class="lg:col-span-5 pastel-card rounded-3xl p-5 sm:p-6 bg-white">
+              <h3 class="text-base sm:text-lg font-extrabold mb-1" style="color: var(--primary);">
+                👑 Bảng Vàng Tổng Số Cúp Nhất Tuần
+              </h3>
+              <p class="text-xs mb-4" style="color: var(--text-muted);">
+                Thống kê tổng số lần đạt hạng Nhất tuần của các thành viên
+              </p>
+
+              ${trophyRanking.length === 0 ? `
+                <div class="p-6 rounded-2xl border text-center" style="background-color: var(--bg-soft); border-color: var(--border-soft);">
+                  <p class="text-2xl mb-2">🏆</p>
+                  <p class="text-xs font-bold" style="color: var(--text-main);">Chưa có thành viên nào nhận Cúp Nhất Tuần</p>
+                  <p class="text-[11px] mt-1" style="color: var(--text-muted);">
+                    Cuối tuần người đứng Top 1 sẽ được Admin trao Cúp Nhất Tuần vinh danh tại đây!
+                  </p>
+                </div>
+              ` : `
+                <div class="space-y-2.5">
+                  ${trophyRanking.map((m, i) => `
+                    <div class="p-3.5 rounded-2xl border flex items-center justify-between gap-3"
+                      style="background-color: var(--bg-soft); border-color: var(--border-soft);">
+                      <div class="flex items-center gap-3 min-w-0">
+                        <span class="text-lg font-extrabold shrink-0">${i === 0 ? '👑' : `#${i + 1}`}</span>
+                        <div class="min-w-0">
+                          <p class="text-sm font-extrabold truncate" style="color: var(--text-main);">${escapeHtmlSafe(m.name)}</p>
+                          <p class="text-[11px] truncate" style="color: var(--text-muted);">
+                            Các tuần vô địch: ${(m.trophyWeeks || []).join(', ') || 'Đã vinh danh'}
+                          </p>
+                        </div>
+                      </div>
+                      <span class="px-3 py-1 rounded-full text-xs font-extrabold bg-amber-100 text-amber-800 shrink-0">
+                        🏆 ${m.trophiesCount} Cúp
+                      </span>
+                    </div>
+                  `).join('')}
+                </div>
+              `}
+            </div>
+
+            <!-- Lịch Sử Quán Quân Từng Tuần -->
+            <div class="lg:col-span-7 pastel-card rounded-3xl p-5 sm:p-6 bg-white">
+              <h3 class="text-base sm:text-lg font-extrabold mb-1" style="color: var(--primary);">
+                📜 Lịch Sử Đạt Cúp Nhất Tuần Qua Các Tuần
+              </h3>
+              <p class="text-xs mb-4" style="color: var(--text-muted);">
+                Ghi danh người dẫn đầu điểm Pomodoro & nhiệm vụ của mỗi tuần
+              </p>
+
+              ${weeklyChampionsHistory.length === 0 ? `
+                <div class="p-6 rounded-2xl border text-center" style="background-color: var(--bg-soft); border-color: var(--border-soft);">
+                  <p class="text-xs font-bold" style="color: var(--text-muted);">
+                    Chưa có lịch sử tuần nào được chốt. ${adminMode ? 'Admin có thể bấm nút "🏆 Trao Cúp Nhất Tuần" ở bảng quản trị phía trên để chốt tuần này!' : ''}
+                  </p>
+                </div>
+              ` : `
+                <div class="space-y-3">
+                  ${weeklyChampionsHistory.map(c => `
+                    <div class="p-4 rounded-2xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                      style="background-color: var(--bg-soft); border-color: #FDE68A;">
+                      <div>
+                        <span class="px-2.5 py-0.5 rounded-lg text-[11px] font-extrabold bg-amber-100 text-amber-800">
+                          ${escapeHtmlSafe(c.weekLabel || c.weekKey)}
+                        </span>
+                        <h4 class="text-sm sm:text-base font-extrabold mt-1.5" style="color: var(--text-main);">
+                          🏆 Quán Quân: <span style="color: var(--primary);">${escapeHtmlSafe(c.winnerName)}</span>
+                        </h4>
+                        <p class="text-xs mt-0.5" style="color: var(--text-muted);">
+                          ⏱️ Pomodoro tuần đó: <strong>${formatHoursMinutes(c.pomodoroMinutes)}</strong> • Tổng điểm: <strong>${Number(c.totalScore || 0).toLocaleString('vi-VN')} đ</strong>
+                        </p>
+                      </div>
+                      <div class="text-left sm:text-right text-[11px]" style="color: var(--text-muted);">
+                        <span class="inline-block px-3 py-1 rounded-xl bg-white border font-extrabold text-amber-700"
+                          style="border-color: #FDE68A;">
+                          +1 Cúp Vô Địch Tuần
+                        </span>
+                      </div>
+                    </div>
+                  `).join('')}
+                </div>
+              `}
+            </div>
+          </div>
+        ` : ''}
+      `;
+    }
+
+    function mountWeeklyRankTab() {
+      const allBtns = Array.from(document.querySelectorAll('button'));
+      const anchorBtn = allBtns.find(b => b.id === 'btn-tab-cat-pet')
+        || allBtns.find(b => b.textContent && b.textContent.includes('Thời Khóa Biểu'));
+      if (!anchorBtn || document.getElementById('btn-tab-weekly-rank')) return;
+
+      const navBar = anchorBtn.parentElement;
+      const rankBtn = document.createElement('button');
+      rankBtn.id = 'btn-tab-weekly-rank';
+      rankBtn.type = 'button';
+      rankBtn.className = 'px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-bold transition flex items-center gap-2 whitespace-nowrap bg-white border';
+      rankBtn.style.borderColor = 'var(--border-soft)';
+      rankBtn.style.color = 'var(--text-main)';
+      rankBtn.innerHTML = '<span>🏆 Xếp Hạng & Nhiệm Vụ</span>';
+      anchorBtn.insertAdjacentElement('afterend', rankBtn);
+
+      const panels = Array.from(document.querySelectorAll('.animate-tab'));
+      const host = panels.length > 0 ? panels[0].parentElement : navBar.parentElement;
+
+      const rankPanel = document.createElement('div');
+      rankPanel.id = 'tab-weekly-rank';
+      rankPanel.className = 'hidden animate-tab mt-4';
+      host.appendChild(rankPanel);
+
+      rankBtn.addEventListener('click', function () {
+        Array.from(navBar.querySelectorAll('button')).forEach(btn => {
+          btn.classList.remove('btn-primary');
+          btn.style.backgroundColor = '#FFFFFF';
+          btn.style.color = 'var(--text-main)';
+        });
+        rankBtn.classList.add('btn-primary');
+        rankBtn.style.backgroundColor = 'var(--primary)';
+        rankBtn.style.color = '#FFFFFF';
+
+        Array.from(document.querySelectorAll('.animate-tab')).forEach(p => {
+          if (p.id !== 'tab-weekly-rank') p.classList.add('hidden');
+        });
+        rankPanel.classList.remove('hidden');
+        renderWeeklyRankTab();
+      });
+
+      Array.from(navBar.querySelectorAll('button')).forEach(btn => {
+        if (btn.id !== 'btn-tab-weekly-rank') {
+          btn.addEventListener('click', function () {
+            rankPanel.classList.add('hidden');
+            rankBtn.classList.remove('btn-primary');
+            rankBtn.style.backgroundColor = '#FFFFFF';
+            rankBtn.style.color = 'var(--text-main)';
+          });
+        }
+      });
+
+      initWeeklyLeaderboardData();
+    }
+
+    setInterval(function () {
+      mountWeeklyRankTab();
+      syncPomodoroDelta();
+    }, 1500);
+  })();
+</script>
 </body></html>
