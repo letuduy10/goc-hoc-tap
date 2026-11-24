@@ -3630,4 +3630,470 @@ service cloud.firestore {
     });
   })();
 </script>
+  <!-- =====================================================================
+     TÍNH NĂNG NUÔI MÈO TÍCH LŨY GIỜ HỌC (TỰ ĐỘNG ĐỒNG BỘ XU CÁ)
+     ===================================================================== -->
+<script>
+  (function () {
+    const COINS_PER_MINUTE = 10; // 1 phút học = 10 Xu Cá (1 giờ = 600 Xu)
+    const STARTER_COINS = 60;    // Tặng sẵn 60 Xu khi nhận nuôi
+
+    const CAT_SHOP_ITEMS = [
+      // Thức ăn
+      { id: 'milk', category: 'food', icon: '🥛', name: 'Sữa tươi ấm', price: 20, hunger: 15, happy: 5, exp: 5, desc: '+15% No • +5% Vui • +5 EXP' },
+      { id: 'fish', category: 'food', icon: '🐟', name: 'Cá khô giòn', price: 50, hunger: 35, happy: 10, exp: 15, desc: '+35% No • +10% Vui • +15 EXP' },
+      { id: 'pate', category: 'food', icon: '🍣', name: 'Pate cá hồi', price: 120, hunger: 70, happy: 25, exp: 35, desc: '+70% No • +25% Vui • +35 EXP' },
+      // Đồ chơi
+      { id: 'yarn', category: 'toy', icon: '🧶', name: 'Cuộn len xanh', price: 80, hunger: 0, happy: 30, exp: 20, desc: '+30% Vui • +20 EXP' },
+      { id: 'feather', category: 'toy', icon: '🪶', name: 'Cần câu lông vũ', price: 150, hunger: 0, happy: 55, exp: 40, desc: '+55% Vui • +40 EXP' },
+      { id: 'castle', category: 'toy', icon: '🏰', name: 'Lâu đài cào móng', price: 350, hunger: 0, happy: 100, exp: 100, desc: '+100% Vui • +100 EXP' },
+      // Phụ kiện mặc lên mèo (mua 1 lần dùng vĩnh viễn)
+      { id: 'bow', category: 'acc', slot: 'neck', icon: '🎀', name: 'Nơ cổ xanh dương', price: 200, exp: 30, desc: 'Phụ kiện đeo cổ cho mèo' },
+      { id: 'scarf', category: 'acc', slot: 'neck', icon: '🧣', name: 'Khăn choàng ấm áp', price: 300, exp: 45, desc: 'Phụ kiện giữ ấm mùa thi' },
+      { id: 'glasses', category: 'acc', slot: 'face', icon: '🕶️', name: 'Kính râm ngầu lòi', price: 400, exp: 60, desc: 'Phong cách học bá cực ngầu' },
+      { id: 'crown', category: 'acc', slot: 'head', icon: '👑', name: 'Vương miện Hoàng Thượng', price: 800, exp: 150, desc: 'Đẳng cấp trùm cuối phòng học' }
+    ];
+
+    let catShopTab = 'food';
+    let catSpeech = 'Học thêm 1 phút là có thêm 10 Xu Cá đó sen ơi! 🐟';
+    let catBounce = false;
+    let observedStudyMinutes = 0;
+
+    let catState = {
+      name: 'Mochi',
+      hunger: 75,
+      happiness: 80,
+      exp: 0,
+      spentCoins: 0,
+      maxMinutesSeen: 0,
+      ownedAcc: [],
+      equipped: { head: '', face: '', neck: '' },
+      lastUpdated: Date.now()
+    };
+
+    function getCatUserKey() {
+      try {
+        if (window.firebase && firebase.auth && firebase.auth().currentUser) {
+          return 'uid_' + firebase.auth().currentUser.uid;
+        }
+      } catch (e) {}
+      const guest = localStorage.getItem('study_guest_name') || localStorage.getItem('guestName') || 'default';
+      return 'guest_' + guest.trim().toLowerCase();
+    }
+
+    function getCatStorageKey() {
+      return 'ynwa_cat_pet_v1_' + getCatUserKey();
+    }
+
+    function escapeCatHtml(str) {
+      return String(str || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    function readMinutesFromDom() {
+      const text = document.body ? document.body.innerText : '';
+      const match = text.match(/(\d+)\s*phút tích lũy/i);
+      if (match && match[1]) {
+        const mins = parseInt(match[1], 10);
+        if (!isNaN(mins)) observedStudyMinutes = Math.max(observedStudyMinutes, mins);
+      }
+      return Math.max(observedStudyMinutes, catState.maxMinutesSeen || 0);
+    }
+
+    function applyTimeDecay() {
+      const now = Date.now();
+      const elapsedHours = Math.max(0, (now - (catState.lastUpdated || now)) / (1000 * 60 * 60));
+      if (elapsedHours >= 0.25) {
+        const drop = Math.floor(elapsedHours * 2.5);
+        if (drop > 0) {
+          catState.hunger = Math.max(15, catState.hunger - drop);
+          catState.happiness = Math.max(20, catState.happiness - drop);
+          catState.lastUpdated = now;
+        }
+      }
+    }
+
+    function getWalletInfo() {
+      const mins = readMinutesFromDom();
+      if (mins > (catState.maxMinutesSeen || 0)) {
+        catState.maxMinutesSeen = mins;
+      }
+      const earned = STARTER_COINS + (mins * COINS_PER_MINUTE);
+      const balance = Math.max(0, earned - (catState.spentCoins || 0));
+      return { mins, earned, spent: catState.spentCoins || 0, balance };
+    }
+
+    function getCatRank(level) {
+      if (level >= 10) return '👑 Hoàng Thượng Tri Thức';
+      if (level >= 6) return '🎓 Học Bá Mèo Mướp';
+      if (level >= 3) return '📚 Mèo Siêng Năng';
+      return '🐾 Mèo Con Tập Sự';
+    }
+
+    async function loadCatState() {
+      try {
+        const raw = localStorage.getItem(getCatStorageKey());
+        if (raw) {
+          catState = Object.assign({}, catState, JSON.parse(raw));
+        }
+      } catch (e) {}
+      applyTimeDecay();
+      renderCatPanel();
+
+      try {
+        if (window.firebase && firebase.auth && firebase.firestore && firebase.auth().currentUser) {
+          const uid = firebase.auth().currentUser.uid;
+          const userDoc = await firebase.firestore().collection('users').doc(uid).get();
+          if (userDoc.exists) {
+            const d = userDoc.data();
+            const fbMins = Number(d.totalMinutes || d.studyMinutes || d.minutes || d.accumulatedMinutes || 0);
+            if (fbMins > observedStudyMinutes) observedStudyMinutes = fbMins;
+          }
+          const petDoc = await firebase.firestore().collection('cat_pets').doc(uid).get();
+          if (petDoc.exists) {
+            catState = Object.assign({}, catState, petDoc.data());
+            applyTimeDecay();
+          }
+          localStorage.setItem(getCatStorageKey(), JSON.stringify(catState));
+          renderCatPanel();
+        }
+      } catch (e) {}
+    }
+
+    async function saveCatState() {
+      catState.lastUpdated = Date.now();
+      localStorage.setItem(getCatStorageKey(), JSON.stringify(catState));
+      try {
+        if (window.firebase && firebase.auth && firebase.firestore && firebase.auth().currentUser) {
+          const uid = firebase.auth().currentUser.uid;
+          await firebase.firestore().collection('cat_pets').doc(uid).set(catState, { merge: true });
+        }
+      } catch (e) {}
+    }
+
+    window.petTheCat = function () {
+      catState.happiness = Math.min(100, catState.happiness + 2);
+      catState.exp += 1;
+      const quotes = [
+        'Meow~ Cảm ơn sen đã xoa đầu! Cố gắng học tốt nhé 💙',
+        'Purr purr... Tập trung thêm chút nữa là có cá khô rồi! 🐟',
+        'Sen chăm chỉ quá, mình tự hào về sen lắm luôn! ✨',
+        'Đừng quên uống nước và giữ thẳng lưng khi học nhé sen! 💧'
+      ];
+      catSpeech = quotes[Math.floor(Math.random() * quotes.length)];
+      catBounce = true;
+      saveCatState();
+      renderCatPanel();
+      setTimeout(() => { catBounce = false; renderCatPanel(); }, 450);
+    };
+
+    window.renameCatPet = function () {
+      const input = document.getElementById('cat-rename-input');
+      if (!input) return;
+      const newName = input.value.trim();
+      if (!newName) return;
+      catState.name = newName.slice(0, 24);
+      catSpeech = `Meow! Từ giờ tên của mình là ${catState.name} nhé! 🐾`;
+      saveCatState();
+      renderCatPanel();
+      if (typeof showToast === 'function') showToast(`🐱 Đã đổi tên mèo thành "${catState.name}"!`);
+    };
+
+    window.switchCatShopCategory = function (cat) {
+      catShopTab = cat;
+      renderCatPanel();
+    };
+
+    window.buyOrToggleCatItem = function (itemId) {
+      const item = CAT_SHOP_ITEMS.find(i => i.id === itemId);
+      if (!item) return;
+      const wallet = getWalletInfo();
+
+      // Nếu là phụ kiện đã mua -> Đeo hoặc tháo
+      if (item.category === 'acc' && (catState.ownedAcc || []).includes(item.id)) {
+        if (catState.equipped[item.slot] === item.id) {
+          catState.equipped[item.slot] = '';
+          catSpeech = `Đã tháo ${item.name} ra cho thoáng mát~`;
+        } else {
+          catState.equipped[item.slot] = item.id;
+          catSpeech = `Đeo ${item.name} lên nhìn mình bảnh bao hẳn! ✨`;
+        }
+        saveCatState();
+        renderCatPanel();
+        return;
+      }
+
+      if (wallet.balance < item.price) {
+        catSpeech = `Thiếu ${item.price - wallet.balance} Xu Cá rồi! Bật đồng hồ học thêm vài phút nhé sen 🥺`;
+        renderCatPanel();
+        if (typeof showToast === 'function') showToast('⚠️ Chưa đủ Xu Cá! Hãy tích lũy thêm phút học nhé.');
+        return;
+      }
+
+      catState.spentCoins = (catState.spentCoins || 0) + item.price;
+      catState.exp += (item.exp || 10);
+
+      if (item.category === 'acc') {
+        catState.ownedAcc = Array.from(new Set([...(catState.ownedAcc || []), item.id]));
+        catState.equipped[item.slot] = item.id;
+        catSpeech = `Yay! Cảm ơn sen đã tặng ${item.name}! Yêu sen nhất 💙`;
+      } else {
+        catState.hunger = Math.min(100, catState.hunger + (item.hunger || 0));
+        catState.happiness = Math.min(100, catState.happiness + (item.happy || 0));
+        catSpeech = item.category === 'food'
+          ? `Ngon tuyệt cú mèo! ${item.name} đỉnh quá sen ơi 🤤`
+          : `Vui quá đi mất! Chơi ${item.name} thích thật đấy 🎾`;
+      }
+
+      catBounce = true;
+      saveCatState();
+      renderCatPanel();
+      if (typeof showToast === 'function') showToast(`🎉 Đã mua ${item.name} (-${item.price} Xu Cá)!`);
+      setTimeout(() => { catBounce = false; renderCatPanel(); }, 450);
+    };
+
+    function renderCatVisual() {
+      const eq = catState.equipped || {};
+      const headIcon = eq.head ? (CAT_SHOP_ITEMS.find(i => i.id === eq.head) || {}).icon : '';
+      const faceIcon = eq.face ? (CAT_SHOP_ITEMS.find(i => i.id === eq.face) || {}).icon : '';
+      const neckIcon = eq.neck ? (CAT_SHOP_ITEMS.find(i => i.id === eq.neck) || {}).icon : '';
+      const moodEmoji = catState.hunger < 30 ? '😿' : (catState.happiness >= 75 ? '😻' : '🐱');
+
+      return `
+        <div onclick="petTheCat()" title="Bấm để vuốt ve bé mèo"
+          class="relative w-36 h-36 mx-auto rounded-full flex items-center justify-center cursor-pointer select-none border-4 transition-transform duration-300 ${catBounce ? 'scale-110' : 'hover:scale-105'}"
+          style="background: radial-gradient(circle at 30% 30%, #FFFFFF, var(--bg-soft)); border-color: var(--primary-light); box-shadow: 0 10px 25px -5px var(--shadow-soft);">
+          ${headIcon ? `<span class="absolute -top-4 text-3xl drop-shadow">${headIcon}</span>` : ''}
+          <span class="text-6xl leading-none">${moodEmoji}</span>
+          ${faceIcon ? `<span class="absolute top-11 text-2xl drop-shadow">${faceIcon}</span>` : ''}
+          ${neckIcon ? `<span class="absolute bottom-3 text-2xl drop-shadow">${neckIcon}</span>` : ''}
+          <span class="absolute -bottom-2 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold text-white shadow-sm" style="background-color: var(--primary);">
+            Chạm để vuốt ve
+          </span>
+        </div>
+      `;
+    }
+
+    function renderCatPanel() {
+      const panel = document.getElementById('tab-cat-pet');
+      if (!panel) return;
+
+      const wallet = getWalletInfo();
+      const level = Math.floor((catState.exp || 0) / 100) + 1;
+      const expInLevel = (catState.exp || 0) % 100;
+      const rankTitle = getCatRank(level);
+      const filteredItems = CAT_SHOP_ITEMS.filter(i => i.category === catShopTab);
+
+      panel.innerHTML = `
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <!-- CỘT TRÁI: NHÀ CỦA MÈO & CHỈ SỐ -->
+          <div class="lg:col-span-5 pastel-card rounded-3xl p-5 sm:p-6 bg-white flex flex-col justify-between space-y-5">
+            <div>
+              <div class="flex items-center justify-between gap-2 mb-4">
+                <span class="px-3 py-1 rounded-full text-xs font-extrabold" style="background-color: var(--bg-soft); color: var(--primary);">
+                  ${rankTitle}
+                </span>
+                <span class="px-3 py-1 rounded-full text-xs font-extrabold text-white" style="background-color: var(--primary);">
+                  Lv.${level} (${expInLevel}/100 EXP)
+                </span>
+              </div>
+
+              <!-- Khung thoại của mèo -->
+              <div class="p-3 rounded-2xl border text-center text-xs sm:text-sm font-semibold mb-5 relative"
+                style="background-color: var(--bg-soft); border-color: var(--border-soft); color: var(--text-main);">
+                "${escapeCatHtml(catSpeech)}"
+              </div>
+
+              <!-- Hình bé mèo -->
+              <div class="my-4">
+                ${renderCatVisual()}
+              </div>
+
+              <!-- Tên mèo & Đổi tên -->
+              <div class="text-center mt-4">
+                <h3 class="text-xl font-extrabold" style="color: var(--primary);">${escapeCatHtml(catState.name)}</h3>
+                <div class="flex items-center justify-center gap-1.5 mt-2 max-w-xs mx-auto">
+                  <input type="text" id="cat-rename-input" maxlength="24" placeholder="Đặt tên mới cho mèo..."
+                    class="w-full px-3 py-1.5 rounded-xl border text-xs font-semibold bg-white focus:outline-none"
+                    style="border-color: var(--border-soft);">
+                  <button type="button" onclick="renameCatPet()" class="btn-soft px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap">
+                    Đổi tên
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Thanh trạng thái No & Vui -->
+            <div class="space-y-3 pt-3 border-t" style="border-color: var(--border-soft);">
+              <div>
+                <div class="flex justify-between text-xs font-bold mb-1">
+                  <span>🍖 Độ no bụng</span>
+                  <span style="color: var(--primary);">${catState.hunger}%</span>
+                </div>
+                <div class="w-full h-2.5 rounded-full overflow-hidden" style="background-color: var(--bg-soft-hover);">
+                  <div class="h-full rounded-full transition-all duration-300" style="width: ${catState.hunger}%; background-color: var(--primary);"></div>
+                </div>
+              </div>
+              <div>
+                <div class="flex justify-between text-xs font-bold mb-1">
+                  <span>💖 Độ vui vẻ</span>
+                  <span style="color: var(--primary);">${catState.happiness}%</span>
+                </div>
+                <div class="w-full h-2.5 rounded-full overflow-hidden" style="background-color: var(--bg-soft-hover);">
+                  <div class="h-full rounded-full transition-all duration-300" style="width: ${catState.happiness}%; background-color: var(--primary-light);"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- CỘT PHẢI: VÍ XU CÁ TỪ GIỜ HỌC & CỬA HÀNG -->
+          <div class="lg:col-span-7 space-y-5">
+            <!-- Thẻ quy đổi giờ học thành Xu Cá -->
+            <div class="pastel-card rounded-3xl p-5 bg-white">
+              <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <p class="text-xs font-bold uppercase tracking-wider" style="color: var(--text-muted);">
+                    Ví Xu Cá Từ Giờ Học (1 phút = 10 Xu)
+                  </p>
+                  <div class="flex items-baseline gap-2 mt-1">
+                    <span class="text-2xl sm:text-3xl font-extrabold" style="color: var(--primary);">
+                      🐟 ${wallet.balance.toLocaleString('vi-VN')} Xu Cá
+                    </span>
+                    <span class="text-xs font-semibold" style="color: var(--text-muted);">
+                      (Tích lũy: ${wallet.mins} phút học)
+                    </span>
+                  </div>
+                </div>
+                <div class="px-3.5 py-2 rounded-2xl border text-xs font-semibold" style="background-color: var(--bg-soft); border-color: var(--border-soft);">
+                  <p>Tổng kiếm được: <strong>${wallet.earned} Xu</strong></p>
+                  <p class="mt-0.5">Đã mua đồ: <strong>${wallet.spent} Xu</strong></p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Cửa hàng đồ cho mèo -->
+            <div class="pastel-card rounded-3xl p-5 sm:p-6 bg-white">
+              <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                <h3 class="text-lg font-bold" style="color: var(--primary);">🛍️ Cửa Hàng Chăm Mèo</h3>
+                <div class="inline-flex rounded-xl p-1 border self-start sm:self-auto" style="background-color: var(--bg-soft); border-color: var(--border-soft);">
+                  <button type="button" onclick="switchCatShopCategory('food')"
+                    class="px-3 py-1.5 rounded-lg text-xs font-bold transition ${catShopTab === 'food' ? 'btn-primary' : ''}">
+                    🍱 Thức ăn
+                  </button>
+                  <button type="button" onclick="switchCatShopCategory('toy')"
+                    class="px-3 py-1.5 rounded-lg text-xs font-bold transition ${catShopTab === 'toy' ? 'btn-primary' : ''}">
+                    🎾 Đồ chơi
+                  </button>
+                  <button type="button" onclick="switchCatShopCategory('acc')"
+                    class="px-3 py-1.5 rounded-lg text-xs font-bold transition ${catShopTab === 'acc' ? 'btn-primary' : ''}">
+                    👑 Phụ kiện
+                  </button>
+                </div>
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                ${filteredItems.map(item => {
+                  const isOwnedAcc = item.category === 'acc' && (catState.ownedAcc || []).includes(item.id);
+                  const isEquipped = isOwnedAcc && catState.equipped && catState.equipped[item.slot] === item.id;
+                  return `
+                    <div class="p-3.5 rounded-2xl border flex items-center justify-between gap-3 transition"
+                      style="background-color: var(--bg-soft); border-color: var(--border-soft);">
+                      <div class="flex items-center gap-3 min-w-0">
+                        <div class="w-11 h-11 rounded-2xl bg-white border flex items-center justify-center text-2xl shrink-0"
+                          style="border-color: var(--border-soft);">
+                          ${item.icon}
+                        </div>
+                        <div class="min-w-0">
+                          <p class="text-sm font-bold truncate" style="color: var(--text-main);">${item.name}</p>
+                          <p class="text-[11px] truncate" style="color: var(--text-muted);">${item.desc}</p>
+                        </div>
+                      </div>
+                      <button type="button" onclick="buyOrToggleCatItem('${item.id}')"
+                        class="px-3 py-2 rounded-xl text-xs font-extrabold whitespace-nowrap shrink-0 transition ${isEquipped ? 'btn-soft' : 'btn-primary'}">
+                        ${isOwnedAcc ? (isEquipped ? 'Đang đeo' : 'Đeo lên') : `🐟 ${item.price} Xu`}
+                      </button>
+                    </div>
+                  `;
+                }).join('')}
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function mountCatTab() {
+      const allButtons = Array.from(document.querySelectorAll('button'));
+      const scheduleTabBtn = allButtons.find(b => b.textContent && b.textContent.includes('Thời Khóa Biểu'));
+      if (!scheduleTabBtn || document.getElementById('btn-tab-cat-pet')) return;
+
+      const navBar = scheduleTabBtn.parentElement;
+      const catBtn = document.createElement('button');
+      catBtn.id = 'btn-tab-cat-pet';
+      catBtn.type = 'button';
+      catBtn.className = 'px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-bold transition flex items-center gap-2 whitespace-nowrap bg-white border';
+      catBtn.style.borderColor = 'var(--border-soft)';
+      catBtn.style.color = 'var(--text-main)';
+      catBtn.innerHTML = '<span>🐱 Nuôi Mèo</span>';
+
+      scheduleTabBtn.insertAdjacentElement('afterend', catBtn);
+
+      // Tạo khung nội dung tab Nuôi Mèo
+      const existingPanels = Array.from(document.querySelectorAll('.animate-tab'));
+      const hostContainer = existingPanels.length > 0 ? existingPanels[0].parentElement : navBar.parentElement;
+
+      const catPanel = document.createElement('div');
+      catPanel.id = 'tab-cat-pet';
+      catPanel.className = 'hidden animate-tab mt-4';
+      hostContainer.appendChild(catPanel);
+
+      // Bấm vào tab Nuôi Mèo
+      catBtn.addEventListener('click', function () {
+        Array.from(navBar.querySelectorAll('button')).forEach(btn => {
+          btn.classList.remove('btn-primary');
+          btn.style.backgroundColor = '#FFFFFF';
+          btn.style.color = 'var(--text-main)';
+        });
+        catBtn.classList.add('btn-primary');
+        catBtn.style.backgroundColor = 'var(--primary)';
+        catBtn.style.color = '#FFFFFF';
+
+        Array.from(document.querySelectorAll('.animate-tab')).forEach(p => {
+          if (p.id !== 'tab-cat-pet') p.classList.add('hidden');
+        });
+        catPanel.classList.remove('hidden');
+        renderCatPanel();
+      });
+
+      // Khi bấm sang các tab khác thì tự ẩn tab Nuôi Mèo
+      Array.from(navBar.querySelectorAll('button')).forEach(btn => {
+        if (btn.id !== 'btn-tab-cat-pet') {
+          btn.addEventListener('click', function () {
+            catPanel.classList.add('hidden');
+            catBtn.classList.remove('btn-primary');
+            catBtn.style.backgroundColor = '#FFFFFF';
+            catBtn.style.color = 'var(--text-main)';
+          });
+        }
+      });
+
+      loadCatState();
+    }
+
+    // Theo dõi tự động khi giao diện phòng học xuất hiện và khi số phút học tăng lên
+    setInterval(function () {
+      mountCatTab();
+      const prevMins = catState.maxMinutesSeen || 0;
+      const nowMins = readMinutesFromDom();
+      if (nowMins > prevMins) {
+        catState.maxMinutesSeen = nowMins;
+        saveCatState();
+        renderCatPanel();
+      }
+    }, 1500);
+  })();
+</script>
 </body></html>
