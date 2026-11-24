@@ -1,0 +1,3328 @@
+<!DOCTYPE html>
+<html lang="vi" data-theme="peach"><head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🌷 Góc Học Nhỏ — Phòng Học Trực Tuyến</title>
+
+  <!-- Google Fonts bo tròn hỗ trợ tiếng Việt: Quicksand & Nunito -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&amp;family=Quicksand:wght@500;600;700&amp;display=swap" rel="stylesheet">
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <style>
+    /* =====================================================================
+       BỘ 3 GIAO DIỆN PASTEL ẤM ÁP (CSS CUSTOM PROPERTIES)
+       1. Hồng Đào Pastel (peach)
+       2. Xanh Bạc Hà (matcha)
+       3. Kem Sữa Ấm Áp (cream)
+       ===================================================================== */
+    :root, [data-theme="peach"] {
+      --bg-main: #FFF7F8;
+      --bg-dots: #FECDD3;
+      --bg-card: #FFFFFF;
+      --bg-soft: #FFF1F2;
+      --bg-soft-hover: #FFE4E6;
+      --primary: #E11D48;
+      --primary-light: #FB7185;
+      --primary-hover: #BE123C;
+      --text-main: #4A3338;
+      --text-muted: #8C6B73;
+      --border-soft: #FECDD3;
+      --ring-track: #FFE4E6;
+      --shadow-soft: rgba(225, 29, 72, 0.08);
+    }
+
+    [data-theme="matcha"] {
+      --bg-main: #F3FAF6;
+      --bg-dots: #BBF7D0;
+      --bg-card: #FFFFFF;
+      --bg-soft: #ECFDF5;
+      --bg-soft-hover: #D1FAE5;
+      --primary: #15803D;
+      --primary-light: #34D399;
+      --primary-hover: #166534;
+      --text-main: #22382B;
+      --text-muted: #587565;
+      --border-soft: #BBF7D0;
+      --ring-track: #D1FAE5;
+      --shadow-soft: rgba(21, 128, 61, 0.08);
+    }
+
+    [data-theme="cream"] {
+      --bg-main: #FDF9F2;
+      --bg-dots: #FDE68A;
+      --bg-card: #FFFFFF;
+      --bg-soft: #FEF7EC;
+      --bg-soft-hover: #FDEECC;
+      --primary: #B45309;
+      --primary-light: #F59E0B;
+      --primary-hover: #92400E;
+      --text-main: #453324;
+      --text-muted: #856D59;
+      --border-soft: #F5DFB8;
+      --ring-track: #FDEECC;
+      --shadow-soft: rgba(180, 83, 9, 0.08);
+    }
+
+    body {
+      font-family: 'Nunito', sans-serif;
+      background-color: var(--bg-main);
+      background-image: radial-gradient(var(--bg-dots) 1.3px, transparent 1.3px);
+      background-size: 24px 24px;
+      color: var(--text-main);
+      transition: background-color 0.35s ease, color 0.35s ease;
+    }
+
+    h1, h2, h3, h4, .font-heading {
+      font-family: 'Quicksand', sans-serif;
+    }
+
+    .pastel-card {
+      background-color: var(--bg-card);
+      border: 1.5px solid var(--border-soft);
+      box-shadow: 0 10px 26px -6px var(--shadow-soft), 0 4px 10px -4px var(--shadow-soft);
+      transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.35s ease, background-color 0.35s ease;
+    }
+
+    .pastel-card-hover:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 14px 32px -6px var(--shadow-soft);
+    }
+
+    .btn-primary {
+      background-color: var(--primary);
+      color: #FFFFFF;
+      transition: all 0.2s ease;
+    }
+
+    .btn-primary:hover {
+      background-color: var(--primary-hover);
+      transform: translateY(-1px);
+    }
+
+    .btn-soft {
+      background-color: var(--bg-soft);
+      color: var(--primary);
+      border: 1.5px solid var(--border-soft);
+      transition: all 0.2s ease;
+    }
+
+    .btn-soft:hover {
+      background-color: var(--bg-soft-hover);
+    }
+
+    /* Thanh trượt âm lượng Web Audio API */
+    input[type="range"].pastel-slider {
+      -webkit-appearance: none;
+      appearance: none;
+      height: 7px;
+      border-radius: 999px;
+      background: var(--bg-soft-hover);
+      outline: none;
+    }
+
+    input[type="range"].pastel-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: var(--primary);
+      cursor: pointer;
+      border: 2.5px solid #FFFFFF;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.16);
+      transition: transform 0.15s ease;
+    }
+
+    input[type="range"].pastel-slider::-webkit-slider-thumb:hover {
+      transform: scale(1.15);
+    }
+
+    /* Vòng tròn SVG Pomodoro */
+    .pomo-ring-circle {
+      transition: stroke-dashoffset 0.35s linear, stroke 0.35s ease;
+      transform: rotate(-90deg);
+      transform-origin: 50% 50%;
+    }
+
+    @keyframes popIn {
+      0% { opacity: 0; transform: scale(0.95) translateY(8px); }
+      100% { opacity: 1; transform: scale(1) translateY(0); }
+    }
+
+    .animate-pop-in {
+      animation: popIn 0.26s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    @keyframes tabFade {
+      0% { opacity: 0; transform: translateY(6px); }
+      100% { opacity: 1; transform: translateY(0); }
+    }
+
+    .animate-tab {
+      animation: tabFade 0.24s ease forwards;
+    }
+
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+  </style>
+<style>*, ::before, ::after{--tw-border-spacing-x:0;--tw-border-spacing-y:0;--tw-translate-x:0;--tw-translate-y:0;--tw-rotate:0;--tw-skew-x:0;--tw-skew-y:0;--tw-scale-x:1;--tw-scale-y:1;--tw-pan-x: ;--tw-pan-y: ;--tw-pinch-zoom: ;--tw-scroll-snap-strictness:proximity;--tw-gradient-from-position: ;--tw-gradient-via-position: ;--tw-gradient-to-position: ;--tw-ordinal: ;--tw-slashed-zero: ;--tw-numeric-figure: ;--tw-numeric-spacing: ;--tw-numeric-fraction: ;--tw-ring-inset: ;--tw-ring-offset-width:0px;--tw-ring-offset-color:#fff;--tw-ring-color:rgb(59 130 246 / 0.5);--tw-ring-offset-shadow:0 0 #0000;--tw-ring-shadow:0 0 #0000;--tw-shadow:0 0 #0000;--tw-shadow-colored:0 0 #0000;--tw-blur: ;--tw-brightness: ;--tw-contrast: ;--tw-grayscale: ;--tw-hue-rotate: ;--tw-invert: ;--tw-saturate: ;--tw-sepia: ;--tw-drop-shadow: ;--tw-backdrop-blur: ;--tw-backdrop-brightness: ;--tw-backdrop-contrast: ;--tw-backdrop-grayscale: ;--tw-backdrop-hue-rotate: ;--tw-backdrop-invert: ;--tw-backdrop-opacity: ;--tw-backdrop-saturate: ;--tw-backdrop-sepia: ;--tw-contain-size: ;--tw-contain-layout: ;--tw-contain-paint: ;--tw-contain-style: }::backdrop{--tw-border-spacing-x:0;--tw-border-spacing-y:0;--tw-translate-x:0;--tw-translate-y:0;--tw-rotate:0;--tw-skew-x:0;--tw-skew-y:0;--tw-scale-x:1;--tw-scale-y:1;--tw-pan-x: ;--tw-pan-y: ;--tw-pinch-zoom: ;--tw-scroll-snap-strictness:proximity;--tw-gradient-from-position: ;--tw-gradient-via-position: ;--tw-gradient-to-position: ;--tw-ordinal: ;--tw-slashed-zero: ;--tw-numeric-figure: ;--tw-numeric-spacing: ;--tw-numeric-fraction: ;--tw-ring-inset: ;--tw-ring-offset-width:0px;--tw-ring-offset-color:#fff;--tw-ring-color:rgb(59 130 246 / 0.5);--tw-ring-offset-shadow:0 0 #0000;--tw-ring-shadow:0 0 #0000;--tw-shadow:0 0 #0000;--tw-shadow-colored:0 0 #0000;--tw-blur: ;--tw-brightness: ;--tw-contrast: ;--tw-grayscale: ;--tw-hue-rotate: ;--tw-invert: ;--tw-saturate: ;--tw-sepia: ;--tw-drop-shadow: ;--tw-backdrop-blur: ;--tw-backdrop-brightness: ;--tw-backdrop-contrast: ;--tw-backdrop-grayscale: ;--tw-backdrop-hue-rotate: ;--tw-backdrop-invert: ;--tw-backdrop-opacity: ;--tw-backdrop-saturate: ;--tw-backdrop-sepia: ;--tw-contain-size: ;--tw-contain-layout: ;--tw-contain-paint: ;--tw-contain-style: }/* ! tailwindcss v3.4.17 | MIT License | https://tailwindcss.com */*,::after,::before{box-sizing:border-box;border-width:0;border-style:solid;border-color:#e5e7eb}::after,::before{--tw-content:''}:host,html{line-height:1.5;-webkit-text-size-adjust:100%;-moz-tab-size:4;tab-size:4;font-family:ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";font-feature-settings:normal;font-variation-settings:normal;-webkit-tap-highlight-color:transparent}body{margin:0;line-height:inherit}hr{height:0;color:inherit;border-top-width:1px}abbr:where([title]){-webkit-text-decoration:underline dotted;text-decoration:underline dotted}h1,h2,h3,h4,h5,h6{font-size:inherit;font-weight:inherit}a{color:inherit;text-decoration:inherit}b,strong{font-weight:bolder}code,kbd,pre,samp{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;font-feature-settings:normal;font-variation-settings:normal;font-size:1em}small{font-size:80%}sub,sup{font-size:75%;line-height:0;position:relative;vertical-align:baseline}sub{bottom:-.25em}sup{top:-.5em}table{text-indent:0;border-color:inherit;border-collapse:collapse}button,input,optgroup,select,textarea{font-family:inherit;font-feature-settings:inherit;font-variation-settings:inherit;font-size:100%;font-weight:inherit;line-height:inherit;letter-spacing:inherit;color:inherit;margin:0;padding:0}button,select{text-transform:none}button,input:where([type=button]),input:where([type=reset]),input:where([type=submit]){-webkit-appearance:button;background-color:transparent;background-image:none}:-moz-focusring{outline:auto}:-moz-ui-invalid{box-shadow:none}progress{vertical-align:baseline}::-webkit-inner-spin-button,::-webkit-outer-spin-button{height:auto}[type=search]{-webkit-appearance:textfield;outline-offset:-2px}::-webkit-search-decoration{-webkit-appearance:none}::-webkit-file-upload-button{-webkit-appearance:button;font:inherit}summary{display:list-item}blockquote,dd,dl,figure,h1,h2,h3,h4,h5,h6,hr,p,pre{margin:0}fieldset{margin:0;padding:0}legend{padding:0}menu,ol,ul{list-style:none;margin:0;padding:0}dialog{padding:0}textarea{resize:vertical}input::placeholder,textarea::placeholder{opacity:1;color:#9ca3af}[role=button],button{cursor:pointer}:disabled{cursor:default}audio,canvas,embed,iframe,img,object,svg,video{display:block;vertical-align:middle}img,video{max-width:100%;height:auto}[hidden]:where(:not([hidden=until-found])){display:none}.pointer-events-none{pointer-events:none}.pointer-events-auto{pointer-events:auto}.fixed{position:fixed}.absolute{position:absolute}.relative{position:relative}.sticky{position:sticky}.inset-0{inset:0px}.bottom-5{bottom:1.25rem}.right-4{right:1rem}.right-5{right:1.25rem}.top-0{top:0px}.top-4{top:1rem}.bottom-0{bottom:0px}.right-0{right:0px}.z-30{z-index:30}.z-50{z-index:50}.col-span-full{grid-column:1 / -1}.mx-3{margin-left:0.75rem;margin-right:0.75rem}.mx-auto{margin-left:auto;margin-right:auto}.my-2{margin-top:0.5rem;margin-bottom:0.5rem}.mb-1{margin-bottom:0.25rem}.mb-1\.5{margin-bottom:0.375rem}.mb-2{margin-bottom:0.5rem}.mb-2\.5{margin-bottom:0.625rem}.mb-3{margin-bottom:0.75rem}.mb-4{margin-bottom:1rem}.mb-5{margin-bottom:1.25rem}.mb-6{margin-bottom:1.5rem}.ml-1{margin-left:0.25rem}.ml-auto{margin-left:auto}.mt-0\.5{margin-top:0.125rem}.mt-1\.5{margin-top:0.375rem}.mt-2{margin-top:0.5rem}.mt-2\.5{margin-top:0.625rem}.mt-5{margin-top:1.25rem}.mt-auto{margin-top:auto}.mt-1{margin-top:0.25rem}.line-clamp-2{overflow:hidden;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2}.block{display:block}.flex{display:flex}.inline-flex{display:inline-flex}.grid{display:grid}.hidden{display:none}.h-10{height:2.5rem}.h-16{height:4rem}.h-2{height:0.5rem}.h-4{height:1rem}.h-5{height:1.25rem}.h-56{height:14rem}.h-64{height:16rem}.h-8{height:2rem}.h-9{height:2.25rem}.h-full{height:100%}.h-1\.5{height:0.375rem}.h-11{height:2.75rem}.h-3\.5{height:0.875rem}.h-24{height:6rem}.max-h-44{max-height:11rem}.max-h-72{max-height:18rem}.max-h-\[420px\]{max-height:420px}.min-h-screen{min-height:100vh}.w-10{width:2.5rem}.w-16{width:4rem}.w-2{width:0.5rem}.w-36{width:9rem}.w-4{width:1rem}.w-5{width:1.25rem}.w-56{width:14rem}.w-8{width:2rem}.w-9{width:2.25rem}.w-full{width:100%}.w-11{width:2.75rem}.w-3\.5{width:0.875rem}.w-6{width:1.5rem}.min-w-\[820px\]{min-width:820px}.min-w-\[840px\]{min-width:840px}.min-w-0{min-width:0px}.max-w-7xl{max-width:80rem}.max-w-\[110px\]{max-width:110px}.max-w-lg{max-width:32rem}.max-w-md{max-width:28rem}.flex-1{flex:1 1 0%}.flex-shrink{flex-shrink:1}.shrink-0{flex-shrink:0}.flex-grow{flex-grow:1}.border-collapse{border-collapse:collapse}.scale-110{--tw-scale-x:1.1;--tw-scale-y:1.1;transform:translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y))}.transform{transform:translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y))}@keyframes pulse{50%{opacity:.5}}.animate-pulse{animation:pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite}.grid-cols-1{grid-template-columns:repeat(1, minmax(0, 1fr))}.grid-cols-2{grid-template-columns:repeat(2, minmax(0, 1fr))}.grid-cols-3{grid-template-columns:repeat(3, minmax(0, 1fr))}.flex-col{flex-direction:column}.flex-wrap{flex-wrap:wrap}.items-start{align-items:flex-start}.items-center{align-items:center}.justify-end{justify-content:flex-end}.justify-center{justify-content:center}.justify-between{justify-content:space-between}.gap-1{gap:0.25rem}.gap-1\.5{gap:0.375rem}.gap-2{gap:0.5rem}.gap-2\.5{gap:0.625rem}.gap-3{gap:0.75rem}.gap-4{gap:1rem}.gap-6{gap:1.5rem}.space-y-2 > :not([hidden]) ~ :not([hidden]){--tw-space-y-reverse:0;margin-top:calc(0.5rem * calc(1 - var(--tw-space-y-reverse)));margin-bottom:calc(0.5rem * var(--tw-space-y-reverse))}.space-y-2\.5 > :not([hidden]) ~ :not([hidden]){--tw-space-y-reverse:0;margin-top:calc(0.625rem * calc(1 - var(--tw-space-y-reverse)));margin-bottom:calc(0.625rem * var(--tw-space-y-reverse))}.space-y-3 > :not([hidden]) ~ :not([hidden]){--tw-space-y-reverse:0;margin-top:calc(0.75rem * calc(1 - var(--tw-space-y-reverse)));margin-bottom:calc(0.75rem * var(--tw-space-y-reverse))}.space-y-3\.5 > :not([hidden]) ~ :not([hidden]){--tw-space-y-reverse:0;margin-top:calc(0.875rem * calc(1 - var(--tw-space-y-reverse)));margin-bottom:calc(0.875rem * var(--tw-space-y-reverse))}.space-y-4 > :not([hidden]) ~ :not([hidden]){--tw-space-y-reverse:0;margin-top:calc(1rem * calc(1 - var(--tw-space-y-reverse)));margin-bottom:calc(1rem * var(--tw-space-y-reverse))}.space-y-5 > :not([hidden]) ~ :not([hidden]){--tw-space-y-reverse:0;margin-top:calc(1.25rem * calc(1 - var(--tw-space-y-reverse)));margin-bottom:calc(1.25rem * var(--tw-space-y-reverse))}.space-y-6 > :not([hidden]) ~ :not([hidden]){--tw-space-y-reverse:0;margin-top:calc(1.5rem * calc(1 - var(--tw-space-y-reverse)));margin-bottom:calc(1.5rem * var(--tw-space-y-reverse))}.self-start{align-self:flex-start}.overflow-hidden{overflow:hidden}.overflow-x-auto{overflow-x:auto}.overflow-y-auto{overflow-y:auto}.truncate{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.whitespace-nowrap{white-space:nowrap}.whitespace-pre-line{white-space:pre-line}.rounded{border-radius:0.25rem}.rounded-2xl{border-radius:1rem}.rounded-3xl{border-radius:1.5rem}.rounded-full{border-radius:9999px}.rounded-lg{border-radius:0.5rem}.rounded-xl{border-radius:0.75rem}.border{border-width:1px}.border-2{border-width:2px}.border-b{border-bottom-width:1px}.border-r{border-right-width:1px}.border-t{border-top-width:1px}.border-dashed{border-style:dashed}.border-amber-200{--tw-border-opacity:1;border-color:rgb(253 230 138 / var(--tw-border-opacity, 1))}.border-amber-300{--tw-border-opacity:1;border-color:rgb(252 211 77 / var(--tw-border-opacity, 1))}.border-white{--tw-border-opacity:1;border-color:rgb(255 255 255 / var(--tw-border-opacity, 1))}.border-emerald-200{--tw-border-opacity:1;border-color:rgb(167 243 208 / var(--tw-border-opacity, 1))}.border-rose-200{--tw-border-opacity:1;border-color:rgb(254 205 211 / var(--tw-border-opacity, 1))}.border-sky-200{--tw-border-opacity:1;border-color:rgb(186 230 253 / var(--tw-border-opacity, 1))}.bg-amber-100{--tw-bg-opacity:1;background-color:rgb(254 243 199 / var(--tw-bg-opacity, 1))}.bg-amber-50{--tw-bg-opacity:1;background-color:rgb(255 251 235 / var(--tw-bg-opacity, 1))}.bg-amber-500{--tw-bg-opacity:1;background-color:rgb(245 158 11 / var(--tw-bg-opacity, 1))}.bg-black\/35{background-color:rgb(0 0 0 / 0.35)}.bg-emerald-100{--tw-bg-opacity:1;background-color:rgb(209 250 229 / var(--tw-bg-opacity, 1))}.bg-emerald-500{--tw-bg-opacity:1;background-color:rgb(16 185 129 / var(--tw-bg-opacity, 1))}.bg-gray-100{--tw-bg-opacity:1;background-color:rgb(243 244 246 / var(--tw-bg-opacity, 1))}.bg-gray-900{--tw-bg-opacity:1;background-color:rgb(17 24 39 / var(--tw-bg-opacity, 1))}.bg-pink-100{--tw-bg-opacity:1;background-color:rgb(252 231 243 / var(--tw-bg-opacity, 1))}.bg-rose-100{--tw-bg-opacity:1;background-color:rgb(255 228 230 / var(--tw-bg-opacity, 1))}.bg-rose-400{--tw-bg-opacity:1;background-color:rgb(251 113 133 / var(--tw-bg-opacity, 1))}.bg-rose-50{--tw-bg-opacity:1;background-color:rgb(255 241 242 / var(--tw-bg-opacity, 1))}.bg-white{--tw-bg-opacity:1;background-color:rgb(255 255 255 / var(--tw-bg-opacity, 1))}.bg-white\/90{background-color:rgb(255 255 255 / 0.9)}.bg-sky-50{--tw-bg-opacity:1;background-color:rgb(240 249 255 / var(--tw-bg-opacity, 1))}.bg-white\/80{background-color:rgb(255 255 255 / 0.8)}.bg-emerald-50{--tw-bg-opacity:1;background-color:rgb(236 253 245 / var(--tw-bg-opacity, 1))}.object-cover{object-fit:cover}.p-1\.5{padding:0.375rem}.p-2\.5{padding:0.625rem}.p-3{padding:0.75rem}.p-3\.5{padding:0.875rem}.p-4{padding:1rem}.p-5{padding:1.25rem}.p-6{padding:1.5rem}.p-7{padding:1.75rem}.p-2{padding:0.5rem}.px-1\.5{padding-left:0.375rem;padding-right:0.375rem}.px-2{padding-left:0.5rem;padding-right:0.5rem}.px-2\.5{padding-left:0.625rem;padding-right:0.625rem}.px-3{padding-left:0.75rem;padding-right:0.75rem}.px-3\.5{padding-left:0.875rem;padding-right:0.875rem}.px-4{padding-left:1rem;padding-right:1rem}.px-5{padding-left:1.25rem;padding-right:1.25rem}.px-6{padding-left:1.5rem;padding-right:1.5rem}.py-0\.5{padding-top:0.125rem;padding-bottom:0.125rem}.py-1{padding-top:0.25rem;padding-bottom:0.25rem}.py-1\.5{padding-top:0.375rem;padding-bottom:0.375rem}.py-2{padding-top:0.5rem;padding-bottom:0.5rem}.py-2\.5{padding-top:0.625rem;padding-bottom:0.625rem}.py-3{padding-top:0.75rem;padding-bottom:0.75rem}.py-5{padding-top:1.25rem;padding-bottom:1.25rem}.py-6{padding-top:1.5rem;padding-bottom:1.5rem}.py-8{padding-top:2rem;padding-bottom:2rem}.pb-2{padding-bottom:0.5rem}.pl-2{padding-left:0.5rem}.pr-1{padding-right:0.25rem}.pr-3{padding-right:0.75rem}.pt-2{padding-top:0.5rem}.pt-2\.5{padding-top:0.625rem}.pt-4{padding-top:1rem}.text-left{text-align:left}.text-center{text-align:center}.text-right{text-align:right}.align-top{vertical-align:top}.align-middle{vertical-align:middle}.font-mono{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace}.text-2xl{font-size:1.5rem;line-height:2rem}.text-3xl{font-size:1.875rem;line-height:2.25rem}.text-4xl{font-size:2.25rem;line-height:2.5rem}.text-\[10px\]{font-size:10px}.text-\[11px\]{font-size:11px}.text-base{font-size:1rem;line-height:1.5rem}.text-lg{font-size:1.125rem;line-height:1.75rem}.text-sm{font-size:0.875rem;line-height:1.25rem}.text-xl{font-size:1.25rem;line-height:1.75rem}.text-xs{font-size:0.75rem;line-height:1rem}.font-bold{font-weight:700}.font-extrabold{font-weight:800}.font-medium{font-weight:500}.font-semibold{font-weight:600}.uppercase{text-transform:uppercase}.italic{font-style:italic}.leading-relaxed{line-height:1.625}.leading-tight{line-height:1.25}.leading-snug{line-height:1.375}.tracking-tight{letter-spacing:-0.025em}.tracking-wide{letter-spacing:0.025em}.tracking-wider{letter-spacing:0.05em}.text-amber-900{--tw-text-opacity:1;color:rgb(120 53 15 / var(--tw-text-opacity, 1))}.text-amber-950{--tw-text-opacity:1;color:rgb(69 26 3 / var(--tw-text-opacity, 1))}.text-emerald-300{--tw-text-opacity:1;color:rgb(110 231 183 / var(--tw-text-opacity, 1))}.text-emerald-700{--tw-text-opacity:1;color:rgb(4 120 87 / var(--tw-text-opacity, 1))}.text-pink-700{--tw-text-opacity:1;color:rgb(190 24 93 / var(--tw-text-opacity, 1))}.text-rose-600{--tw-text-opacity:1;color:rgb(225 29 72 / var(--tw-text-opacity, 1))}.text-rose-700{--tw-text-opacity:1;color:rgb(190 18 60 / var(--tw-text-opacity, 1))}.text-amber-800{--tw-text-opacity:1;color:rgb(146 64 14 / var(--tw-text-opacity, 1))}.text-sky-700{--tw-text-opacity:1;color:rgb(3 105 161 / var(--tw-text-opacity, 1))}.text-emerald-950{--tw-text-opacity:1;color:rgb(2 44 34 / var(--tw-text-opacity, 1))}.text-rose-900{--tw-text-opacity:1;color:rgb(136 19 55 / var(--tw-text-opacity, 1))}.text-sky-950{--tw-text-opacity:1;color:rgb(8 47 73 / var(--tw-text-opacity, 1))}.opacity-60{opacity:0.6}.opacity-75{opacity:0.75}.shadow-md{--tw-shadow:0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);--tw-shadow-colored:0 4px 6px -1px var(--tw-shadow-color), 0 2px 4px -2px var(--tw-shadow-color);box-shadow:var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow)}.shadow-sm{--tw-shadow:0 1px 2px 0 rgb(0 0 0 / 0.05);--tw-shadow-colored:0 1px 2px 0 var(--tw-shadow-color);box-shadow:var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow)}.shadow-lg{--tw-shadow:0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);--tw-shadow-colored:0 10px 15px -3px var(--tw-shadow-color), 0 4px 6px -4px var(--tw-shadow-color);box-shadow:var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow)}.ring-2{--tw-ring-offset-shadow:var(--tw-ring-inset) 0 0 0 var(--tw-ring-offset-width) var(--tw-ring-offset-color);--tw-ring-shadow:var(--tw-ring-inset) 0 0 0 calc(2px + var(--tw-ring-offset-width)) var(--tw-ring-color);box-shadow:var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow, 0 0 #0000)}.ring-offset-1{--tw-ring-offset-width:1px}.backdrop-blur-md{--tw-backdrop-blur:blur(12px);-webkit-backdrop-filter:var(--tw-backdrop-blur) var(--tw-backdrop-brightness) var(--tw-backdrop-contrast) var(--tw-backdrop-grayscale) var(--tw-backdrop-hue-rotate) var(--tw-backdrop-invert) var(--tw-backdrop-opacity) var(--tw-backdrop-saturate) var(--tw-backdrop-sepia);backdrop-filter:var(--tw-backdrop-blur) var(--tw-backdrop-brightness) var(--tw-backdrop-contrast) var(--tw-backdrop-grayscale) var(--tw-backdrop-hue-rotate) var(--tw-backdrop-invert) var(--tw-backdrop-opacity) var(--tw-backdrop-saturate) var(--tw-backdrop-sepia)}.transition{transition-property:color, background-color, border-color, fill, stroke, opacity, box-shadow, transform, filter, -webkit-text-decoration-color, -webkit-backdrop-filter;transition-property:color, background-color, border-color, text-decoration-color, fill, stroke, opacity, box-shadow, transform, filter, backdrop-filter;transition-property:color, background-color, border-color, text-decoration-color, fill, stroke, opacity, box-shadow, transform, filter, backdrop-filter, -webkit-text-decoration-color, -webkit-backdrop-filter;transition-timing-function:cubic-bezier(0.4, 0, 0.2, 1);transition-duration:150ms}.hover\:scale-110:hover{--tw-scale-x:1.1;--tw-scale-y:1.1;transform:translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y))}.hover\:bg-amber-200:hover{--tw-bg-opacity:1;background-color:rgb(253 230 138 / var(--tw-bg-opacity, 1))}.hover\:bg-gray-100:hover{--tw-bg-opacity:1;background-color:rgb(243 244 246 / var(--tw-bg-opacity, 1))}.hover\:bg-gray-50:hover{--tw-bg-opacity:1;background-color:rgb(249 250 251 / var(--tw-bg-opacity, 1))}.hover\:bg-rose-100:hover{--tw-bg-opacity:1;background-color:rgb(255 228 230 / var(--tw-bg-opacity, 1))}.hover\:bg-rose-200:hover{--tw-bg-opacity:1;background-color:rgb(254 205 211 / var(--tw-bg-opacity, 1))}.hover\:bg-amber-100:hover{--tw-bg-opacity:1;background-color:rgb(254 243 199 / var(--tw-bg-opacity, 1))}.hover\:bg-black\/\[0\.015\]:hover{background-color:rgb(0 0 0 / 0.015)}.hover\:bg-sky-100:hover{--tw-bg-opacity:1;background-color:rgb(224 242 254 / var(--tw-bg-opacity, 1))}.hover\:text-rose-600:hover{--tw-text-opacity:1;color:rgb(225 29 72 / var(--tw-text-opacity, 1))}.focus\:outline-none:focus{outline:2px solid transparent;outline-offset:2px}@media (min-width: 640px){.sm\:w-64{width:16rem}.sm\:w-auto{width:auto}.sm\:grid-cols-2{grid-template-columns:repeat(2, minmax(0, 1fr))}.sm\:flex-row{flex-direction:row}.sm\:items-center{align-items:center}.sm\:gap-2{gap:0.5rem}.sm\:self-auto{align-self:auto}.sm\:p-7{padding:1.75rem}.sm\:p-8{padding:2rem}.sm\:px-6{padding-left:1.5rem;padding-right:1.5rem}.sm\:py-3\.5{padding-top:0.875rem;padding-bottom:0.875rem}.sm\:text-2xl{font-size:1.5rem;line-height:2rem}.sm\:text-3xl{font-size:1.875rem;line-height:2.25rem}.sm\:text-5xl{font-size:3rem;line-height:1}.sm\:text-base{font-size:1rem;line-height:1.5rem}.sm\:text-lg{font-size:1.125rem;line-height:1.75rem}.sm\:text-sm{font-size:0.875rem;line-height:1.25rem}.sm\:text-xl{font-size:1.25rem;line-height:1.75rem}}@media (min-width: 768px){.md\:grid-cols-2{grid-template-columns:repeat(2, minmax(0, 1fr))}.md\:flex-row{flex-direction:row}.md\:items-center{align-items:center}}@media (min-width: 1024px){.lg\:col-span-4{grid-column:span 4 / span 4}.lg\:col-span-5{grid-column:span 5 / span 5}.lg\:col-span-6{grid-column:span 6 / span 6}.lg\:col-span-7{grid-column:span 7 / span 7}.lg\:col-span-8{grid-column:span 8 / span 8}.lg\:flex{display:flex}.lg\:hidden{display:none}.lg\:grid-cols-12{grid-template-columns:repeat(12, minmax(0, 1fr))}.lg\:grid-cols-3{grid-template-columns:repeat(3, minmax(0, 1fr))}.lg\:flex-row{flex-direction:row}.lg\:items-center{align-items:center}.lg\:justify-end{justify-content:flex-end}.lg\:justify-between{justify-content:space-between}}</style></head>
+<body class="min-h-screen flex flex-col">
+
+  <!-- Vùng hiển thị thông báo nổi Toast (thay thế hoàn toàn alert()) -->
+  <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <!-- =====================================================================
+       MÀN HÌNH 1: CHÀO MỪNG & ĐĂNG NHẬP VÀO PHÒNG HỌC TRỰC TUYẾN
+       ===================================================================== -->
+  <div id="screen-auth" class="min-h-screen flex items-center justify-center p-4 hidden">
+    <div class="pastel-card rounded-3xl max-w-lg w-full p-6 sm:p-8 bg-white animate-pop-in">
+      <!-- Chọn nhanh 3 giao diện ngay ngoài màn hình chào -->
+      <div class="flex items-center justify-between mb-5">
+        <span class="px-3 py-1 rounded-full text-xs font-extrabold" style="background-color: var(--bg-soft); color: var(--primary);">
+          ✨ Phòng Học Trực Tuyến
+        </span>
+        <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-full border bg-white" style="border-color: var(--border-soft);">
+          <button onclick="setTheme('peach')" title="Hồng Đào Pastel" class="theme-dot-peach w-4 h-4 rounded-full bg-rose-400 transition ring-2 ring-offset-1 scale-110"></button>
+          <button onclick="setTheme('matcha')" title="Xanh Bạc Hà" class="theme-dot-matcha w-4 h-4 rounded-full bg-emerald-500 transition"></button>
+          <button onclick="setTheme('cream')" title="Kem Sữa Ấm Áp" class="theme-dot-cream w-4 h-4 rounded-full bg-amber-500 transition"></button>
+        </div>
+      </div>
+
+      <div class="text-center mb-6">
+        <h1 class="text-2xl sm:text-3xl font-bold mb-1.5" style="color: var(--primary);">
+          🌷 Góc Học Nhỏ
+        </h1>
+        <p class="text-xs sm:text-sm font-medium" style="color: var(--text-muted);">
+          Một góc nhỏ ấm áp cho những ngày cùng nhau cố gắng
+        </p>
+      </div>
+
+      <!-- Cảnh báo nếu chưa có Firebase Config (khi chạy file tải về mà chưa dán config) -->
+      <div id="missing-firebase-box" class="hidden mb-5 p-4 rounded-2xl border bg-amber-50 border-amber-200 text-amber-950 text-xs space-y-2.5">
+        <p class="font-bold">⚠️ Chưa cấu hình kết nối Firebase:</p>
+        <p class="leading-relaxed">
+          Nếu bạn vừa tải tệp này về máy để chạy trên tên miền riêng, hãy dán đoạn mã <code class="font-bold">firebaseConfig</code> từ Firebase Console vào ô bên dưới để kích hoạt phòng học trực tuyến:
+        </p>
+        <textarea id="quick-fb-config-input" rows="4" placeholder="{&quot;apiKey&quot;: &quot;...&quot;, &quot;authDomain&quot;: &quot;...&quot;, &quot;projectId&quot;: &quot;...&quot;, ...}" class="w-full p-2.5 rounded-xl border border-amber-300 bg-white font-mono text-[11px] focus:outline-none"></textarea>
+        <button onclick="applyQuickFirebaseConfig()" class="btn-primary w-full py-2 rounded-xl font-bold text-xs">
+          💾 Lưu cấu hình &amp; Kết nối ngay
+        </button>
+      </div>
+
+      <!-- Nút Đăng nhập Google -->
+      <div class="space-y-4">
+        <button onclick="loginWithGoogle()" id="btn-google-login" class="w-full py-3 px-4 rounded-2xl border-2 bg-white hover:bg-gray-50 font-bold text-sm flex items-center justify-center gap-3 shadow-2xs transition" style="border-color: var(--border-soft); color: var(--text-main);">
+          <svg class="w-5 h-5" viewBox="0 0 24 24">
+            <path fill="#EA4335" d="M12 5c1.6 0 3 .6 4.1 1.6l3.1-3.1C17.3 1.7 14.8 1 12 1 7.4 1 3.5 3.6 1.6 7.4l3.7 2.8C6.2 7.2 8.9 5 12 5z"></path>
+            <path fill="#4285F4" d="M23.5 12.3c0-.8-.1-1.7-.2-2.5H12v4.8h6.5c-.3 1.5-1.1 2.8-2.4 3.6l3.7 2.9c2.2-2 3.7-5 3.7-8.8z"></path>
+            <path fill="#FBBC05" d="M5.3 14.8c-.2-.8-.4-1.6-.4-2.5s.2-1.7.4-2.5L1.6 7C.6 9 0 11.2 0 13.5s.6 4.5 1.6 6.5l3.7-2.8z"></path>
+            <path fill="#34A853" d="M12 24c3.2 0 6-1.1 8-3l-3.7-2.9c-1.1.7-2.5 1.2-4.3 1.2-3.1 0-5.8-2.1-6.7-5l-3.7 2.8C3.5 21.1 7.4 24 12 24z"></path>
+          </svg>
+          <span>Đăng nhập bằng Google</span>
+        </button>
+
+        <div class="relative flex py-1 items-center">
+          <div class="flex-grow border-t" style="border-color: var(--border-soft);"></div>
+          <span class="flex-shrink mx-3 text-[11px] font-bold uppercase tracking-wider" style="color: var(--text-muted);">
+            Hoặc vào nhanh (Khách / Email)
+          </span>
+          <div class="flex-grow border-t" style="border-color: var(--border-soft);"></div>
+        </div>
+
+        <!-- Form Đăng nhập nhanh dành cho Khách / Email -->
+        <form onsubmit="loginWithQuickGuest(event)" class="p-4 rounded-2xl border space-y-3" style="background-color: var(--bg-soft); border-color: var(--border-soft);">
+          <div>
+            <label class="block text-xs font-bold mb-1">Tên hiển thị trong phòng học *</label>
+            <input type="text" id="guest-name-input" required="" maxlength="32" placeholder="VD: Minh Anh (12A1) hoặc Ngọc Linh" class="w-full px-3.5 py-2.5 rounded-xl border text-sm font-semibold bg-white focus:outline-none" style="border-color: var(--border-soft);">
+          </div>
+          <div>
+            <label class="block text-xs font-bold mb-1">Email (tùy chọn — dùng để nhận quyền Admin nếu khớp)</label>
+            <input type="email" id="guest-email-input" placeholder="VD: ban@gmail.com" class="w-full px-3.5 py-2.5 rounded-xl border text-sm bg-white focus:outline-none" style="border-color: var(--border-soft);">
+          </div>
+          <button type="submit" id="btn-guest-login" class="btn-primary w-full py-3 px-4 rounded-xl text-sm font-bold shadow-sm">
+            🌸 Vào Phòng Học Ngay
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- =====================================================================
+       MÀN HÌNH 2: THÔNG BÁO BỊ KHÓA TÀI KHOẢN (KHI isBanned == true)
+       ===================================================================== -->
+  <div id="screen-banned" class="hidden min-h-screen items-center justify-center p-4">
+    <div class="pastel-card rounded-3xl max-w-md w-full p-7 text-center bg-white animate-pop-in">
+      <div class="w-16 h-16 rounded-full mx-auto mb-4 flex items-center justify-center text-3xl bg-rose-100 text-rose-600">
+        🚫
+      </div>
+      <h2 class="text-xl font-bold mb-2 text-rose-700">Tài khoản tạm thời bị hạn chế</h2>
+      <p class="text-xs sm:text-sm leading-relaxed mb-5" style="color: var(--text-muted);">
+        Quản trị viên của <strong>Góc Học Nhỏ</strong> đã tạm khóa quyền truy cập phòng học đối với tài khoản này. Nếu có nhầm lẫn, vui lòng liên hệ trực tiếp với chủ phòng học để được mở khóa nhé.
+      </p>
+      <button onclick="logoutUser()" class="btn-soft w-full py-2.5 px-4 rounded-xl text-sm font-bold">
+        Đăng xuất tài khoản
+      </button>
+    </div>
+  </div>
+
+  <!-- =====================================================================
+       MÀN HÌNH 3: ỨNG DỤNG PHÒNG HỌC CHÍNH (SAU KHI ĐĂNG NHẬP)
+       ===================================================================== -->
+  <div id="screen-app" class="min-h-screen flex-col flex">
+
+    <!-- HEADER ĐỒNG BỘ THỜI GIAN THỰC -->
+    <header class="sticky top-0 z-30 backdrop-blur-md bg-white/90 border-b" style="border-color: var(--border-soft);">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3">
+        <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+          
+          <!-- Logo & Slogan đồng bộ từ Firestore settings/general -->
+          <div class="flex items-center justify-between">
+            <div class="flex flex-col">
+              <div class="flex items-center gap-2">
+                <h1 id="header-site-title" class="text-xl sm:text-2xl font-bold tracking-tight" style="color: var(--primary);">🌷 Góc Học Nhỏ</h1>
+                <span class="px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-emerald-100 text-emerald-700 flex items-center gap-1">
+                  <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                  <span id="header-online-count">1</span> đang học
+                </span>
+              </div>
+              <p id="header-site-slogan" class="text-xs font-medium" style="color: var(--text-muted);">Một góc nhỏ cho những ngày cố gắng</p>
+            </div>
+
+            <!-- Đổi màu nhanh trên Mobile -->
+            <div class="flex lg:hidden items-center gap-1.5 px-2.5 py-1.5 rounded-full border bg-white" style="border-color: var(--border-soft);">
+              <button onclick="setTheme('peach')" title="Hồng Đào Pastel" class="theme-dot-peach w-4 h-4 rounded-full bg-rose-400 transition ring-2 ring-offset-1 scale-110"></button>
+              <button onclick="setTheme('matcha')" title="Xanh Bạc Hà" class="theme-dot-matcha w-4 h-4 rounded-full bg-emerald-500 transition"></button>
+              <button onclick="setTheme('cream')" title="Kem Sữa Ấm Áp" class="theme-dot-cream w-4 h-4 rounded-full bg-amber-500 transition"></button>
+            </div>
+          </div>
+
+          <!-- Thông tin tài khoản đang đăng nhập + Bảng thông báo + Nút nhận quyền Admin -->
+          <div class="flex flex-wrap items-center justify-between lg:justify-end gap-2">
+            <!-- Nút nhận quyền Admin nếu phòng chưa có Admin nào -->
+            <button id="btn-claim-admin" onclick="claimInitialAdmin()" class="px-3 py-1.5 rounded-xl text-xs font-extrabold bg-amber-100 text-amber-900 border border-amber-300 hover:bg-amber-200 transition shadow-2xs hidden">
+              👑 Nhận quyền Quản trị viên (Admin)
+            </button>
+
+            <!-- Đổi 3 tông màu Pastel Desktop -->
+            <div class="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-full border bg-white" style="border-color: var(--border-soft);">
+              <button onclick="setTheme('peach')" title="Hồng Đào Pastel" class="theme-dot-peach w-4 h-4 rounded-full bg-rose-400 transition transform hover:scale-110 ring-2 ring-offset-1 scale-110"></button>
+              <button onclick="setTheme('matcha')" title="Xanh Bạc Hà" class="theme-dot-matcha w-4 h-4 rounded-full bg-emerald-500 transition transform hover:scale-110"></button>
+              <button onclick="setTheme('cream')" title="Kem Sữa Ấm Áp" class="theme-dot-cream w-4 h-4 rounded-full bg-amber-500 transition transform hover:scale-110"></button>
+            </div>
+
+            <!-- Nút mở Pop-up Thông Báo -->
+            <button onclick="openAnnouncementModal()" class="btn-soft px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5">
+              <span>📢</span>
+              <span>Thông báo</span>
+            </button>
+
+            <!-- Thẻ hồ sơ người dùng đang đăng nhập -->
+            <div class="flex items-center gap-2.5 pl-2 pr-3 py-1 rounded-2xl border bg-white" style="border-color: var(--border-soft);">
+              <img id="user-avatar-img" src="data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2280%22%20height%3D%2280%22%20viewBox%3D%220%200%2080%2080%22%3E%3Crect%20width%3D%2280%22%20height%3D%2280%22%20rx%3D%2240%22%20fill%3D%22%23FFE4E6%22%2F%3E%3Ctext%20x%3D%2250%25%22%20y%3D%2254%25%22%20dominant-baseline%3D%22middle%22%20text-anchor%3D%22middle%22%20font-family%3D%22Quicksand%2C%20sans-serif%22%20font-weight%3D%22700%22%20font-size%3D%2234%22%20fill%3D%22%23E11D48%22%3EH%3C%2Ftext%3E%3C%2Fsvg%3E" alt="Avatar" class="w-8 h-8 rounded-full object-cover border" style="border-color: var(--border-soft);">
+              <div class="leading-tight">
+                <div class="flex items-center gap-1.5">
+                  <span id="user-display-name" class="text-xs font-extrabold max-w-[110px] truncate">Học viên mới</span>
+                  <span id="user-role-badge" class="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-100 text-amber-800">👑 Admin</span>
+                </div>
+                <div class="text-[11px] font-bold" style="color: var(--primary);">
+                  ⏱️ <span id="user-total-mins">0</span> phút tích lũy
+                </div>
+              </div>
+              <button onclick="logoutUser()" title="Đăng xuất" class="ml-1 px-2 py-1 rounded-lg text-[11px] font-bold bg-gray-100 hover:bg-rose-100 hover:text-rose-600 transition">
+                Thoát
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Thanh điều hướng 4 Tab chính -->
+        <nav class="mt-2.5 pt-2.5 border-t flex items-center gap-1.5 sm:gap-2 overflow-x-auto no-scrollbar" style="border-color: var(--border-soft);">
+          <button onclick="switchTab('focus')" id="tab-btn-focus" class="tab-nav-btn px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap flex items-center gap-1.5 transition" style="background-color: var(--bg-soft); color: var(--text-main);">
+            <span>⏱️</span>
+            <span>Góc Tập Trung</span>
+          </button>
+          <button onclick="switchTab('room')" id="tab-btn-room" class="tab-nav-btn px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap flex items-center gap-1.5 transition" style="background-color: var(--bg-soft); color: var(--text-main);">
+            <span>👥</span>
+            <span>Phòng Học Chung &amp; Xếp Hạng</span>
+          </button>
+          <button onclick="switchTab('resources')" id="tab-btn-resources" class="tab-nav-btn px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap flex items-center gap-1.5 transition" style="background-color: var(--bg-soft); color: var(--text-main);">
+            <span>📅</span>
+            <span>Thời Khóa Biểu &amp; Tài Liệu</span>
+          </button>
+          <button onclick="switchTab('admin')" id="tab-btn-admin" class="tab-nav-btn px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap items-center gap-1.5 transition flex" style="background-color: var(--primary); color: rgb(255, 255, 255);">
+            <span>👑</span>
+            <span>Quản Trị Admin</span>
+          </button>
+        </nav>
+      </div>
+    </header>
+
+    <!-- BANNER ĐẾM NGƯỢC NGÀY THI ĐỒNG BỘ TỪ FIRESTORE -->
+    <div id="exam-banner-wrapper" class="max-w-7xl w-full mx-auto px-4 sm:px-6 pt-4">
+      <div class="pastel-card rounded-2xl px-4 py-3 sm:px-6 sm:py-3.5 flex flex-col md:flex-row md:items-center justify-between gap-3" style="background: linear-gradient(135deg, var(--bg-card) 0%, var(--bg-soft) 100%);">
+        <div class="flex items-start sm:items-center gap-3">
+          <span class="w-10 h-10 rounded-2xl flex items-center justify-center text-xl shrink-0 bg-white border" style="border-color: var(--border-soft);">
+            🎯
+          </span>
+          <div>
+            <div class="flex flex-wrap items-center gap-2">
+              <span class="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-white border" style="color: var(--primary); border-color: var(--border-soft);">
+                ⏳ Mục tiêu chung của lớp
+              </span>
+              <h2 id="banner-exam-title" class="font-heading text-sm sm:text-base font-bold">Kỳ Thi Tốt Nghiệp THPT Quốc Gia</h2>
+            </div>
+            <p id="banner-exam-goal" class="text-xs mt-0.5" style="color: var(--text-muted);">Giữ vững kỷ luật mỗi ngày, cùng nhau chạm tới ước mơ!</p>
+          </div>
+        </div>
+
+        <div id="banner-exam-countdown" class="flex items-center gap-1.5 sm:gap-2 font-heading font-bold text-xs sm:text-sm">
+        <span class="px-2.5 py-1 rounded-xl bg-white border" style="border-color: var(--border-soft); color: var(--primary);">44 ngày</span>
+        <span>:</span>
+        <span class="px-2.5 py-1 rounded-xl bg-white border" style="border-color: var(--border-soft); color: var(--primary);">16h</span>
+        <span>:</span>
+        <span class="px-2.5 py-1 rounded-xl bg-white border" style="border-color: var(--border-soft); color: var(--primary);">47m</span>
+        <span>:</span>
+        <span class="px-2.5 py-1 rounded-xl bg-white border" style="border-color: var(--border-soft); color: var(--primary);">24s</span>
+      </div>
+      </div>
+    </div>
+
+    <!-- ===================================================================
+         NỘI DUNG CÁC TAB CHỨC NĂNG
+         =================================================================== -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6">
+
+      <!-- *****************************************************************
+           TAB 1: ⏱️ GÓC TẬP TRUNG (POMODORO + NHẠC LOFI + VIỆC CẦN LÀM)
+           ***************************************************************** -->
+      <section id="panel-focus" class="animate-tab space-y-6 hidden">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          
+          <!-- Cột Trái (5 cột): Đồng hồ Pomodoro SVG + Mixer Âm thanh Lofi -->
+          <div class="lg:col-span-5 space-y-6">
+            
+            <!-- Thẻ Đồng hồ Pomodoro -->
+            <div class="pastel-card rounded-3xl p-6 text-center">
+              <div class="flex items-center justify-between mb-4">
+                <h2 class="text-lg font-bold flex items-center gap-2">
+                  <span>🍅</span>
+                  <span>Đồng Hồ Pomodoro</span>
+                </h2>
+                <div class="flex items-center gap-1.5">
+                  <span class="px-3 py-1 rounded-full text-xs font-bold" style="background-color: var(--bg-soft); color: var(--primary);">
+                    Hôm nay: <span id="today-mins-badge">0</span>p
+                  </span>
+                  <button onclick="togglePomoSettings()" title="Tùy chỉnh số phút" class="btn-soft px-2.5 py-1 rounded-xl text-xs font-bold">
+                    ⚙️
+                  </button>
+                </div>
+              </div>
+
+              <!-- Bảng chỉnh nhanh số phút -->
+              <div id="pomo-custom-box" class="hidden mb-4 p-3 rounded-2xl border text-left animate-pop-in" style="background-color: var(--bg-soft); border-color: var(--border-soft);">
+                <div class="grid grid-cols-3 gap-2 mb-2.5">
+                  <div>
+                    <label class="block text-[11px] font-bold mb-1">Tập trung (p)</label>
+                    <input type="number" id="cfg-pomo-focus" min="1" max="180" value="25" class="w-full px-2.5 py-1.5 rounded-xl border text-xs font-bold bg-white" style="border-color: var(--border-soft);">
+                  </div>
+                  <div>
+                    <label class="block text-[11px] font-bold mb-1">Nghỉ ngắn (p)</label>
+                    <input type="number" id="cfg-pomo-short" min="1" max="60" value="5" class="w-full px-2.5 py-1.5 rounded-xl border text-xs font-bold bg-white" style="border-color: var(--border-soft);">
+                  </div>
+                  <div>
+                    <label class="block text-[11px] font-bold mb-1">Nghỉ dài (p)</label>
+                    <input type="number" id="cfg-pomo-long" min="1" max="90" value="15" class="w-full px-2.5 py-1.5 rounded-xl border text-xs font-bold bg-white" style="border-color: var(--border-soft);">
+                  </div>
+                </div>
+                <button onclick="applyPomoCustomDurations()" class="btn-primary w-full py-1.5 rounded-xl text-xs font-bold">
+                  Áp dụng thời gian
+                </button>
+              </div>
+
+              <!-- 3 Nút chọn chế độ -->
+              <div class="grid grid-cols-3 gap-1.5 p-1.5 rounded-2xl mb-5" style="background-color: var(--bg-soft);">
+                <button onclick="setPomoMode('focus')" id="pmode-focus" class="py-2 px-2 rounded-xl text-xs font-bold transition bg-white shadow-2xs" style="color: var(--primary);">
+                  Tập trung (<span id="lbl-min-focus">25</span>p)
+                </button>
+                <button onclick="setPomoMode('short')" id="pmode-short" class="py-2 px-2 rounded-xl text-xs font-bold transition" style="color: var(--text-muted);">
+                  Nghỉ ngắn (<span id="lbl-min-short">5</span>p)
+                </button>
+                <button onclick="setPomoMode('long')" id="pmode-long" class="py-2 px-2 rounded-xl text-xs font-bold transition" style="color: var(--text-muted);">
+                  Nghỉ dài (<span id="lbl-min-long">15</span>p)
+                </button>
+              </div>
+
+              <!-- Vòng tròn SVG chống trễ nhịp -->
+              <div class="relative w-56 h-56 mx-auto my-2 flex items-center justify-center">
+                <svg class="w-full h-full" viewBox="0 0 220 220">
+                  <circle cx="110" cy="110" r="96" fill="none" stroke="var(--ring-track)" stroke-width="12"></circle>
+                  <circle id="pomo-progress-circle" class="pomo-ring-circle" cx="110" cy="110" r="96" fill="none" stroke="var(--primary)" stroke-width="12" stroke-linecap="round" stroke-dasharray="603.19" stroke-dashoffset="0" style="stroke-dashoffset: 0;"></circle>
+                </svg>
+                <div class="absolute inset-0 flex flex-col items-center justify-center px-4">
+                  <div id="pomo-clock-text" class="font-heading text-4xl sm:text-5xl font-bold tracking-wider" style="color: var(--primary);">25:00</div>
+                  <p id="pomo-sub-status" class="text-xs font-semibold mt-1.5 line-clamp-2" style="color: var(--text-muted);">
+                    Sẵn sàng đồng bộ cùng cả phòng ✨
+                  </p>
+                </div>
+              </div>
+
+              <!-- Nút điều khiển Pomodoro -->
+              <div class="flex items-center justify-center gap-2.5 mt-5">
+                <button onclick="togglePomodoroTimer()" id="btn-pomo-toggle" class="btn-primary flex-1 py-3 px-4 rounded-2xl font-bold text-sm shadow-sm flex items-center justify-center gap-2">
+                  <span id="pomo-btn-icon">▶</span>
+                  <span id="pomo-btn-text">Bắt đầu</span>
+                </button>
+                <button onclick="resetPomodoroTimer()" class="btn-soft py-3 px-4 rounded-2xl font-bold text-sm" title="Đặt lại đồng hồ">
+                  ↺ Đặt lại
+                </button>
+                <button onclick="playBellChime()" class="btn-soft py-3 px-3.5 rounded-2xl font-bold text-sm" title="Thử tiếng chuông">
+                  🔔
+                </button>
+              </div>
+            </div>
+
+            <!-- Trình trộn âm thanh Lofi & Thiên nhiên (100% Web Audio API) -->
+            <div class="pastel-card rounded-3xl p-6">
+              <div class="flex items-center justify-between mb-4">
+                <div>
+                  <h2 class="text-lg font-bold flex items-center gap-2">
+                    <span>🎧</span>
+                    <span>Âm Thanh Lofi &amp; Thiên Nhiên</span>
+                  </h2>
+                  <p class="text-xs mt-0.5" style="color: var(--text-muted);">
+                    Trộn âm thanh tổng hợp trực tiếp, không cần mạng tải nhạc
+                  </p>
+                </div>
+                <button onclick="stopAllAudioChannels()" id="btn-mute-all-audio" class="hidden px-2.5 py-1 rounded-xl text-xs font-bold bg-rose-100 text-rose-600 hover:bg-rose-200 transition">
+                  Tắt hết
+                </button>
+              </div>
+
+              <div class="space-y-3">
+                <!-- Kênh 1: Nhạc Lofi Chill -->
+                <div id="snd-card-lofi" class="p-3.5 rounded-2xl border transition" style="background-color: var(--bg-soft); border-color: var(--border-soft);">
+                  <div class="flex items-center justify-between gap-2 mb-2">
+                    <div class="flex items-center gap-2.5">
+                      <span class="text-xl">🎹</span>
+                      <div>
+                        <h3 class="text-xs sm:text-sm font-bold">Nhạc Lofi Chill</h3>
+                        <p class="text-[11px]" style="color: var(--text-muted);">Hợp âm piano điện ấm áp &amp; đĩa than nhẹ</p>
+                      </div>
+                    </div>
+                    <button onclick="toggleAudioChannel('lofi')" id="snd-btn-lofi" class="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-white border transition" style="border-color: var(--border-soft);">
+                      Bật
+                    </button>
+                  </div>
+                  <div class="flex items-center gap-2.5">
+                    <span class="text-xs">🔈</span>
+                    <input type="range" min="0" max="100" value="55" oninput="setAudioVolume('lofi', this.value)" class="pastel-slider flex-1">
+                    <span id="snd-vol-lofi" class="text-[11px] font-bold w-8 text-right" style="color: var(--primary);">55%</span>
+                  </div>
+                </div>
+
+                <!-- Kênh 2: Tiếng Mưa Rơi -->
+                <div id="snd-card-rain" class="p-3.5 rounded-2xl border transition" style="background-color: var(--bg-soft); border-color: var(--border-soft);">
+                  <div class="flex items-center justify-between gap-2 mb-2">
+                    <div class="flex items-center gap-2.5">
+                      <span class="text-xl">🌧️</span>
+                      <div>
+                        <h3 class="text-xs sm:text-sm font-bold">Tiếng Mưa Rơi</h3>
+                        <p class="text-[11px]" style="color: var(--text-muted);">Mưa rào dịu êm lọc tần số tự nhiên</p>
+                      </div>
+                    </div>
+                    <button onclick="toggleAudioChannel('rain')" id="snd-btn-rain" class="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-white border transition" style="border-color: var(--border-soft);">
+                      Bật
+                    </button>
+                  </div>
+                  <div class="flex items-center gap-2.5">
+                    <span class="text-xs">🔈</span>
+                    <input type="range" min="0" max="100" value="40" oninput="setAudioVolume('rain', this.value)" class="pastel-slider flex-1">
+                    <span id="snd-vol-rain" class="text-[11px] font-bold w-8 text-right" style="color: var(--primary);">40%</span>
+                  </div>
+                </div>
+
+                <!-- Kênh 3: Tiếng Quán Cà Phê Yên Tĩnh -->
+                <div id="snd-card-cafe" class="p-3.5 rounded-2xl border transition" style="background-color: var(--bg-soft); border-color: var(--border-soft);">
+                  <div class="flex items-center justify-between gap-2 mb-2">
+                    <div class="flex items-center gap-2.5">
+                      <span class="text-xl">☕</span>
+                      <div>
+                        <h3 class="text-xs sm:text-sm font-bold">Tiếng Quán Cà Phê Yên Tĩnh</h3>
+                        <p class="text-[11px]" style="color: var(--text-muted);">Không gian rì rầm ấm cúng &amp; tiếng tách sứ khẽ</p>
+                      </div>
+                    </div>
+                    <button onclick="toggleAudioChannel('cafe')" id="snd-btn-cafe" class="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-white border transition" style="border-color: var(--border-soft);">
+                      Bật
+                    </button>
+                  </div>
+                  <div class="flex items-center gap-2.5">
+                    <span class="text-xs">🔈</span>
+                    <input type="range" min="0" max="100" value="45" oninput="setAudioVolume('cafe', this.value)" class="pastel-slider flex-1">
+                    <span id="snd-vol-cafe" class="text-[11px] font-bold w-8 text-right" style="color: var(--primary);">45%</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Cột Phải (7 cột): Mục tiêu đang ghim + Danh sách việc cần làm cá nhân -->
+          <div class="lg:col-span-7 space-y-6">
+            
+            <!-- Thẻ Mục tiêu đang hiển thị cho cả phòng thấy -->
+            <div class="pastel-card rounded-3xl p-6" style="background: linear-gradient(135deg, var(--bg-card) 0%, var(--bg-soft) 100%);">
+              <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <span class="px-3 py-1 rounded-full text-[11px] font-extrabold bg-white border inline-flex items-center gap-1.5" style="color: var(--primary); border-color: var(--border-soft);">
+                    <span>📌</span>
+                    <span>Mục tiêu đang hiển thị trên Phòng Học Chung</span>
+                  </span>
+                  <h3 id="my-pinned-task-display" class="font-heading text-base sm:text-lg font-bold mt-2">Chưa ghim mục tiêu cụ thể</h3>
+                </div>
+                <button onclick="clearPinnedTask()" class="btn-soft px-3.5 py-2 rounded-xl text-xs font-bold shrink-0">
+                  Bỏ ghim
+                </button>
+              </div>
+            </div>
+
+            <!-- Danh sách việc cần làm cá nhân (đồng bộ Firestore theo từng tài khoản) -->
+            <div class="pastel-card rounded-3xl p-6">
+              <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+                <div>
+                  <h2 class="text-lg font-bold flex items-center gap-2">
+                    <span>✅</span>
+                    <span>Danh Sách Việc Cần Làm Cá Nhân</span>
+                  </h2>
+                  <p class="text-xs mt-0.5" style="color: var(--text-muted);">
+                    Bấm nút <strong>"Ghim lên phòng học"</strong> để bạn bè thấy bạn đang học môn gì nhé!
+                  </p>
+                </div>
+                <span id="personal-todo-counter" class="self-start sm:self-auto px-3 py-1 rounded-full text-xs font-bold" style="background-color: var(--bg-soft); color: var(--primary);">0/0 hoàn thành</span>
+              </div>
+
+              <form onsubmit="addPersonalTodo(event)" class="flex flex-col sm:flex-row gap-2 mb-4">
+                <input type="text" id="personal-todo-input" required="" placeholder="Nhập nhiệm vụ học tập hôm nay..." class="flex-1 px-4 py-2.5 rounded-xl border text-sm bg-white focus:outline-none" style="border-color: var(--border-soft);">
+                <select id="personal-todo-tag" class="px-3 py-2.5 rounded-xl border text-xs sm:text-sm font-bold bg-white focus:outline-none" style="border-color: var(--border-soft);">
+                  <option value="Toán">📐 Toán</option>
+                  <option value="Ngữ Văn">📖 Ngữ Văn</option>
+                  <option value="Ngoại Ngữ">🌍 Ngoại Ngữ</option>
+                  <option value="Tự Học">🌿 Tự Học</option>
+                  <option value="Khác">🌸 Khác</option>
+                </select>
+                <button type="submit" class="btn-primary px-4 py-2.5 rounded-xl text-sm font-bold whitespace-nowrap">
+                  + Thêm việc
+                </button>
+              </form>
+
+              <ul id="personal-todo-list" class="space-y-2.5 max-h-[420px] overflow-y-auto pr-1"><li class="text-center py-8 rounded-2xl border border-dashed text-xs" style="border-color: var(--border-soft); color: var(--text-muted);">Chưa có nhiệm vụ nào. Thêm việc cần làm và ghim lên phòng học để bạn bè cùng thấy nhé! 🌸</li></ul>
+            </div>
+
+          </div>
+        </div>
+      </section>
+
+      <!-- *****************************************************************
+           TAB 2: 👥 PHÒNG HỌC CHUNG & XẾP HẠNG (REALTIME FIRESTORE)
+           ***************************************************************** -->
+      <section id="panel-room" class="hidden animate-tab space-y-6">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          
+          <!-- Cột Trái (8 cột): Lưới thành viên đang học trực tuyến -->
+          <div class="lg:col-span-8 space-y-5">
+            <div class="pastel-card rounded-3xl p-6">
+              <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
+                <div>
+                  <h2 class="text-xl font-bold flex items-center gap-2">
+                    <span>🏫</span>
+                    <span>Phòng Học Trực Tuyến</span>
+                  </h2>
+                  <p class="text-xs sm:text-sm mt-0.5" style="color: var(--text-muted);">
+                    Theo dõi trạng thái tập trung và mục tiêu của tất cả thành viên theo thời gian thực
+                  </p>
+                </div>
+                <div class="flex items-center gap-2 text-xs font-bold">
+                  <span class="px-3 py-1.5 rounded-full bg-emerald-100 text-emerald-700">
+                    🟢 <span id="room-online-badge">1</span> trực tuyến
+                  </span>
+                  <span class="px-3 py-1.5 rounded-full" style="background-color: var(--bg-soft); color: var(--primary);">
+                    👥 <span id="room-total-badge">1</span> thành viên
+                  </span>
+                </div>
+              </div>
+
+              <!-- Lưới thẻ thành viên -->
+              <div id="study-room-members-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div class="p-4 rounded-2xl border transition bg-white" style="background-color: var(--bg-card); border-color: var(--border-soft);">
+              <div class="flex items-start gap-3">
+                <div class="relative shrink-0">
+                  <img src="data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2280%22%20height%3D%2280%22%20viewBox%3D%220%200%2080%2080%22%3E%3Crect%20width%3D%2280%22%20height%3D%2280%22%20rx%3D%2240%22%20fill%3D%22%23FFE4E6%22%2F%3E%3Ctext%20x%3D%2250%25%22%20y%3D%2254%25%22%20dominant-baseline%3D%22middle%22%20text-anchor%3D%22middle%22%20font-family%3D%22Quicksand%2C%20sans-serif%22%20font-weight%3D%22700%22%20font-size%3D%2234%22%20fill%3D%22%23E11D48%22%3EH%3C%2Ftext%3E%3C%2Fsvg%3E" onerror="this.src='data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2280%22%20height%3D%2280%22%20viewBox%3D%220%200%2080%2080%22%3E%3Crect%20width%3D%2280%22%20height%3D%2280%22%20rx%3D%2240%22%20fill%3D%22%23FFE4E6%22%2F%3E%3Ctext%20x%3D%2250%25%22%20y%3D%2254%25%22%20dominant-baseline%3D%22middle%22%20text-anchor%3D%22middle%22%20font-family%3D%22Quicksand%2C%20sans-serif%22%20font-weight%3D%22700%22%20font-size%3D%2234%22%20fill%3D%22%23E11D48%22%3EH%3C%2Ftext%3E%3C%2Fsvg%3E'" alt="Avatar" class="w-11 h-11 rounded-full object-cover border" style="border-color: var(--border-soft);">
+                  <span class="absolute bottom-0 right-0 w-3.5 h-3.5 rounded-full border-2 border-white bg-emerald-500"></span>
+                </div>
+
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center justify-between gap-1.5">
+                    <div class="flex items-center gap-1.5 min-w-0">
+                      <h4 class="font-heading text-sm font-bold truncate">
+                        Học viên mới (Bạn)
+                      </h4>
+                      <span class="px-1.5 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-100 text-amber-800 shrink-0">👑 Admin</span>
+                    </div>
+                  </div>
+
+                  <div class="mt-1 flex flex-wrap items-center gap-1.5">
+                    <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-700">🌸 Đang trong phòng</span>
+                    <span class="text-[11px] font-bold" style="color: var(--text-muted);">
+                      Hôm nay: <strong style="color: var(--primary);">0p</strong>
+                    </span>
+                  </div>
+
+                  <div class="mt-2.5 p-2 rounded-xl text-xs bg-white/80 border" style="border-color: var(--border-soft);">
+                    <span class="italic" style="color: var(--text-muted);">Chưa ghim mục tiêu cụ thể</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+            </div>
+          </div>
+
+          <!-- Cột Phải (4 cột): Bảng Xếp Hạng Chăm Chỉ + Khung Trò Chuyện Cổ Vũ -->
+          <div class="lg:col-span-4 space-y-6">
+            
+            <!-- Bảng Xếp Hạng Chăm Chỉ -->
+            <div class="pastel-card rounded-3xl p-6">
+              <div class="flex items-center justify-between mb-4">
+                <h2 class="text-lg font-bold flex items-center gap-2">
+                  <span>🏆</span>
+                  <span>Bảng Xếp Hạng Chăm Chỉ</span>
+                </h2>
+                <span class="text-xs font-bold" style="color: var(--text-muted);">Tổng phút</span>
+              </div>
+
+              <div id="leaderboard-list" class="space-y-2.5 max-h-72 overflow-y-auto pr-1">
+            <div class="p-2.5 rounded-2xl border" style="background-color: var(--bg-soft); border-color: var(--border-soft);">
+              <div class="flex items-center justify-between gap-2 text-xs mb-1">
+                <div class="flex items-center gap-2 min-w-0">
+                  <span class="font-heading font-extrabold w-6 text-center shrink-0">🥇</span>
+                  <span class="font-bold truncate">Học viên mới</span>
+                </div>
+                <span class="font-extrabold shrink-0" style="color: var(--primary);">0 phút</span>
+              </div>
+              <div class="w-full h-1.5 rounded-full overflow-hidden bg-white">
+                <div class="h-full rounded-full" style="width: 0%; background-color: var(--primary);"></div>
+              </div>
+            </div>
+          </div>
+            </div>
+
+            <!-- Khung Trò Chuyện & Cổ Vũ Phòng Học -->
+            <div class="pastel-card rounded-3xl p-5 flex flex-col">
+              <div class="flex items-center justify-between mb-3">
+                <h2 class="text-base font-bold flex items-center gap-2">
+                  <span>💬</span>
+                  <span>Trò Chuyện &amp; Cổ Vũ</span>
+                </h2>
+                <span class="text-[11px] font-bold" style="color: var(--text-muted);">Trực tiếp</span>
+              </div>
+
+              <!-- Danh sách tin nhắn -->
+              <div id="chat-messages-box" class="h-64 overflow-y-auto space-y-2.5 p-3 rounded-2xl border mb-3" style="background-color: var(--bg-soft); border-color: var(--border-soft);"><div class="h-full flex items-center justify-center text-center text-xs" style="color: var(--text-muted);">Hãy gửi lời chào hoặc sticker cổ vũ cả lớp nhé! 🌸</div></div>
+
+              <!-- Nút gửi nhanh Sticker động viên -->
+              <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-2 mb-2">
+                <button type="button" onclick="sendQuickSticker('Cố lên nhé! 💪')" class="btn-soft px-2.5 py-1 rounded-full text-[11px] font-bold whitespace-nowrap">
+                  Cố lên nhé! 💪
+                </button>
+                <button type="button" onclick="sendQuickSticker('Cùng tập trung nào! 🔥')" class="btn-soft px-2.5 py-1 rounded-full text-[11px] font-bold whitespace-nowrap">
+                  Cùng tập trung nào! 🔥
+                </button>
+                <button type="button" onclick="sendQuickSticker('Uống ngụm nước nhé! 💧')" class="btn-soft px-2.5 py-1 rounded-full text-[11px] font-bold whitespace-nowrap">
+                  Uống ngụm nước nhé! 💧
+                </button>
+              </div>
+
+              <!-- Ô nhập tin nhắn -->
+              <form onsubmit="sendChatMessage(event)" class="flex items-center gap-2">
+                <input type="text" id="chat-text-input" maxlength="240" required="" placeholder="Gửi lời động viên tới cả lớp..." class="flex-1 px-3.5 py-2 rounded-xl border text-xs sm:text-sm bg-white focus:outline-none" style="border-color: var(--border-soft);">
+                <button type="submit" class="btn-primary px-4 py-2 rounded-xl text-xs sm:text-sm font-bold shrink-0">
+                  Gửi
+                </button>
+              </form>
+            </div>
+
+          </div>
+        </div>
+      </section>
+
+      <!-- *****************************************************************
+           TAB 3: 📅 THỜI KHÓA BIỂU & 📚 KHO TÀI LIỆU CHUNG
+           ***************************************************************** -->
+      <section id="panel-resources" class="hidden animate-tab space-y-6">
+        
+        <!-- Thời Khóa Biểu Tuần Đồng Bộ Từ Firestore -->
+        <div class="pastel-card rounded-3xl p-6">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+            <div>
+              <h2 class="text-xl font-bold flex items-center gap-2">
+                <span>📅</span>
+                <span>Thời Khóa Biểu Chung Của Lớp</span>
+              </h2>
+              <p class="text-xs sm:text-sm mt-0.5" style="color: var(--text-muted);">
+                Lịch học và khung giờ tự học chung được Quản trị viên cập nhật đồng bộ
+              </p>
+            </div>
+            <span id="tt-admin-hint" class="px-3 py-1.5 rounded-xl text-xs font-bold" style="background-color: var(--bg-soft); color: var(--primary);">
+              👑 Bạn là Admin: Nhấn trực tiếp vào bất kỳ ô nào để sửa lịch
+            </span>
+          </div>
+
+          <div class="overflow-x-auto rounded-2xl border" style="border-color: var(--border-soft);">
+            <table class="w-full min-w-[840px] border-collapse text-left">
+              <thead>
+                <tr style="background-color: var(--bg-soft);">
+                  <th class="p-3 text-xs font-extrabold border-b border-r w-36" style="border-color: var(--border-soft); color: var(--primary);">Ca học</th>
+                  <th class="p-3 text-xs font-extrabold text-center border-b border-r" style="border-color: var(--border-soft);">Thứ 2</th>
+                  <th class="p-3 text-xs font-extrabold text-center border-b border-r" style="border-color: var(--border-soft);">Thứ 3</th>
+                  <th class="p-3 text-xs font-extrabold text-center border-b border-r" style="border-color: var(--border-soft);">Thứ 4</th>
+                  <th class="p-3 text-xs font-extrabold text-center border-b border-r" style="border-color: var(--border-soft);">Thứ 5</th>
+                  <th class="p-3 text-xs font-extrabold text-center border-b border-r" style="border-color: var(--border-soft);">Thứ 6</th>
+                  <th class="p-3 text-xs font-extrabold text-center border-b border-r" style="border-color: var(--border-soft);">Thứ 7</th>
+                  <th class="p-3 text-xs font-extrabold text-center border-b" style="border-color: var(--border-soft); color: var(--primary);">Chủ Nhật</th>
+                </tr>
+              </thead>
+              <tbody id="shared-timetable-body">
+          <tr>
+            <td class="p-3 align-middle border-r border-b" style="background-color: var(--bg-card); border-color: var(--border-soft);">
+              <div class="font-heading text-xs sm:text-sm font-bold">🌅 Buổi Sáng</div>
+              <div class="text-[11px]" style="color: var(--text-muted);">07:30 - 11:30</div>
+            </td>
+            
+            <td class="p-2 align-top h-24  border-b border-r" style="border-color: var(--border-soft);">
+              <div class="h-full p-2 rounded-xl border flex flex-col justify-between bg-rose-50 border-rose-200 text-rose-900">
+                <div>
+                  <div class="flex items-center justify-between gap-1 mb-1">
+                    <span class="px-1.5 py-0.5 rounded bg-white/80 text-[10px] font-extrabold">Toán</span>
+                    <span class="text-[10px] font-bold opacity-75">07:30 - 09:30</span>
+                  </div>
+                  <div class="font-heading text-xs font-bold leading-snug line-clamp-2">Toán Giải Tích</div>
+                </div>
+                <div class="mt-1 text-[10px] opacity-75 truncate">📍 Ca sáng</div>
+              </div>
+            </td>
+          
+              <td class="p-2 align-top h-24  border-b border-r" style="border-color: var(--border-soft);">
+                
+              </td>
+            
+            <td class="p-2 align-top h-24  border-b border-r" style="border-color: var(--border-soft);">
+              <div class="h-full p-2 rounded-xl border flex flex-col justify-between bg-sky-50 border-sky-200 text-sky-950">
+                <div>
+                  <div class="flex items-center justify-between gap-1 mb-1">
+                    <span class="px-1.5 py-0.5 rounded bg-white/80 text-[10px] font-extrabold">Ngoại Ngữ</span>
+                    <span class="text-[10px] font-bold opacity-75">08:00 - 10:00</span>
+                  </div>
+                  <div class="font-heading text-xs font-bold leading-snug line-clamp-2">Tiếng Anh Học Thuật</div>
+                </div>
+                <div class="mt-1 text-[10px] opacity-75 truncate">📍 Luyện đề</div>
+              </div>
+            </td>
+          
+              <td class="p-2 align-top h-24  border-b border-r" style="border-color: var(--border-soft);">
+                
+              </td>
+            
+            <td class="p-2 align-top h-24  border-b border-r" style="border-color: var(--border-soft);">
+              <div class="h-full p-2 rounded-xl border flex flex-col justify-between bg-amber-50 border-amber-200 text-amber-950">
+                <div>
+                  <div class="flex items-center justify-between gap-1 mb-1">
+                    <span class="px-1.5 py-0.5 rounded bg-white/80 text-[10px] font-extrabold">Ngữ Văn</span>
+                    <span class="text-[10px] font-bold opacity-75">07:30 - 09:30</span>
+                  </div>
+                  <div class="font-heading text-xs font-bold leading-snug line-clamp-2">Ngữ Văn Chuyên Sâu</div>
+                </div>
+                <div class="mt-1 text-[10px] opacity-75 truncate">📍 Đọc hiểu</div>
+              </div>
+            </td>
+          
+              <td class="p-2 align-top h-24  border-b border-r" style="border-color: var(--border-soft);">
+                
+              </td>
+            
+              <td class="p-2 align-top h-24  border-b " style="border-color: var(--border-soft);">
+                
+              </td>
+            
+          </tr>
+        
+          <tr>
+            <td class="p-3 align-middle border-r border-b" style="background-color: var(--bg-card); border-color: var(--border-soft);">
+              <div class="font-heading text-xs sm:text-sm font-bold">☀️ Buổi Chiều</div>
+              <div class="text-[11px]" style="color: var(--text-muted);">13:30 - 17:00</div>
+            </td>
+            
+              <td class="p-2 align-top h-24  border-b border-r" style="border-color: var(--border-soft);">
+                
+              </td>
+            
+            <td class="p-2 align-top h-24  border-b border-r" style="border-color: var(--border-soft);">
+              <div class="h-full p-2 rounded-xl border flex flex-col justify-between bg-emerald-50 border-emerald-200 text-emerald-950">
+                <div>
+                  <div class="flex items-center justify-between gap-1 mb-1">
+                    <span class="px-1.5 py-0.5 rounded bg-white/80 text-[10px] font-extrabold">Tự Học</span>
+                    <span class="text-[10px] font-bold opacity-75">14:00 - 16:30</span>
+                  </div>
+                  <div class="font-heading text-xs font-bold leading-snug line-clamp-2">Tự Học Tập Trung</div>
+                </div>
+                <div class="mt-1 text-[10px] opacity-75 truncate">📍 Phòng chung</div>
+              </div>
+            </td>
+          
+              <td class="p-2 align-top h-24  border-b border-r" style="border-color: var(--border-soft);">
+                
+              </td>
+            
+              <td class="p-2 align-top h-24  border-b border-r" style="border-color: var(--border-soft);">
+                
+              </td>
+            
+              <td class="p-2 align-top h-24  border-b border-r" style="border-color: var(--border-soft);">
+                
+              </td>
+            
+            <td class="p-2 align-top h-24  border-b border-r" style="border-color: var(--border-soft);">
+              <div class="h-full p-2 rounded-xl border flex flex-col justify-between bg-emerald-50 border-emerald-200 text-emerald-950">
+                <div>
+                  <div class="flex items-center justify-between gap-1 mb-1">
+                    <span class="px-1.5 py-0.5 rounded bg-white/80 text-[10px] font-extrabold">Tự Học</span>
+                    <span class="text-[10px] font-bold opacity-75">14:30 - 17:00</span>
+                  </div>
+                  <div class="font-heading text-xs font-bold leading-snug line-clamp-2">Tổng Ôn Kiến Thức</div>
+                </div>
+                <div class="mt-1 text-[10px] opacity-75 truncate">📍 Cuối tuần</div>
+              </div>
+            </td>
+          
+              <td class="p-2 align-top h-24  border-b " style="border-color: var(--border-soft);">
+                
+              </td>
+            
+          </tr>
+        
+          <tr>
+            <td class="p-3 align-middle border-r " style="background-color: var(--bg-card); border-color: var(--border-soft);">
+              <div class="font-heading text-xs sm:text-sm font-bold">🌙 Buổi Tối</div>
+              <div class="text-[11px]" style="color: var(--text-muted);">19:30 - 21:30</div>
+            </td>
+            
+            <td class="p-2 align-top h-24   border-r" style="border-color: var(--border-soft);">
+              <div class="h-full p-2 rounded-xl border flex flex-col justify-between bg-rose-50 border-rose-200 text-rose-900">
+                <div>
+                  <div class="flex items-center justify-between gap-1 mb-1">
+                    <span class="px-1.5 py-0.5 rounded bg-white/80 text-[10px] font-extrabold">Toán</span>
+                    <span class="text-[10px] font-bold opacity-75">19:30 - 21:00</span>
+                  </div>
+                  <div class="font-heading text-xs font-bold leading-snug line-clamp-2">Luyện Đề Toán (2 Pomodoro)</div>
+                </div>
+                <div class="mt-1 text-[10px] opacity-75 truncate">📍 Tối T2</div>
+              </div>
+            </td>
+          
+              <td class="p-2 align-top h-24   border-r" style="border-color: var(--border-soft);">
+                
+              </td>
+            
+              <td class="p-2 align-top h-24   border-r" style="border-color: var(--border-soft);">
+                
+              </td>
+            
+            <td class="p-2 align-top h-24   border-r" style="border-color: var(--border-soft);">
+              <div class="h-full p-2 rounded-xl border flex flex-col justify-between bg-sky-50 border-sky-200 text-sky-950">
+                <div>
+                  <div class="flex items-center justify-between gap-1 mb-1">
+                    <span class="px-1.5 py-0.5 rounded bg-white/80 text-[10px] font-extrabold">Ngoại Ngữ</span>
+                    <span class="text-[10px] font-bold opacity-75">20:00 - 21:30</span>
+                  </div>
+                  <div class="font-heading text-xs font-bold leading-snug line-clamp-2">Từ Vựng &amp; Nghe Hiểu</div>
+                </div>
+                <div class="mt-1 text-[10px] opacity-75 truncate">📍 Tối T5</div>
+              </div>
+            </td>
+          
+              <td class="p-2 align-top h-24   border-r" style="border-color: var(--border-soft);">
+                
+              </td>
+            
+              <td class="p-2 align-top h-24   border-r" style="border-color: var(--border-soft);">
+                
+              </td>
+            
+              <td class="p-2 align-top h-24   " style="border-color: var(--border-soft);">
+                
+              </td>
+            
+          </tr>
+        </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Kho Tài Liệu Học Tập Chung Đồng Bộ Từ Firestore -->
+        <div class="pastel-card rounded-3xl p-6">
+          <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-5">
+            <div>
+              <h2 class="text-xl font-bold flex items-center gap-2">
+                <span>📚</span>
+                <span>Kho Tài Liệu Học Tập Chung</span>
+              </h2>
+              <p class="text-xs sm:text-sm mt-0.5" style="color: var(--text-muted);">
+                Tài liệu PDF, Google Drive và Notion được chia sẻ cho toàn bộ học viên
+              </p>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-2">
+              <select id="shared-doc-filter" onchange="renderSharedDocuments()" class="px-3.5 py-2 rounded-xl border text-xs font-bold bg-white focus:outline-none" style="border-color: var(--border-soft);">
+                <option value="Tất cả">Tất cả môn học</option>
+                <option value="Toán">📐 Toán</option>
+                <option value="Ngữ Văn">📖 Ngữ Văn</option>
+                <option value="Ngoại Ngữ">🌍 Ngoại Ngữ</option>
+                <option value="Tự Học">🌿 Tự Học</option>
+                <option value="Khác">🌸 Khác</option>
+              </select>
+              <input type="text" id="shared-doc-search" oninput="renderSharedDocuments()" placeholder="🔍 Tìm tài liệu..." class="px-3.5 py-2 rounded-xl border text-xs bg-white focus:outline-none" style="border-color: var(--border-soft);">
+            </div>
+          </div>
+
+          <div id="shared-docs-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"><div class="col-span-full text-center py-8 rounded-2xl border border-dashed text-xs" style="border-color: var(--border-soft); color: var(--text-muted);">Chưa có tài liệu nào trong mục này 📚</div></div>
+        </div>
+
+      </section>
+
+      <!-- *****************************************************************
+           TAB 4: 👑 QUẢN TRỊ ADMIN (CHỈ HIỂN THỊ KHI role === 'admin')
+           ***************************************************************** -->
+      <section id="panel-admin" class="animate-tab space-y-6">
+        
+        <!-- 1. Bảng Quản Lý Toàn Bộ Thành Viên -->
+        <div class="pastel-card rounded-3xl p-6">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
+            <div>
+              <h2 class="text-xl font-bold flex items-center gap-2" style="color: var(--primary);">
+                <span>👑</span>
+                <span>Quản Lý Toàn Bộ Thành Viên (<span id="admin-members-total">1</span>)</span>
+              </h2>
+              <p class="text-xs sm:text-sm mt-0.5" style="color: var(--text-muted);">
+                Theo dõi toàn bộ học viên đã tham gia, khóa/mở khóa tài khoản, mời nghỉ ngơi, cộng phút thưởng hoặc phân quyền Admin
+              </p>
+            </div>
+            <input type="text" id="admin-member-search" oninput="renderAdminMembersTable()" placeholder="🔍 Tìm tên hoặc email..." class="w-full sm:w-64 px-3.5 py-2 rounded-xl border text-xs sm:text-sm bg-white focus:outline-none" style="border-color: var(--border-soft);">
+          </div>
+
+          <div class="overflow-x-auto rounded-2xl border" style="border-color: var(--border-soft);">
+            <table class="w-full min-w-[820px] border-collapse text-left text-xs sm:text-sm">
+              <thead>
+                <tr style="background-color: var(--bg-soft);">
+                  <th class="p-3.5 font-extrabold border-b" style="border-color: var(--border-soft);">Thành viên</th>
+                  <th class="p-3.5 font-extrabold border-b" style="border-color: var(--border-soft);">Email / UID</th>
+                  <th class="p-3.5 font-extrabold border-b text-center" style="border-color: var(--border-soft);">Phút học</th>
+                  <th class="p-3.5 font-extrabold border-b text-center" style="border-color: var(--border-soft);">Trạng thái</th>
+                  <th class="p-3.5 font-extrabold border-b text-right" style="border-color: var(--border-soft);">Hành động quản trị</th>
+                </tr>
+              </thead>
+              <tbody id="admin-members-tbody">
+          <tr class="border-b hover:bg-black/[0.015]" style="border-color: var(--border-soft);">
+            <td class="p-3.5">
+              <div class="flex items-center gap-2.5">
+                <img src="data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2280%22%20height%3D%2280%22%20viewBox%3D%220%200%2080%2080%22%3E%3Crect%20width%3D%2280%22%20height%3D%2280%22%20rx%3D%2240%22%20fill%3D%22%23FFE4E6%22%2F%3E%3Ctext%20x%3D%2250%25%22%20y%3D%2254%25%22%20dominant-baseline%3D%22middle%22%20text-anchor%3D%22middle%22%20font-family%3D%22Quicksand%2C%20sans-serif%22%20font-weight%3D%22700%22%20font-size%3D%2234%22%20fill%3D%22%23E11D48%22%3EH%3C%2Ftext%3E%3C%2Fsvg%3E" onerror="this.src='data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2280%22%20height%3D%2280%22%20viewBox%3D%220%200%2080%2080%22%3E%3Crect%20width%3D%2280%22%20height%3D%2280%22%20rx%3D%2240%22%20fill%3D%22%23FFE4E6%22%2F%3E%3Ctext%20x%3D%2250%25%22%20y%3D%2254%25%22%20dominant-baseline%3D%22middle%22%20text-anchor%3D%22middle%22%20font-family%3D%22Quicksand%2C%20sans-serif%22%20font-weight%3D%22700%22%20font-size%3D%2234%22%20fill%3D%22%23E11D48%22%3EH%3C%2Ftext%3E%3C%2Fsvg%3E'" class="w-8 h-8 rounded-full object-cover border" style="border-color: var(--border-soft);">
+                <div>
+                  <div class="font-bold flex items-center gap-1.5">
+                    <span>Học viên mới</span>
+                    <span class="px-1.5 py-0.2 rounded bg-amber-100 text-amber-800 text-[10px] font-extrabold">👑 Admin</span>
+                  </div>
+                  <div class="text-[11px]" style="color: var(--text-muted);">Không có mục tiêu ghim</div>
+                </div>
+              </div>
+            </td>
+            <td class="p-3.5 text-xs">
+              <div class="font-semibold">(Đăng nhập nhanh)</div>
+              <div class="text-[10px] font-mono opacity-60">X3g7c4LMqfYuH9RhcBZiMIgY4zg1</div>
+            </td>
+            <td class="p-3.5 text-center">
+              <span class="font-extrabold" style="color: var(--primary);">0p</span>
+              <div class="text-[10px]" style="color: var(--text-muted);">Hôm nay: 0p</div>
+            </td>
+            <td class="p-3.5 text-center"><span class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-700">🟢 Trực tuyến</span></td>
+            <td class="p-3.5 text-right">
+              <div class="inline-flex flex-wrap items-center justify-end gap-1.5">
+                <button onclick="adminPromptAdjustMinutes('X3g7c4LMqfYuH9RhcBZiMIgY4zg1', 'Học viên mới', 0)" class="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-sky-50 text-sky-700 hover:bg-sky-100">
+                  ⏱️ +/- Phút
+                </button>
+                <button onclick="adminPromptKickMember('X3g7c4LMqfYuH9RhcBZiMIgY4zg1', 'Học viên mới')" class="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-amber-50 text-amber-800 hover:bg-amber-100">
+                  👋 Mời nghỉ
+                </button>
+                
+              </div>
+            </td>
+          </tr>
+        </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- 2. Quản Lý Nội Dung Chung (Thông báo, Ngày thi, Tài liệu chung) -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          
+          <!-- Cập nhật Bảng Thông Báo & Đếm Ngược Ngày Thi (6 cột) -->
+          <div class="lg:col-span-6">
+            <div class="pastel-card rounded-3xl p-6 h-full">
+              <h3 class="text-lg font-bold flex items-center gap-2 mb-1">
+                <span>📢</span>
+                <span>Cập Nhật Thông Báo &amp; Ngày Thi Chung</span>
+              </h3>
+              <p class="text-xs mb-4" style="color: var(--text-muted);">
+                Lưu trực tiếp lên Cloud Firestore và đồng bộ tức thì tới tất cả học viên
+              </p>
+
+              <form onsubmit="adminSaveGeneralSettings(event)" class="space-y-3.5">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label class="block text-xs font-bold mb-1">Tên trang web *</label>
+                    <input type="text" id="adm-site-title" required="" class="w-full px-3.5 py-2 rounded-xl border text-xs sm:text-sm font-bold bg-white focus:outline-none" style="border-color: var(--border-soft);">
+                  </div>
+                  <div>
+                    <label class="block text-xs font-bold mb-1">Khẩu hiệu (Slogan) *</label>
+                    <input type="text" id="adm-site-slogan" required="" class="w-full px-3.5 py-2 rounded-xl border text-xs sm:text-sm bg-white focus:outline-none" style="border-color: var(--border-soft);">
+                  </div>
+                </div>
+
+                <div>
+                  <label class="block text-xs font-bold mb-1">Nội dung Bảng Thông Báo bật lên *</label>
+                  <textarea id="adm-announcement" rows="4" required="" class="w-full px-3.5 py-2 rounded-xl border text-xs sm:text-sm bg-white focus:outline-none" style="border-color: var(--border-soft);"></textarea>
+                </div>
+
+                <div class="p-3.5 rounded-2xl border space-y-3" style="background-color: var(--bg-soft); border-color: var(--border-soft);">
+                  <p class="text-xs font-extrabold" style="color: var(--primary);">⏳ Lịch Đếm Ngược Ngày Thi Ghim Đầu Trang:</p>
+                  <div>
+                    <label class="block text-[11px] font-bold mb-1">Tên kỳ thi *</label>
+                    <input type="text" id="adm-exam-title" required="" class="w-full px-3 py-2 rounded-xl border text-xs sm:text-sm font-bold bg-white focus:outline-none" style="border-color: var(--border-soft);">
+                  </div>
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    <div>
+                      <label class="block text-[11px] font-bold mb-1">Ngày &amp; Giờ thi *</label>
+                      <input type="datetime-local" id="adm-exam-datetime" required="" class="w-full px-3 py-2 rounded-xl border text-xs bg-white focus:outline-none" style="border-color: var(--border-soft);">
+                    </div>
+                    <div>
+                      <label class="block text-[11px] font-bold mb-1">Lời nhắn động viên</label>
+                      <input type="text" id="adm-exam-goal" class="w-full px-3 py-2 rounded-xl border text-xs bg-white focus:outline-none" style="border-color: var(--border-soft);">
+                    </div>
+                  </div>
+                </div>
+
+                <button type="submit" class="btn-primary w-full py-2.5 rounded-xl text-sm font-bold shadow-2xs">
+                  💾 Lưu &amp; Đồng bộ cho cả lớp
+                </button>
+              </form>
+            </div>
+          </div>
+
+          <!-- Thêm / Xóa Tài Liệu Chung (6 cột) -->
+          <div class="lg:col-span-6">
+            <div class="pastel-card rounded-3xl p-6 h-full flex flex-col justify-between">
+              <div>
+                <h3 class="text-lg font-bold flex items-center gap-2 mb-1">
+                  <span>📚</span>
+                  <span>Quản Lý Kho Tài Liệu Chung</span>
+                </h3>
+                <p class="text-xs mb-4" style="color: var(--text-muted);">
+                  Thêm link PDF, Google Drive, Notion để tất cả thành viên cùng học
+                </p>
+
+                <form onsubmit="adminAddSharedDocument(event)" class="space-y-3 mb-5 p-4 rounded-2xl border" style="background-color: var(--bg-soft); border-color: var(--border-soft);">
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    <div>
+                      <label class="block text-[11px] font-bold mb-1">Tiêu đề tài liệu *</label>
+                      <input type="text" id="adm-doc-title" required="" placeholder="VD: Đề cương ôn tập Toán 12" class="w-full px-3 py-2 rounded-xl border text-xs font-bold bg-white focus:outline-none" style="border-color: var(--border-soft);">
+                    </div>
+                    <div>
+                      <label class="block text-[11px] font-bold mb-1">Môn học *</label>
+                      <select id="adm-doc-cat" class="w-full px-3 py-2 rounded-xl border text-xs font-bold bg-white focus:outline-none" style="border-color: var(--border-soft);">
+                        <option value="Toán">📐 Toán</option>
+                        <option value="Ngữ Văn">📖 Ngữ Văn</option>
+                        <option value="Ngoại Ngữ">🌍 Ngoại Ngữ</option>
+                        <option value="Tự Học">🌿 Tự Học</option>
+                        <option value="Khác">🌸 Khác</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div>
+                    <label class="block text-[11px] font-bold mb-1">Đường link (Drive / Notion / PDF) *</label>
+                    <input type="url" id="adm-doc-url" required="" placeholder="https://drive.google.com/..." class="w-full px-3 py-2 rounded-xl border text-xs bg-white focus:outline-none" style="border-color: var(--border-soft);">
+                  </div>
+                  <div>
+                    <label class="block text-[11px] font-bold mb-1">Mô tả ngắn</label>
+                    <input type="text" id="adm-doc-desc" placeholder="Ghi chú nội dung tài liệu..." class="w-full px-3 py-2 rounded-xl border text-xs bg-white focus:outline-none" style="border-color: var(--border-soft);">
+                  </div>
+                  <button type="submit" class="btn-primary w-full py-2 rounded-xl text-xs sm:text-sm font-bold">
+                    + Đăng tải tài liệu chung
+                  </button>
+                </form>
+              </div>
+
+              <div>
+                <h4 class="text-xs font-extrabold uppercase tracking-wider mb-2" style="color: var(--text-muted);">
+                  Tài liệu đang hiển thị (<span id="adm-docs-count">0</span>):
+                </h4>
+                <ul id="adm-docs-list" class="space-y-2 max-h-44 overflow-y-auto pr-1"><li class="text-xs italic" style="color: var(--text-muted);">Chưa có tài liệu nào.</li></ul>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- 3. Trình Cấu Hình Firebase & Xuất Web Độc Lập (.id.vn) -->
+        <div class="pastel-card rounded-3xl p-6 sm:p-7" style="background: linear-gradient(145deg, var(--bg-card) 0%, var(--bg-soft) 100%);">
+          <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+            <div class="lg:col-span-7 space-y-3.5">
+              <span class="px-3 py-1 rounded-full text-xs font-extrabold bg-white border inline-flex items-center gap-1.5" style="color: var(--primary); border-color: var(--border-soft);">
+                <span>🚀</span>
+                <span>Xuất Bản Lên Tên Miền Riêng (.id.vn)</span>
+              </span>
+              <h3 class="font-heading text-lg sm:text-xl font-bold">
+                Trình Cấu Hình Firebase &amp; Đóng Gói File <code class="px-1.5 py-0.5 rounded bg-white text-sm">index.html</code>
+              </h3>
+              <p class="text-xs sm:text-sm leading-relaxed" style="color: var(--text-muted);">
+                Để chạy trang web này trên tên miền <strong>.id.vn</strong> của bạn (qua GitHub Pages hoặc Vercel), hãy tạo một dự án miễn phí tại <strong>console.firebase.google.com</strong> (bật <em>Authentication: Google &amp; Anonymous</em> và <em>Cloud Firestore</em>), sau đó dán đoạn mã <code class="font-bold">firebaseConfig</code> và Gmail Admin của bạn vào đây:
+              </p>
+
+              <div class="space-y-3">
+                <div>
+                  <label class="block text-xs font-bold mb-1">Gmail Quản trị viên mặc định (ADMIN_EMAIL)</label>
+                  <input type="email" id="export-admin-email" placeholder="VD: emailcuaban@gmail.com" class="w-full px-3.5 py-2 rounded-xl border text-xs sm:text-sm bg-white focus:outline-none" style="border-color: var(--border-soft);">
+                </div>
+                <div>
+                  <label class="block text-xs font-bold mb-1">Dán đoạn mã firebaseConfig từ Firebase Console</label>
+                  <textarea id="export-firebase-config" rows="5" placeholder="const firebaseConfig = { apiKey: &quot;...&quot;, authDomain: &quot;...&quot;, projectId: &quot;...&quot;, ... };" class="w-full p-3 rounded-xl border text-xs font-mono bg-white focus:outline-none" style="border-color: var(--border-soft);"></textarea>
+                </div>
+                <button onclick="exportStandaloneWithFirebase()" class="btn-primary w-full sm:w-auto px-6 py-3 rounded-2xl text-sm font-bold shadow-md flex items-center justify-center gap-2">
+                  <span>⬇️</span>
+                  <span>Tải file index.html hoàn chỉnh</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Hướng dẫn Security Rules chuẩn cho Firebase Console -->
+            <div class="lg:col-span-5 p-4 rounded-2xl bg-white border space-y-2.5" style="border-color: var(--border-soft);">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-extrabold" style="color: var(--primary);">🛡️ Quy tắc Firestore Rules khuyên dùng:</span>
+                <button onclick="copyFirestoreRules()" class="btn-soft px-2.5 py-1 rounded-lg text-[11px] font-bold">
+                  📋 Sao chép
+                </button>
+              </div>
+              <p class="text-[11px]" style="color: var(--text-muted);">
+                Dán vào mục <strong>Firestore Database → Rules</strong> trên Firebase Console để bảo vệ dữ liệu phòng học:
+              </p>
+              <pre id="firestore-rules-code" class="p-3 rounded-xl bg-gray-900 text-emerald-300 text-[10px] font-mono overflow-x-auto leading-relaxed">rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /artifacts/{appId}/public/data/{document=**} {
+      allow read, write: if request.auth != null;
+    }
+    match /artifacts/{appId}/users/{userId}/{document=**} {
+      allow read, write: if request.auth != null &amp;&amp; request.auth.uid == userId;
+    }
+  }
+}</pre>
+            </div>
+          </div>
+        </div>
+
+      </section>
+
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="mt-auto py-5 border-t text-center text-xs" style="border-color: var(--border-soft); color: var(--text-muted);">
+      <p>🌷 Góc Học Nhỏ — Phòng Học Trực Tuyến Đồng Bộ Thời Gian Thực</p>
+    </footer>
+  </div>
+
+  <!-- =====================================================================
+       MODAL 1: POP-UP BẢNG THÔNG BÁO CHUNG (ĐỒNG BỘ TỪ FIRESTORE)
+       ===================================================================== -->
+  <div id="modal-announcement" class="fixed inset-0 z-50 items-center justify-center p-4 bg-black/35 backdrop-blur-xs hidden">
+    <div class="pastel-card rounded-3xl max-w-lg w-full p-6 sm:p-7 relative animate-pop-in bg-white">
+      <button onclick="closeAnnouncementModal()" aria-label="Đóng thông báo" class="absolute top-4 right-4 w-9 h-9 rounded-full flex items-center justify-center text-xl font-bold transition hover:bg-gray-100" style="color: var(--text-muted);">
+        ×
+      </button>
+
+      <div class="mb-4">
+        <span class="px-3.5 py-1.5 rounded-2xl text-xs sm:text-sm font-extrabold tracking-wide inline-flex items-center gap-1.5" style="background-color: var(--bg-soft); color: var(--primary);">
+          <span>📢</span>
+          <span>THÔNG BÁO PHÒNG HỌC</span>
+        </span>
+      </div>
+
+      <div id="modal-announcement-text" class="text-sm sm:text-base leading-relaxed p-4 rounded-2xl border whitespace-pre-line" style="background-color: var(--bg-soft); border-color: var(--border-soft); color: var(--text-main);">Chào mừng bạn đến với Phòng Học Trực Tuyến Góc Học Nhỏ! 🌸
+
+• Bật đồng hồ Pomodoro để trạng thái của bạn tự động sáng đèn trên Phòng Học Chung.
+• Ghim nhiệm vụ đang làm để cả lớp cùng cổ vũ nhau nhé!</div>
+
+      <div class="mt-5 flex justify-end">
+        <button onclick="closeAnnouncementModal()" class="btn-primary px-6 py-2.5 rounded-xl text-sm font-bold">
+          Vào học ngay 🌸
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- =====================================================================
+       MODAL 2: ADMIN CHỈNH SỬA Ô THỜI KHÓA BIỂU CHUNG
+       ===================================================================== -->
+  <div id="modal-tt-editor" class="fixed inset-0 z-50 hidden items-center justify-center p-4 bg-black/35 backdrop-blur-xs">
+    <div class="pastel-card rounded-3xl max-w-md w-full p-6 relative animate-pop-in bg-white">
+      <button onclick="closeTimetableEditor()" class="absolute top-4 right-4 w-9 h-9 rounded-full flex items-center justify-center text-xl font-bold hover:bg-gray-100" style="color: var(--text-muted);">×</button>
+      <h3 class="text-lg font-bold mb-1" style="color: var(--primary);">📅 Chỉnh Sửa Thời Khóa Biểu Chung</h3>
+      <p id="tt-edit-subtitle" class="text-xs mb-4" style="color: var(--text-muted);"></p>
+
+      <form onsubmit="saveSharedTimetableCell(event)" class="space-y-3">
+        <input type="hidden" id="tt-edit-key">
+        <div>
+          <label class="block text-xs font-bold mb-1">Tên môn học / Ca tự học *</label>
+          <input type="text" id="tt-edit-subject" required="" placeholder="VD: Luyện đề Toán Giải Tích" class="w-full px-3.5 py-2 rounded-xl border text-sm font-bold bg-white focus:outline-none" style="border-color: var(--border-soft);">
+        </div>
+        <div class="grid grid-cols-2 gap-2.5">
+          <div>
+            <label class="block text-xs font-bold mb-1">Giờ học</label>
+            <input type="text" id="tt-edit-time" placeholder="VD: 19:30 - 21:30" class="w-full px-3 py-2 rounded-xl border text-xs bg-white focus:outline-none" style="border-color: var(--border-soft);">
+          </div>
+          <div>
+            <label class="block text-xs font-bold mb-1">Phân loại</label>
+            <select id="tt-edit-cat" class="w-full px-3 py-2 rounded-xl border text-xs font-bold bg-white focus:outline-none" style="border-color: var(--border-soft);">
+              <option value="Toán">📐 Toán</option>
+              <option value="Ngữ Văn">📖 Ngữ Văn</option>
+              <option value="Ngoại Ngữ">🌍 Ngoại Ngữ</option>
+              <option value="Tự Học">🌿 Tự Học</option>
+              <option value="Khác">🌸 Khác</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs font-bold mb-1">Ghi chú / Link Zoom / Google Meet</label>
+          <input type="text" id="tt-edit-note" placeholder="VD: Phòng học chung" class="w-full px-3 py-2 rounded-xl border text-xs bg-white focus:outline-none" style="border-color: var(--border-soft);">
+        </div>
+
+        <div class="pt-2 flex items-center justify-between">
+          <button type="button" id="tt-edit-del-btn" onclick="deleteSharedTimetableCell()" class="px-3 py-2 rounded-xl text-xs font-bold bg-rose-50 text-rose-600 hover:bg-rose-100">
+            🗑️ Xóa ô
+          </button>
+          <div class="flex items-center gap-2 ml-auto">
+            <button type="button" onclick="closeTimetableEditor()" class="btn-soft px-4 py-2 rounded-xl text-xs font-bold">Hủy</button>
+            <button type="submit" class="btn-primary px-5 py-2 rounded-xl text-xs font-bold">Lưu lịch</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- =====================================================================
+       MODAL 3: XÁC NHẬN & NHẬP LIỆU ADMIN (THAY THẾ HOÀN TOÀN CONFIRM/PROMPT)
+       ===================================================================== -->
+  <div id="modal-admin-action" class="fixed inset-0 z-50 hidden items-center justify-center p-4 bg-black/35 backdrop-blur-xs">
+    <div class="pastel-card rounded-3xl max-w-md w-full p-6 relative animate-pop-in bg-white">
+      <h3 id="adm-modal-title" class="text-lg font-bold mb-1.5" style="color: var(--primary);">Xác nhận thao tác</h3>
+      <p id="adm-modal-desc" class="text-xs sm:text-sm leading-relaxed mb-4" style="color: var(--text-muted);"></p>
+
+      <div id="adm-modal-input-wrap" class="hidden mb-4">
+        <label id="adm-modal-input-label" class="block text-xs font-bold mb-1">Số phút điều chỉnh</label>
+        <input type="number" id="adm-modal-input" class="w-full px-3.5 py-2.5 rounded-xl border text-sm font-bold bg-white focus:outline-none" style="border-color: var(--border-soft);">
+      </div>
+
+      <div class="flex items-center justify-end gap-2">
+        <button onclick="closeAdminActionModal()" class="btn-soft px-4 py-2 rounded-xl text-xs sm:text-sm font-bold">Hủy bỏ</button>
+        <button id="adm-modal-confirm-btn" class="btn-primary px-5 py-2 rounded-xl text-xs sm:text-sm font-bold">Xác nhận</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- =====================================================================
+       FIREBASE SDK & TOÀN BỘ LOGIC ỨNG DỤNG THỜI GIAN THỰC
+       ===================================================================== -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import {
+      getAuth,
+      signInWithPopup,
+      GoogleAuthProvider,
+      signInAnonymously,
+      signInWithCustomToken,
+      onAuthStateChanged,
+      signOut
+    } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import {
+      getFirestore,
+      doc,
+      getDoc,
+      setDoc,
+      addDoc,
+      updateDoc,
+      deleteDoc,
+      onSnapshot,
+      collection,
+      increment
+    } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+    /* -------------------------------------------------------------------
+       1. CẤU HÌNH FIREBASE TÙY CHỈNH (TỰ ĐỘNG NHÚNG KHI XUẤT INDEX.HTML)
+       ------------------------------------------------------------------- */
+    /* __CUSTOM_FIREBASE_START__ */
+    const CUSTOM_FIREBASE_CONFIG = {
+      "apiKey": "AIzaSyDw_rS2taNqCr7XpAw1XLiLDXHO8MUT5Es",
+      "authDomain": "goc-hoc-tap-10898.firebaseapp.com",
+      "projectId": "goc-hoc-tap-10898",
+      "storageBucket": "goc-hoc-tap-10898.firebasestorage.app",
+      "messagingSenderId": "229412883631",
+      "appId": "1:229412883631:web:e4a53cd1b4a419b109185a"
+};
+    const CUSTOM_ADMIN_EMAIL = "";
+    /* __CUSTOM_FIREBASE_END__ */
+
+    const appId = typeof __app_id !== "undefined" ? __app_id : "goc-hoc-nho-prod";
+
+    function resolveFirebaseConfig() {
+      // Ưu tiên 1: Biến môi trường __firebase_config
+      if (typeof __firebase_config !== "undefined" && __firebase_config) {
+        try {
+          return typeof __firebase_config === "string"
+            ? JSON.parse(__firebase_config)
+            : __firebase_config;
+        } catch (_) {}
+      }
+      // Ưu tiên 2: Cấu hình nhúng sẵn khi xuất file index.html
+      if (CUSTOM_FIREBASE_CONFIG && CUSTOM_FIREBASE_CONFIG.apiKey) {
+        return CUSTOM_FIREBASE_CONFIG;
+      }
+      // Ưu tiên 3: Cấu hình Admin dán tạm vào trình duyệt
+      try {
+        const saved = localStorage.getItem("ghn_runtime_fb_config");
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (parsed && parsed.apiKey) return parsed;
+        }
+      } catch (_) {}
+      return null;
+    }
+
+    function resolveAdminEmail() {
+      if (CUSTOM_ADMIN_EMAIL) return CUSTOM_ADMIN_EMAIL.trim().toLowerCase();
+      try {
+        return (localStorage.getItem("ghn_runtime_admin_email") || "").trim().toLowerCase();
+      } catch (_) {
+        return "";
+      }
+    }
+
+    // Bộ phân tích cú pháp thông minh chấp nhận cả JSON lẫn JS Object từ Firebase Console
+    function parseFirebaseConfigText(raw) {
+      const cleaned = raw.trim();
+      const firstBrace = cleaned.indexOf("{");
+      const lastBrace = cleaned.lastIndexOf("}");
+      if (firstBrace === -1 || lastBrace === -1) {
+        throw new Error("Không tìm thấy khối cấu hình { ... } hợp lệ.");
+      }
+      let objStr = cleaned.slice(firstBrace, lastBrace + 1);
+      // Bọc ngoặc kép cho các khóa không có ngoặc kép (VD: apiKey: "...")
+      objStr = objStr.replace(/([{,]\s*)([a-zA-Z0-9_]+)\s*:/g, '$1"$2":');
+      // Xóa dấu phẩy thừa trước dấu đóng ngoặc }
+      objStr = objStr.replace(/,\s*}/g, "}");
+      const parsed = JSON.parse(objStr);
+      if (!parsed.apiKey || !parsed.projectId) {
+        throw new Error("Thiếu trường apiKey hoặc projectId trong firebaseConfig.");
+      }
+      return parsed;
+    }
+
+    /* -------------------------------------------------------------------
+       2. TRẠNG THÁI TOÀN CỤC CỦA ỨNG DỤNG
+       ------------------------------------------------------------------- */
+    let fbApp = null;
+    let auth = null;
+    let db = null;
+
+    let currentUser = null;
+    let currentUserProfile = null;
+    let allMembers = [];
+    let sharedDocs = [];
+    let personalTodos = [];
+    let chatMessages = [];
+    let unsubscribers = [];
+    let heartbeatTimer = null;
+
+    // Dữ liệu mặc định ban đầu cho settings/general
+    const DEFAULT_SETTINGS = {
+      siteTitle: "🌷 Góc Học Nhỏ",
+      siteSlogan: "Một góc nhỏ cho những ngày cố gắng",
+      announcement: "Chào mừng bạn đến với Phòng Học Trực Tuyến Góc Học Nhỏ! 🌸\n\n• Bật đồng hồ Pomodoro để trạng thái của bạn tự động sáng đèn trên Phòng Học Chung.\n• Ghim nhiệm vụ đang làm để cả lớp cùng cổ vũ nhau nhé!",
+      examTitle: "Kỳ Thi Tốt Nghiệp THPT Quốc Gia",
+      examDatetime: new Date(Date.now() + 45 * 24 * 60 * 60 * 1000).toISOString().slice(0, 16),
+      examGoal: "Giữ vững kỷ luật mỗi ngày, cùng nhau chạm tới ước mơ!",
+      timetable: {
+        "morning_0": { subject: "Toán Giải Tích", time: "07:30 - 09:30", category: "Toán", note: "Ca sáng" },
+        "morning_2": { subject: "Tiếng Anh Học Thuật", time: "08:00 - 10:00", category: "Ngoại Ngữ", note: "Luyện đề" },
+        "morning_4": { subject: "Ngữ Văn Chuyên Sâu", time: "07:30 - 09:30", category: "Ngữ Văn", note: "Đọc hiểu" },
+        "afternoon_1": { subject: "Tự Học Tập Trung", time: "14:00 - 16:30", category: "Tự Học", note: "Phòng chung" },
+        "afternoon_5": { subject: "Tổng Ôn Kiến Thức", time: "14:30 - 17:00", category: "Tự Học", note: "Cuối tuần" },
+        "evening_0": { subject: "Luyện Đề Toán (2 Pomodoro)", time: "19:30 - 21:00", category: "Toán", note: "Tối T2" },
+        "evening_3": { subject: "Từ Vựng & Nghe Hiểu", time: "20:00 - 21:30", category: "Ngoại Ngữ", note: "Tối T5" }
+      }
+    };
+
+    let generalSettings = { ...DEFAULT_SETTINGS };
+    let pendingGuestIdentity = null;
+    let firstAnnouncementShown = false;
+
+    /* -------------------------------------------------------------------
+       3. HÀM TIỆN ÍCH GIAO DIỆN (TOAST, ESCAPE HTML, AVATAR, THEME)
+       ------------------------------------------------------------------- */
+    window.showToast = function(msg, icon = "🌸") {
+      const container = document.getElementById("toast-container");
+      const el = document.createElement("div");
+      el.className = "pointer-events-auto flex items-center gap-2 px-4 py-3 rounded-2xl bg-white border shadow-lg text-xs sm:text-sm font-bold animate-pop-in";
+      el.style.borderColor = "var(--border-soft)";
+      el.innerHTML = `<span class="text-base">${icon}</span><span>${escapeHTML(msg)}</span>`;
+      container.appendChild(el);
+      setTimeout(() => {
+        el.style.opacity = "0";
+        el.style.transform = "translateY(6px)";
+        el.style.transition = "all 0.25s ease";
+        setTimeout(() => el.remove(), 250);
+      }, 2800);
+    };
+
+    function escapeHTML(str) {
+      const div = document.createElement("div");
+      div.textContent = String(str ?? "");
+      return div.innerHTML;
+    }
+
+    function buildFallbackAvatar(name) {
+      const initial = (name || "H").trim().charAt(0).toUpperCase();
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 80 80"><rect width="80" height="80" rx="40" fill="#FFE4E6"/><text x="50%" y="54%" dominant-baseline="middle" text-anchor="middle" font-family="Quicksand, sans-serif" font-weight="700" font-size="34" fill="#E11D48">${initial}</text></svg>`;
+      return "data:image/svg+xml;utf8," + encodeURIComponent(svg);
+    }
+
+    function getCategoryBadge(cat) {
+      const map = {
+        "Toán": "bg-rose-100 text-rose-700",
+        "Ngữ Văn": "bg-amber-100 text-amber-800",
+        "Ngoại Ngữ": "bg-sky-100 text-sky-700",
+        "Tự Học": "bg-emerald-100 text-emerald-700",
+        "Khác": "bg-violet-100 text-violet-700"
+      };
+      return map[cat] || "bg-pink-100 text-pink-700";
+    }
+
+    window.setTheme = function(theme) {
+      document.documentElement.setAttribute("data-theme", theme);
+      try { localStorage.setItem("ghn_rt_theme", theme); } catch (_) {}
+      ["peach", "matcha", "cream"].forEach(t => {
+        document.querySelectorAll(`.theme-dot-${t}`).forEach(dot => {
+          if (t === theme) dot.classList.add("ring-2", "ring-offset-1", "scale-110");
+          else dot.classList.remove("ring-2", "ring-offset-1", "scale-110");
+        });
+      });
+    };
+
+    window.switchTab = function(tabKey) {
+      const keys = ["focus", "room", "resources", "admin"];
+      keys.forEach(k => {
+        const panel = document.getElementById(`panel-${k}`);
+        const btn = document.getElementById(`tab-btn-${k}`);
+        if (!panel || !btn) return;
+        if (k === tabKey) {
+          panel.classList.remove("hidden");
+          btn.style.backgroundColor = "var(--primary)";
+          btn.style.color = "#FFFFFF";
+        } else {
+          panel.classList.add("hidden");
+          btn.style.backgroundColor = "var(--bg-soft)";
+          btn.style.color = "var(--text-main)";
+        }
+      });
+    };
+
+    window.openAnnouncementModal = function() {
+      const m = document.getElementById("modal-announcement");
+      m.classList.remove("hidden");
+      m.classList.add("flex");
+    };
+
+    window.closeAnnouncementModal = function() {
+      const m = document.getElementById("modal-announcement");
+      m.classList.add("hidden");
+      m.classList.remove("flex");
+    };
+
+    /* -------------------------------------------------------------------
+       4. KHỞI TẠO FIREBASE & HỆ THỐNG ĐĂNG NHẬP / PHÂN QUYỀN ADMIN
+       ------------------------------------------------------------------- */
+    function initFirebaseServices() {
+      const cfg = resolveFirebaseConfig();
+      if (!cfg) {
+        document.getElementById("missing-firebase-box").classList.remove("hidden");
+        return false;
+      }
+      document.getElementById("missing-firebase-box").classList.add("hidden");
+      if (!fbApp) {
+        fbApp = initializeApp(cfg);
+        auth = getAuth(fbApp);
+        db = getFirestore(fbApp);
+        attachAuthObserver();
+      }
+      return true;
+    }
+
+    window.applyQuickFirebaseConfig = function() {
+      const raw = document.getElementById("quick-fb-config-input").value;
+      try {
+        const parsed = parseFirebaseConfigText(raw);
+        localStorage.setItem("ghn_runtime_fb_config", JSON.stringify(parsed));
+        initFirebaseServices();
+        showToast("Đã kết nối Firebase thành công!", "✅");
+      } catch (err) {
+        showToast(err.message || "Cấu hình không hợp lệ", "⚠️");
+      }
+    };
+
+    // Đăng nhập bằng Google (GoogleAuthProvider)
+    window.loginWithGoogle = async function() {
+      if (!initFirebaseServices()) {
+        showToast("Vui lòng nhập cấu hình Firebase trước nhé!", "⚠️");
+        return;
+      }
+      const btn = document.getElementById("btn-google-login");
+      btn.disabled = true;
+      try {
+        const provider = new GoogleAuthProvider();
+        await signInWithPopup(auth, provider);
+        showToast("Đăng nhập Google thành công!", "🎉");
+      } catch (err) {
+        console.error("Google Sign-In error:", err);
+        showToast("Trình duyệt chặn pop-up Google. Bạn hãy dùng ô Đăng nhập nhanh bên dưới nhé!", "🌸");
+      } finally {
+        btn.disabled = false;
+      }
+    };
+
+    // Đăng nhập nhanh dành cho Khách / Email
+    window.loginWithQuickGuest = async function(e) {
+      e.preventDefault();
+      if (!initFirebaseServices()) {
+        showToast("Vui lòng nhập cấu hình Firebase trước nhé!", "⚠️");
+        return;
+      }
+      const nameVal = document.getElementById("guest-name-input").value.trim();
+      const emailVal = document.getElementById("guest-email-input").value.trim();
+      if (!nameVal) return;
+
+      const btn = document.getElementById("btn-guest-login");
+      btn.disabled = true;
+      btn.textContent = "Đang vào phòng học...";
+
+      pendingGuestIdentity = { displayName: nameVal, email: emailVal };
+      try {
+        localStorage.setItem("ghn_last_guest_name", nameVal);
+        localStorage.setItem("ghn_last_guest_email", emailVal);
+      } catch (_) {}
+
+      try {
+        if (typeof __initial_auth_token !== "undefined" && __initial_auth_token) {
+          await signInWithCustomToken(auth, __initial_auth_token);
+        } else {
+          await signInAnonymously(auth);
+        }
+        showToast(`Chào mừng ${nameVal} đến với phòng học!`, "🌷");
+      } catch (err) {
+        console.error("Guest Sign-In error:", err);
+        showToast("Không thể đăng nhập: " + (err.message || "Lỗi kết nối"), "⚠️");
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "🌸 Vào Phòng Học Ngay";
+      }
+    };
+
+    window.logoutUser = async function() {
+      if (currentUser && db) {
+        try {
+          await updateDoc(doc(db, "artifacts", appId, "public", "data", "users", currentUser.uid), {
+            isOnline: false,
+            isStudying: false,
+            statusText: "💤 Ngoại tuyến",
+            lastActive: Date.now()
+          });
+        } catch (_) {}
+      }
+      clearListenersAndTimers();
+      if (auth) {
+        try { await signOut(auth); } catch (_) {}
+      }
+      currentUser = null;
+      currentUserProfile = null;
+      showScreen("auth");
+      showToast("Đã đăng xuất khỏi phòng học", "👋");
+    };
+
+    function showScreen(screenName) {
+      document.getElementById("screen-auth").classList.add("hidden");
+      document.getElementById("screen-banned").classList.add("hidden");
+      document.getElementById("screen-banned").classList.remove("flex");
+      document.getElementById("screen-app").classList.add("hidden");
+      document.getElementById("screen-app").classList.remove("flex");
+
+      if (screenName === "auth") {
+        document.getElementById("screen-auth").classList.remove("hidden");
+      } else if (screenName === "banned") {
+        document.getElementById("screen-banned").classList.remove("hidden");
+        document.getElementById("screen-banned").classList.add("flex");
+      } else if (screenName === "app") {
+        document.getElementById("screen-app").classList.remove("hidden");
+        document.getElementById("screen-app").classList.add("flex");
+      }
+    }
+
+    function clearListenersAndTimers() {
+      unsubscribers.forEach(u => { try { u(); } catch (_) {} });
+      unsubscribers = [];
+      if (heartbeatTimer) {
+        clearInterval(heartbeatTimer);
+        heartbeatTimer = null;
+      }
+    }
+
+    function attachAuthObserver() {
+      onAuthStateChanged(auth, async (user) => {
+        if (!user) {
+          clearListenersAndTimers();
+          currentUser = null;
+          currentUserProfile = null;
+          showScreen("auth");
+          return;
+        }
+
+        currentUser = user;
+        await syncUserDocumentOnLogin(user);
+        startRealtimeListeners(user.uid);
+      });
+    }
+
+    async function syncUserDocumentOnLogin(user) {
+      const userRef = doc(db, "artifacts", appId, "public", "data", "users", user.uid);
+      const todayStr = new Date().toISOString().slice(0, 10);
+      const adminEmailCfg = resolveAdminEmail();
+
+      let snap = null;
+      try {
+        snap = await getDoc(userRef);
+      } catch (err) {
+        console.error("Error reading user profile:", err);
+      }
+
+      const chosenName =
+        (pendingGuestIdentity && pendingGuestIdentity.displayName) ||
+        user.displayName ||
+        (snap && snap.exists() && snap.data().displayName) ||
+        "Học viên mới";
+
+      const chosenEmail =
+        (pendingGuestIdentity && pendingGuestIdentity.email) ||
+        user.email ||
+        (snap && snap.exists() && snap.data().email) ||
+        "";
+
+      pendingGuestIdentity = null;
+
+      const isAdminEmailMatch =
+        adminEmailCfg && chosenEmail && chosenEmail.trim().toLowerCase() === adminEmailCfg;
+
+      if (snap && snap.exists()) {
+        const existing = snap.data();
+        const nextRole = isAdminEmailMatch ? "admin" : (existing.role || "student");
+        const todayMins = existing.todayDate === todayStr ? (existing.todayMinutes || 0) : 0;
+
+        await updateDoc(userRef, {
+          displayName: chosenName,
+          email: chosenEmail,
+          photoURL: user.photoURL || existing.photoURL || "",
+          role: nextRole,
+          todayDate: todayStr,
+          todayMinutes: todayMins,
+          isOnline: true,
+          isStudying: false,
+          statusText: "🌸 Đang trong phòng",
+          lastActive: Date.now()
+        });
+      } else {
+        await setDoc(userRef, {
+          uid: user.uid,
+          displayName: chosenName,
+          email: chosenEmail,
+          photoURL: user.photoURL || "",
+          totalMinutes: 0,
+          todayMinutes: 0,
+          todayDate: todayStr,
+          isOnline: true,
+          isStudying: false,
+          currentTask: "",
+          statusText: "🌸 Đang trong phòng",
+          isBanned: false,
+          role: isAdminEmailMatch ? "admin" : "student",
+          lastActive: Date.now()
+        });
+      }
+    }
+
+    // Cho phép người tạo phòng đầu tiên nhận quyền Admin nếu hệ thống chưa có Admin
+    window.claimInitialAdmin = async function() {
+      if (!currentUser || !db) return;
+      const hasAnyAdmin = allMembers.some(m => m.role === "admin");
+      if (hasAnyAdmin) {
+        showToast("Phòng học đã có Quản trị viên rồi!", "ℹ️");
+        return;
+      }
+      try {
+        await updateDoc(doc(db, "artifacts", appId, "public", "data", "users", currentUser.uid), {
+          role: "admin"
+        });
+        showToast("Chúc mừng! Bạn đã trở thành Quản trị viên (Admin) của phòng học!", "👑");
+      } catch (err) {
+        showToast("Không thể cấp quyền: " + err.message, "⚠️");
+      }
+    };
+
+    /* -------------------------------------------------------------------
+       5. CÁC BỘ LẮNG NGHE THỜI GIAN THỰC (FIRESTORE ONSNAPSHOT)
+       ------------------------------------------------------------------- */
+    function startRealtimeListeners(uid) {
+      clearListenersAndTimers();
+
+      // A. Lắng nghe hồ sơ cá nhân (phát hiện khóa tài khoản isBanned & phân quyền Admin)
+      const myUserRef = doc(db, "artifacts", appId, "public", "data", "users", uid);
+      const unsubMe = onSnapshot(
+        myUserRef,
+        (docSnap) => {
+          if (!docSnap.exists()) return;
+          currentUserProfile = docSnap.data();
+
+          // Kiểm tra trạng thái bị khóa
+          if (currentUserProfile.isBanned === true) {
+            showScreen("banned");
+            return;
+          }
+
+          showScreen("app");
+          updateMyHeaderUI();
+
+          if (!firstAnnouncementShown) {
+            firstAnnouncementShown = true;
+            openAnnouncementModal();
+          }
+        },
+        (err) => console.error("My user snapshot error:", err)
+      );
+      unsubscribers.push(unsubMe);
+
+      // B. Lắng nghe cấu hình chung (settings/general)
+      const settingsRef = doc(db, "artifacts", appId, "public", "data", "settings", "general");
+      const unsubSettings = onSnapshot(
+        settingsRef,
+        async (docSnap) => {
+          if (!docSnap.exists()) {
+            // Khởi tạo dữ liệu mặc định nếu chưa tồn tại trên Firestore
+            try { await setDoc(settingsRef, DEFAULT_SETTINGS); } catch (_) {}
+            generalSettings = { ...DEFAULT_SETTINGS };
+          } else {
+            generalSettings = { ...DEFAULT_SETTINGS, ...docSnap.data() };
+          }
+          applyGeneralSettingsUI();
+        },
+        (err) => console.error("Settings snapshot error:", err)
+      );
+      unsubscribers.push(unsubSettings);
+
+      // C. Lắng nghe toàn bộ thành viên (users collection) -> Phòng Học Chung + Bảng Xếp Hạng + Admin Table
+      const usersCol = collection(db, "artifacts", appId, "public", "data", "users");
+      const unsubUsers = onSnapshot(
+        usersCol,
+        (snap) => {
+          allMembers = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+          renderStudyRoomAndLeaderboard();
+          renderAdminMembersTable();
+          updateClaimAdminButtonVisibility();
+        },
+        (err) => console.error("Users snapshot error:", err)
+      );
+      unsubscribers.push(unsubUsers);
+
+      // D. Lắng nghe Tin nhắn Trò chuyện & Cổ vũ (messages collection)
+      const msgsCol = collection(db, "artifacts", appId, "public", "data", "messages");
+      const unsubMsgs = onSnapshot(
+        msgsCol,
+        (snap) => {
+          chatMessages = snap.docs
+            .map(d => ({ id: d.id, ...d.data() }))
+            .sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0))
+            .slice(-80);
+          renderChatMessages();
+        },
+        (err) => console.error("Messages snapshot error:", err)
+      );
+      unsubscribers.push(unsubMsgs);
+
+      // E. Lắng nghe Kho Tài Liệu Chung (documents collection)
+      const docsCol = collection(db, "artifacts", appId, "public", "data", "documents");
+      const unsubDocs = onSnapshot(
+        docsCol,
+        (snap) => {
+          sharedDocs = snap.docs
+            .map(d => ({ id: d.id, ...d.data() }))
+            .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+          renderSharedDocuments();
+          renderAdminDocsList();
+        },
+        (err) => console.error("Documents snapshot error:", err)
+      );
+      unsubscribers.push(unsubDocs);
+
+      // F. Lắng nghe Danh sách việc cần làm cá nhân (users/{uid}/todos)
+      const todosCol = collection(db, "artifacts", appId, "users", uid, "todos");
+      const unsubTodos = onSnapshot(
+        todosCol,
+        (snap) => {
+          personalTodos = snap.docs
+            .map(d => ({ id: d.id, ...d.data() }))
+            .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+          renderPersonalTodos();
+        },
+        (err) => console.error("Todos snapshot error:", err)
+      );
+      unsubscribers.push(unsubTodos);
+
+      // G. Nhịp tim duy trì trạng thái Online mỗi 45 giây
+      heartbeatTimer = setInterval(() => {
+        if (!currentUser || !db || document.hidden) return;
+        updateDoc(doc(db, "artifacts", appId, "public", "data", "users", currentUser.uid), {
+          isOnline: true,
+          lastActive: Date.now()
+        }).catch(() => {});
+      }, 45000);
+    }
+
+    // Cập nhật trạng thái Offline khi đóng tab
+    window.addEventListener("beforeunload", () => {
+      if (currentUser && db) {
+        updateDoc(doc(db, "artifacts", appId, "public", "data", "users", currentUser.uid), {
+          isOnline: false,
+          isStudying: false,
+          statusText: "💤 Ngoại tuyến",
+          lastActive: Date.now()
+        }).catch(() => {});
+      }
+    });
+
+    function updateMyHeaderUI() {
+      if (!currentUserProfile) return;
+      const isAdmin = currentUserProfile.role === "admin";
+
+      document.getElementById("user-display-name").textContent = currentUserProfile.displayName || "Học viên";
+      document.getElementById("user-total-mins").textContent = currentUserProfile.totalMinutes || 0;
+      document.getElementById("today-mins-badge").textContent = currentUserProfile.todayMinutes || 0;
+
+      const avatarImg = document.getElementById("user-avatar-img");
+      avatarImg.src = currentUserProfile.photoURL || buildFallbackAvatar(currentUserProfile.displayName);
+      avatarImg.onerror = () => {
+        avatarImg.src = buildFallbackAvatar(currentUserProfile.displayName);
+      };
+
+      const roleBadge = document.getElementById("user-role-badge");
+      const adminTabBtn = document.getElementById("tab-btn-admin");
+      const ttAdminHint = document.getElementById("tt-admin-hint");
+
+      if (isAdmin) {
+        roleBadge.textContent = "👑 Admin";
+        roleBadge.className = "px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-100 text-amber-800";
+        adminTabBtn.classList.remove("hidden");
+        adminTabBtn.classList.add("flex");
+        ttAdminHint.classList.remove("hidden");
+      } else {
+        roleBadge.textContent = "🌱 Học viên";
+        roleBadge.className = "px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-pink-100 text-pink-700";
+        adminTabBtn.classList.add("hidden");
+        adminTabBtn.classList.remove("flex");
+        ttAdminHint.classList.add("hidden");
+        // Nếu bị hạ quyền khi đang mở Tab Admin thì chuyển về Phòng học
+        if (!document.getElementById("panel-admin").classList.contains("hidden")) {
+          switchTab("focus");
+        }
+      }
+
+      // Cập nhật mục tiêu đang ghim ở Tab 1
+      const pinnedTaskEl = document.getElementById("my-pinned-task-display");
+      pinnedTaskEl.textContent = currentUserProfile.currentTask
+        ? `📌 ${currentUserProfile.currentTask}`
+        : "Chưa ghim mục tiêu cụ thể";
+    }
+
+    function updateClaimAdminButtonVisibility() {
+      const btn = document.getElementById("btn-claim-admin");
+      if (!currentUserProfile || currentUserProfile.role === "admin") {
+        btn.classList.add("hidden");
+        return;
+      }
+      const hasAnyAdmin = allMembers.some(m => m.role === "admin");
+      if (!hasAnyAdmin) btn.classList.remove("hidden");
+      else btn.classList.add("hidden");
+    }
+
+    function applyGeneralSettingsUI() {
+      document.getElementById("header-site-title").textContent = generalSettings.siteTitle;
+      document.getElementById("header-site-slogan").textContent = generalSettings.siteSlogan;
+      document.title = `${generalSettings.siteTitle} — Phòng Học Trực Tuyến`;
+      document.getElementById("modal-announcement-text").textContent = generalSettings.announcement;
+
+      document.getElementById("banner-exam-title").textContent = generalSettings.examTitle;
+      document.getElementById("banner-exam-goal").textContent = generalSettings.examGoal;
+
+      // Đồng bộ vào form Admin (nếu người dùng không đang gõ dở)
+      if (document.activeElement?.id !== "adm-site-title") {
+        document.getElementById("adm-site-title").value = generalSettings.siteTitle || "";
+      }
+      if (document.activeElement?.id !== "adm-site-slogan") {
+        document.getElementById("adm-site-slogan").value = generalSettings.siteSlogan || "";
+      }
+      if (document.activeElement?.id !== "adm-announcement") {
+        document.getElementById("adm-announcement").value = generalSettings.announcement || "";
+      }
+      if (document.activeElement?.id !== "adm-exam-title") {
+        document.getElementById("adm-exam-title").value = generalSettings.examTitle || "";
+      }
+      if (document.activeElement?.id !== "adm-exam-datetime") {
+        document.getElementById("adm-exam-datetime").value = generalSettings.examDatetime || "";
+      }
+      if (document.activeElement?.id !== "adm-exam-goal") {
+        document.getElementById("adm-exam-goal").value = generalSettings.examGoal || "";
+      }
+
+      renderSharedTimetable();
+      updateExamBannerCountdown();
+    }
+
+    function updateExamBannerCountdown() {
+      const box = document.getElementById("banner-exam-countdown");
+      const targetMs = new Date(generalSettings.examDatetime).getTime();
+      const diff = targetMs - Date.now();
+      if (isNaN(targetMs) || diff <= 0) {
+        box.innerHTML = `<span class="px-3 py-1 rounded-xl bg-emerald-100 text-emerald-700">🎉 Đã đến ngày thi!</span>`;
+        return;
+      }
+      const d = Math.floor(diff / (1000 * 60 * 60 * 24));
+      const h = Math.floor((diff / (1000 * 60 * 60)) % 24);
+      const m = Math.floor((diff / (1000 * 60)) % 60);
+      const s = Math.floor((diff / 1000) % 60);
+      box.innerHTML = `
+        <span class="px-2.5 py-1 rounded-xl bg-white border" style="border-color: var(--border-soft); color: var(--primary);">${d} ngày</span>
+        <span>:</span>
+        <span class="px-2.5 py-1 rounded-xl bg-white border" style="border-color: var(--border-soft); color: var(--primary);">${String(h).padStart(2, "0")}h</span>
+        <span>:</span>
+        <span class="px-2.5 py-1 rounded-xl bg-white border" style="border-color: var(--border-soft); color: var(--primary);">${String(m).padStart(2, "0")}m</span>
+        <span>:</span>
+        <span class="px-2.5 py-1 rounded-xl bg-white border" style="border-color: var(--border-soft); color: var(--primary);">${String(s).padStart(2, "0")}s</span>
+      `;
+    }
+
+    /* -------------------------------------------------------------------
+       6. TAB 1: ĐỒNG HỒ POMODORO (ĐỒNG BỘ TRẠNG THÁI & CỘNG PHÚT FIRESTORE)
+       ------------------------------------------------------------------- */
+    const RING_CIRCUMFERENCE = 2 * Math.PI * 96;
+    let pomoDurations = { focus: 25, short: 5, long: 15 };
+    let pomoMode = "focus";
+    let pomoTotalSec = 25 * 60;
+    let pomoRemainSec = pomoTotalSec;
+    let pomoRunning = false;
+    let pomoEndTime = null;
+    let pomoInterval = null;
+
+    window.togglePomoSettings = function() {
+      document.getElementById("pomo-custom-box").classList.toggle("hidden");
+    };
+
+    window.applyPomoCustomDurations = function() {
+      const f = Math.max(1, Math.min(180, Number(document.getElementById("cfg-pomo-focus").value) || 25));
+      const s = Math.max(1, Math.min(60, Number(document.getElementById("cfg-pomo-short").value) || 5));
+      const l = Math.max(1, Math.min(90, Number(document.getElementById("cfg-pomo-long").value) || 15));
+      pomoDurations = { focus: f, short: s, long: l };
+      document.getElementById("lbl-min-focus").textContent = f;
+      document.getElementById("lbl-min-short").textContent = s;
+      document.getElementById("lbl-min-long").textContent = l;
+      setPomoMode(pomoMode);
+      document.getElementById("pomo-custom-box").classList.add("hidden");
+      showToast("Đã cập nhật thời gian Pomodoro!", "⏱️");
+    };
+
+    function renderPomoClock() {
+      const m = Math.floor(pomoRemainSec / 60).toString().padStart(2, "0");
+      const s = (pomoRemainSec % 60).toString().padStart(2, "0");
+      document.getElementById("pomo-clock-text").textContent = `${m}:${s}`;
+
+      const ratio = pomoTotalSec > 0 ? pomoRemainSec / pomoTotalSec : 0;
+      document.getElementById("pomo-progress-circle").style.strokeDashoffset = RING_CIRCUMFERENCE * (1 - ratio);
+
+      document.getElementById("pomo-btn-icon").textContent = pomoRunning ? "⏸" : "▶";
+      document.getElementById("pomo-btn-text").textContent = pomoRunning ? "Tạm dừng" : "Bắt đầu";
+    }
+
+    async function syncStudyPresence(isStudying, statusText) {
+      if (!currentUser || !db) return;
+      try {
+        await updateDoc(doc(db, "artifacts", appId, "public", "data", "users", currentUser.uid), {
+          isOnline: true,
+          isStudying,
+          statusText,
+          lastActive: Date.now()
+        });
+      } catch (_) {}
+    }
+
+    window.setPomoMode = function(mode) {
+      if (pomoRunning) {
+        clearInterval(pomoInterval);
+        pomoRunning = false;
+      }
+      pomoMode = mode;
+      pomoTotalSec = pomoDurations[mode] * 60;
+      pomoRemainSec = pomoTotalSec;
+
+      ["focus", "short", "long"].forEach(m => {
+        const b = document.getElementById(`pmode-${m}`);
+        if (m === mode) {
+          b.classList.add("bg-white", "shadow-2xs");
+          b.style.color = "var(--primary)";
+        } else {
+          b.classList.remove("bg-white", "shadow-2xs");
+          b.style.color = "var(--text-muted)";
+        }
+      });
+
+      const subText = {
+        focus: "Sẵn sàng đồng bộ cùng cả phòng ✨",
+        short: "Thư giãn mắt một chút nhé ☕",
+        long: "Nghỉ ngơi nạp năng lượng 🌿"
+      };
+      document.getElementById("pomo-sub-status").textContent = subText[mode];
+      renderPomoClock();
+
+      if (mode !== "focus") {
+        syncStudyPresence(false, "☕ Đang nghỉ ngơi");
+      } else {
+        syncStudyPresence(false, "🌸 Đang trong phòng");
+      }
+    };
+
+    window.togglePomodoroTimer = function() {
+      if (pomoRunning) {
+        clearInterval(pomoInterval);
+        pomoRunning = false;
+        document.getElementById("pomo-sub-status").textContent = "Đang tạm dừng...";
+        renderPomoClock();
+        syncStudyPresence(false, "⏸️ Đang tạm dừng");
+      } else {
+        pomoRunning = true;
+        pomoEndTime = Date.now() + pomoRemainSec * 1000;
+        const activeLabel = pomoMode === "focus" ? "🔥 Đang tập trung" : "☕ Đang nghỉ ngơi";
+        document.getElementById("pomo-sub-status").textContent =
+          pomoMode === "focus" ? "Cả phòng đang thấy bạn tập trung 🔥" : "Đang trong giờ nghỉ thư giãn 🌸";
+        renderPomoClock();
+        syncStudyPresence(pomoMode === "focus", activeLabel);
+
+        pomoInterval = setInterval(async () => {
+          const left = Math.round((pomoEndTime - Date.now()) / 1000);
+          if (left <= 0) {
+            clearInterval(pomoInterval);
+            pomoRunning = false;
+            pomoRemainSec = 0;
+            renderPomoClock();
+            playBellChime();
+
+            if (pomoMode === "focus") {
+              const earnedMins = pomoDurations.focus;
+              document.getElementById("pomo-sub-status").textContent = `Tuyệt vời! +${earnedMins} phút đã được cộng 🎉`;
+              if (currentUser && db) {
+                const todayStr = new Date().toISOString().slice(0, 10);
+                const isSameDay = currentUserProfile && currentUserProfile.todayDate === todayStr;
+                const nextTodayMins = (isSameDay ? (currentUserProfile.todayMinutes || 0) : 0) + earnedMins;
+                try {
+                  await updateDoc(doc(db, "artifacts", appId, "public", "data", "users", currentUser.uid), {
+                    totalMinutes: increment(earnedMins),
+                    todayMinutes: nextTodayMins,
+                    todayDate: todayStr,
+                    isStudying: false,
+                    statusText: "🎉 Vừa xong phiên học",
+                    lastActive: Date.now()
+                  });
+                } catch (err) {
+                  console.error("Failed to add minutes:", err);
+                }
+              }
+              showToast(`Hoàn thành phiên học! Bạn được cộng +${earnedMins} phút!`, "🎉");
+            } else {
+              document.getElementById("pomo-sub-status").textContent = "Hết giờ nghỉ rồi ✨";
+              syncStudyPresence(false, "🌸 Đang trong phòng");
+              showToast("Hết giờ nghỉ, tiếp tục chinh phục mục tiêu nào!", "⏰");
+            }
+          } else {
+            pomoRemainSec = left;
+            renderPomoClock();
+          }
+        }, 250);
+      }
+    };
+
+    window.resetPomodoroTimer = function() {
+      if (pomoRunning) {
+        clearInterval(pomoInterval);
+        pomoRunning = false;
+      }
+      pomoRemainSec = pomoTotalSec;
+      document.getElementById("pomo-sub-status").textContent = "Đã đặt lại đồng hồ ✨";
+      renderPomoClock();
+      syncStudyPresence(false, "🌸 Đang trong phòng");
+    };
+
+    /* -------------------------------------------------------------------
+       7. MIXER ÂM THANH LOFI & THIÊN NHIÊN (100% WEB AUDIO API)
+          1. Nhạc Lofi Chill (Piano điện Fmaj7-Em7-Dm7-Cmaj7 + Vinyl crackle)
+          2. Tiếng Mưa Rơi (Pink/Brown noise lọc tần số)
+          3. Tiếng Quán Cà Phê Yên Tĩnh (Room murmur + Soft ceramic clinks)
+       ------------------------------------------------------------------- */
+    let audioCtx = null;
+    const channelVols = { lofi: 0.55, rain: 0.40, cafe: 0.45 };
+    const runningAudioNodes = {};
+
+    function ensureAudioCtx() {
+      if (!audioCtx) {
+        const Ctx = window.AudioContext || window.webkitAudioContext;
+        audioCtx = new Ctx();
+      }
+      if (audioCtx.state === "suspended") audioCtx.resume();
+    }
+
+    window.playBellChime = function() {
+      try {
+        ensureAudioCtx();
+        const freqs = [523.25, 659.25, 783.99, 1046.5];
+        const t0 = audioCtx.currentTime;
+        freqs.forEach((f, idx) => {
+          const osc = audioCtx.createOscillator();
+          const g = audioCtx.createGain();
+          osc.type = "sine";
+          osc.frequency.setValueAtTime(f, t0 + idx * 0.22);
+          g.gain.setValueAtTime(0.0001, t0 + idx * 0.22);
+          g.gain.exponentialRampToValueAtTime(0.2, t0 + idx * 0.22 + 0.05);
+          g.gain.exponentialRampToValueAtTime(0.0001, t0 + idx * 0.22 + 1.8);
+          osc.connect(g);
+          g.connect(audioCtx.destination);
+          osc.start(t0 + idx * 0.22);
+          osc.stop(t0 + idx * 0.22 + 1.9);
+        });
+      } catch (_) {}
+    };
+
+    function createPinkNoiseBuffer(seconds = 6) {
+      const sr = audioCtx.sampleRate;
+      const len = sr * seconds;
+      const buf = audioCtx.createBuffer(1, len, sr);
+      const data = buf.getChannelData(0);
+      let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0;
+      for (let i = 0; i < len; i++) {
+        const w = Math.random() * 2 - 1;
+        b0 = 0.99886 * b0 + w * 0.0555179;
+        b1 = 0.99332 * b1 + w * 0.0750759;
+        b2 = 0.96900 * b2 + w * 0.1538520;
+        b3 = 0.86650 * b3 + w * 0.3104856;
+        b4 = 0.55000 * b4 + w * 0.5329522;
+        b5 = -0.7616 * b5 - w * 0.0168980;
+        data[i] = (b0 + b1 + b2 + b3 + b4 + b5 + b6 + w * 0.5362) * 0.075;
+        b6 = w * 0.115926;
+      }
+      return buf;
+    }
+
+    function createVinylCrackleBuffer(seconds = 6, density = 0.0016) {
+      const sr = audioCtx.sampleRate;
+      const len = sr * seconds;
+      const buf = audioCtx.createBuffer(1, len, sr);
+      const data = buf.getChannelData(0);
+      for (let i = 0; i < len; i++) {
+        if (Math.random() < density) {
+          const amp = (Math.random() * 0.8 + 0.2) * (Math.random() < 0.5 ? 1 : -1);
+          data[i] = amp;
+          if (i + 1 < len) data[i + 1] = amp * 0.45;
+        } else {
+          data[i] = 0;
+        }
+      }
+      return buf;
+    }
+
+    function startLofiSynth(outGain) {
+      // Tiếng đĩa than nhẹ
+      const vinyl = audioCtx.createBufferSource();
+      vinyl.buffer = createVinylCrackleBuffer(6, 0.0015);
+      vinyl.loop = true;
+      const vinylBp = audioCtx.createBiquadFilter();
+      vinylBp.type = "bandpass";
+      vinylBp.frequency.value = 1850;
+      const vinylG = audioCtx.createGain();
+      vinylG.gain.value = 0.14;
+      vinyl.connect(vinylBp);
+      vinylBp.connect(vinylG);
+      vinylG.connect(outGain);
+      vinyl.start();
+
+      // Bus lọc trầm ấm
+      const lpBus = audioCtx.createBiquadFilter();
+      lpBus.type = "lowpass";
+      lpBus.frequency.value = 1150;
+      lpBus.connect(outGain);
+
+      // Rung băng cassette nhẹ
+      const lfo = audioCtx.createOscillator();
+      lfo.type = "sine";
+      lfo.frequency.value = 0.45;
+      const lfoDepth = audioCtx.createGain();
+      lfoDepth.gain.value = 7;
+      lfo.connect(lfoDepth);
+      lfo.start();
+
+      const CHORDS = [
+        [174.61, 220.00, 261.63, 329.63], // Fmaj7
+        [164.81, 196.00, 246.94, 293.66], // Em7
+        [146.83, 174.61, 220.00, 261.63], // Dm7
+        [130.81, 164.81, 196.00, 246.94]  // Cmaj7
+      ];
+
+      function playChord(freqs, startT, dur) {
+        freqs.forEach((f, idx) => {
+          const t = startT + idx * 0.025;
+          const o1 = audioCtx.createOscillator();
+          const o2 = audioCtx.createOscillator();
+          o1.type = "sine";
+          o2.type = "triangle";
+          o1.frequency.setValueAtTime(f, t);
+          o2.frequency.setValueAtTime(f, t);
+          lfoDepth.connect(o1.detune);
+          lfoDepth.connect(o2.detune);
+
+          const g = audioCtx.createGain();
+          const g2 = audioCtx.createGain();
+          g2.gain.value = 0.2;
+          g.gain.setValueAtTime(0.0001, t);
+          g.gain.linearRampToValueAtTime(0.11, t + 0.08);
+          g.gain.exponentialRampToValueAtTime(0.04, t + dur * 0.65);
+          g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+
+          o1.connect(g);
+          o2.connect(g2);
+          g2.connect(g);
+          g.connect(lpBus);
+
+          o1.start(t);
+          o2.start(t);
+          o1.stop(t + dur + 0.05);
+          o2.stop(t + dur + 0.05);
+        });
+      }
+
+      function playKick(t) {
+        const osc = audioCtx.createOscillator();
+        const g = audioCtx.createGain();
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(102, t);
+        osc.frequency.exponentialRampToValueAtTime(42, t + 0.14);
+        g.gain.setValueAtTime(0.3, t);
+        g.gain.exponentialRampToValueAtTime(0.001, t + 0.22);
+        osc.connect(g);
+        g.connect(lpBus);
+        osc.start(t);
+        osc.stop(t + 0.24);
+      }
+
+      function playSnare(t) {
+        const n = audioCtx.createBufferSource();
+        n.buffer = createPinkNoiseBuffer(0.25);
+        const bp = audioCtx.createBiquadFilter();
+        bp.type = "bandpass";
+        bp.frequency.value = 1100;
+        const g = audioCtx.createGain();
+        g.gain.setValueAtTime(0.15, t);
+        g.gain.exponentialRampToValueAtTime(0.001, t + 0.14);
+        n.connect(bp);
+        bp.connect(g);
+        g.connect(lpBus);
+        n.start(t);
+        n.stop(t + 0.16);
+      }
+
+      const stepSec = 60 / 75 / 2;
+      let step = 0;
+      let nextT = audioCtx.currentTime + 0.05;
+
+      const timer = setInterval(() => {
+        while (nextT < audioCtx.currentTime + 0.25) {
+          const sBar = step % 8;
+          const barIdx = Math.floor(step / 8) % CHORDS.length;
+          const swing = sBar % 2 === 1 ? 0.024 : 0;
+          const t = nextT + swing;
+
+          if (sBar === 0) playChord(CHORDS[barIdx], nextT, stepSec * 6.8);
+          if (sBar === 0 || sBar === 3) playKick(t);
+          if (sBar === 4) playSnare(t);
+
+          nextT += stepSec;
+          step++;
+        }
+      }, 90);
+
+      return () => {
+        clearInterval(timer);
+        try { vinyl.stop(); lfo.stop(); } catch (_) {}
+      };
+    }
+
+    function startRainSynth(outGain) {
+      const src = audioCtx.createBufferSource();
+      src.buffer = createPinkNoiseBuffer(6);
+      src.loop = true;
+
+      const lp = audioCtx.createBiquadFilter();
+      lp.type = "lowpass";
+      lp.frequency.value = 1100;
+
+      const hp = audioCtx.createBiquadFilter();
+      hp.type = "highpass";
+      hp.frequency.value = 230;
+
+      const g = audioCtx.createGain();
+      g.gain.value = 0.78;
+
+      src.connect(hp);
+      hp.connect(lp);
+      lp.connect(g);
+      g.connect(outGain);
+      src.start();
+
+      return () => { try { src.stop(); } catch (_) {} };
+    }
+
+    function startCafeSynth(outGain) {
+      // Tiếng rì rầm không gian ấm áp trong quán cà phê yên tĩnh
+      const murmur = audioCtx.createBufferSource();
+      murmur.buffer = createPinkNoiseBuffer(7);
+      murmur.loop = true;
+
+      const bp = audioCtx.createBiquadFilter();
+      bp.type = "bandpass";
+      bp.frequency.value = 460;
+      bp.Q.value = 0.85;
+
+      const lfo = audioCtx.createOscillator();
+      lfo.type = "sine";
+      lfo.frequency.value = 0.18;
+      const lfoG = audioCtx.createGain();
+      lfoG.gain.value = 0.22;
+
+      const g = audioCtx.createGain();
+      g.gain.value = 0.82;
+      lfo.connect(lfoG);
+      lfoG.connect(g.gain);
+
+      murmur.connect(bp);
+      bp.connect(g);
+      g.connect(outGain);
+      murmur.start();
+      lfo.start();
+
+      // Tiếng tách sứ / muỗng khẽ khàng ngẫu nhiên mỗi vài giây
+      const clinkTimer = setInterval(() => {
+        if (!audioCtx) return;
+        const t = audioCtx.currentTime;
+        const osc = audioCtx.createOscillator();
+        const cg = audioCtx.createGain();
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(1600 + Math.random() * 900, t);
+        cg.gain.setValueAtTime(0.0001, t);
+        cg.gain.exponentialRampToValueAtTime(0.025, t + 0.01);
+        cg.gain.exponentialRampToValueAtTime(0.0001, t + 0.18);
+        osc.connect(cg);
+        cg.connect(outGain);
+        osc.start(t);
+        osc.stop(t + 0.2);
+      }, 4200);
+
+      return () => {
+        clearInterval(clinkTimer);
+        try { murmur.stop(); lfo.stop(); } catch (_) {}
+      };
+    }
+
+    window.toggleAudioChannel = function(ch) {
+      ensureAudioCtx();
+      const card = document.getElementById(`snd-card-${ch}`);
+      const btn = document.getElementById(`snd-btn-${ch}`);
+
+      if (runningAudioNodes[ch]) {
+        runningAudioNodes[ch].stop();
+        runningAudioNodes[ch].gain.disconnect();
+        delete runningAudioNodes[ch];
+
+        card.style.backgroundColor = "var(--bg-soft)";
+        card.style.borderColor = "var(--border-soft)";
+        btn.textContent = "Bật";
+        btn.style.backgroundColor = "#FFFFFF";
+        btn.style.color = "var(--text-main)";
+      } else {
+        const gain = audioCtx.createGain();
+        gain.gain.value = channelVols[ch];
+        gain.connect(audioCtx.destination);
+
+        let stopFn = () => {};
+        if (ch === "lofi") stopFn = startLofiSynth(gain);
+        else if (ch === "rain") stopFn = startRainSynth(gain);
+        else if (ch === "cafe") stopFn = startCafeSynth(gain);
+
+        runningAudioNodes[ch] = { gain, stop: stopFn };
+
+        card.style.backgroundColor = "var(--bg-soft-hover)";
+        card.style.borderColor = "var(--primary)";
+        btn.textContent = "Đang phát";
+        btn.style.backgroundColor = "var(--primary)";
+        btn.style.color = "#FFFFFF";
+      }
+
+      const muteAll = document.getElementById("btn-mute-all-audio");
+      if (Object.keys(runningAudioNodes).length > 0) muteAll.classList.remove("hidden");
+      else muteAll.classList.add("hidden");
+    };
+
+    window.setAudioVolume = function(ch, val) {
+      const v = Number(val);
+      channelVols[ch] = v / 100;
+      document.getElementById(`snd-vol-${ch}`).textContent = `${v}%`;
+      if (runningAudioNodes[ch] && audioCtx) {
+        runningAudioNodes[ch].gain.gain.setTargetAtTime(channelVols[ch], audioCtx.currentTime, 0.04);
+      }
+    };
+
+    window.stopAllAudioChannels = function() {
+      Object.keys(runningAudioNodes).forEach(ch => window.toggleAudioChannel(ch));
+    };
+
+    /* -------------------------------------------------------------------
+       8. DANH SÁCH VIỆC CẦN LÀM CÁ NHÂN + GHIM LÊN PHÒNG HỌC (TAB 1)
+       ------------------------------------------------------------------- */
+    window.addPersonalTodo = async function(e) {
+      e.preventDefault();
+      if (!currentUser || !db) return;
+      const input = document.getElementById("personal-todo-input");
+      const tag = document.getElementById("personal-todo-tag").value;
+      const text = input.value.trim();
+      if (!text) return;
+
+      input.value = "";
+      try {
+        await addDoc(collection(db, "artifacts", appId, "users", currentUser.uid, "todos"), {
+          text,
+          tag,
+          completed: false,
+          createdAt: Date.now()
+        });
+        showToast("Đã thêm việc cần làm!", "✅");
+      } catch (err) {
+        showToast("Không thể thêm việc: " + err.message, "⚠️");
+      }
+    };
+
+    window.togglePersonalTodo = async function(todoId, nextVal) {
+      if (!currentUser || !db) return;
+      try {
+        await updateDoc(doc(db, "artifacts", appId, "users", currentUser.uid, "todos", todoId), {
+          completed: nextVal
+        });
+      } catch (_) {}
+    };
+
+    window.deletePersonalTodo = async function(todoId) {
+      if (!currentUser || !db) return;
+      try {
+        await deleteDoc(doc(db, "artifacts", appId, "users", currentUser.uid, "todos", todoId));
+      } catch (_) {}
+    };
+
+    window.pinTaskToStudyRoom = async function(taskLabel) {
+      if (!currentUser || !db) return;
+      try {
+        await updateDoc(doc(db, "artifacts", appId, "public", "data", "users", currentUser.uid), {
+          currentTask: taskLabel,
+          lastActive: Date.now()
+        });
+        showToast("Đã ghim mục tiêu lên Phòng Học Chung!", "📌");
+      } catch (_) {}
+    };
+
+    window.clearPinnedTask = async function() {
+      if (!currentUser || !db) return;
+      try {
+        await updateDoc(doc(db, "artifacts", appId, "public", "data", "users", currentUser.uid), {
+          currentTask: ""
+        });
+        showToast("Đã bỏ ghim mục tiêu", "🌸");
+      } catch (_) {}
+    };
+
+    function renderPersonalTodos() {
+      const done = personalTodos.filter(t => t.completed).length;
+      document.getElementById("personal-todo-counter").textContent = `${done}/${personalTodos.length} hoàn thành`;
+
+      const ul = document.getElementById("personal-todo-list");
+      if (personalTodos.length === 0) {
+        ul.innerHTML = `<li class="text-center py-8 rounded-2xl border border-dashed text-xs" style="border-color: var(--border-soft); color: var(--text-muted);">Chưa có nhiệm vụ nào. Thêm việc cần làm và ghim lên phòng học để bạn bè cùng thấy nhé! 🌸</li>`;
+        return;
+      }
+
+      ul.innerHTML = personalTodos.map(item => {
+        const taskFull = `[${item.tag}] ${item.text}`;
+        const isPinned = currentUserProfile && currentUserProfile.currentTask === taskFull;
+        return `
+          <li class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 rounded-2xl border transition ${item.completed ? "opacity-65" : ""}" style="background-color: var(--bg-soft); border-color: ${isPinned ? "var(--primary)" : "var(--border-soft)"};">
+            <label class="flex items-center gap-2.5 flex-1 cursor-pointer min-w-0">
+              <input type="checkbox" ${item.completed ? "checked" : ""} onchange="togglePersonalTodo('${item.id}', this.checked)" class="w-4 h-4 rounded accent-rose-500 shrink-0 cursor-pointer" />
+              <span class="px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0 ${getCategoryBadge(item.tag)}">${escapeHTML(item.tag)}</span>
+              <span class="text-xs sm:text-sm font-semibold truncate ${item.completed ? "line-through" : ""}">${escapeHTML(item.text)}</span>
+            </label>
+
+            <div class="flex items-center justify-end gap-1.5 shrink-0">
+              <button onclick="pinTaskToStudyRoom('${escapeHTML(taskFull).replace(/'/g, "\\'")}')" class="px-2.5 py-1 rounded-xl text-[11px] font-bold transition ${isPinned ? "btn-primary" : "btn-soft"}">
+                ${isPinned ? "📌 Đang ghim" : "📌 Ghim lên phòng học"}
+              </button>
+              <button onclick="deletePersonalTodo('${item.id})" class="w-7 h-7 rounded-lg flex items-center justify-center text-xs hover:bg-rose-100 hover:text-rose-600 transition" style="color: var(--text-muted);">
+                ✕
+              </button>
+            </div>
+          </li>
+        `;
+      }).join("");
+    }
+
+    /* -------------------------------------------------------------------
+       9. TAB 2: PHÒNG HỌC CHUNG, BẢNG XẾP HẠNG & TRÒ CHUYỆN CỔ VŨ
+       ------------------------------------------------------------------- */
+    function isMemberTrulyOnline(m) {
+      if (!m || !m.isOnline) return false;
+      // Nếu quá 4 phút không gửi nhịp tim thì coi như đã rời phòng
+      return (Date.now() - (m.lastActive || 0)) < 4 * 60 * 1000;
+    }
+
+    function renderStudyRoomAndLeaderboard() {
+      const visibleMembers = allMembers.filter(m => !m.isBanned);
+      const onlineMembers = visibleMembers.filter(isMemberTrulyOnline);
+
+      document.getElementById("header-online-count").textContent = onlineMembers.length;
+      document.getElementById("room-online-badge").textContent = onlineMembers.length;
+      document.getElementById("room-total-badge").textContent = visibleMembers.length;
+
+      // Sắp xếp: Đang tập trung -> Đang Online -> Ngoại tuyến
+      const sortedRoom = [...visibleMembers].sort((a, b) => {
+        const aOn = isMemberTrulyOnline(a) ? 1 : 0;
+        const bOn = isMemberTrulyOnline(b) ? 1 : 0;
+        if (bOn !== aOn) return bOn - aOn;
+        const aStudy = a.isStudying && aOn ? 1 : 0;
+        const bStudy = b.isStudying && bOn ? 1 : 0;
+        if (bStudy !== aStudy) return bStudy - aStudy;
+        return (b.todayMinutes || 0) - (a.todayMinutes || 0);
+      });
+
+      const grid = document.getElementById("study-room-members-grid");
+      if (sortedRoom.length === 0) {
+        grid.innerHTML = `<div class="col-span-full text-center py-8 text-xs" style="color: var(--text-muted);">Chưa có thành viên nào trong phòng học 🌸</div>`;
+      } else {
+        grid.innerHTML = sortedRoom.map(m => {
+          const online = isMemberTrulyOnline(m);
+          const studying = online && m.isStudying;
+          const isMe = currentUser && m.uid === currentUser.uid;
+          const avatarUrl = m.photoURL || buildFallbackAvatar(m.displayName);
+
+          let statusPill = `<span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-gray-100 text-gray-500">💤 Ngoại tuyến</span>`;
+          if (studying) {
+            statusPill = `<span class="px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-rose-100 text-rose-700 animate-pulse">🔥 Đang tập trung</span>`;
+          } else if (online) {
+            statusPill = `<span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-700">${escapeHTML(m.statusText || "🌸 Đang trong phòng")}</span>`;
+          }
+
+          return `
+            <div class="p-4 rounded-2xl border transition ${online ? "bg-white" : "opacity-75"}" style="background-color: ${studying ? "var(--bg-soft)" : "var(--bg-card)"}; border-color: ${studying ? "var(--primary)" : "var(--border-soft)"};">
+              <div class="flex items-start gap-3">
+                <div class="relative shrink-0">
+                  <img src="${escapeHTML(avatarUrl)}" onerror="this.src='${buildFallbackAvatar(m.displayName)}'" alt="Avatar" class="w-11 h-11 rounded-full object-cover border" style="border-color: var(--border-soft);" />
+                  <span class="absolute bottom-0 right-0 w-3.5 h-3.5 rounded-full border-2 border-white ${online ? "bg-emerald-500" : "bg-gray-300"}"></span>
+                </div>
+
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center justify-between gap-1.5">
+                    <div class="flex items-center gap-1.5 min-w-0">
+                      <h4 class="font-heading text-sm font-bold truncate">
+                        ${escapeHTML(m.displayName || "Học viên")} ${isMe ? "(Bạn)" : ""}
+                      </h4>
+                      ${m.role === "admin" ? `<span class="px-1.5 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-100 text-amber-800 shrink-0">👑 Admin</span>` : ""}
+                    </div>
+                  </div>
+
+                  <div class="mt-1 flex flex-wrap items-center gap-1.5">
+                    ${statusPill}
+                    <span class="text-[11px] font-bold" style="color: var(--text-muted);">
+                      Hôm nay: <strong style="color: var(--primary);">${m.todayMinutes || 0}p</strong>
+                    </span>
+                  </div>
+
+                  <div class="mt-2.5 p-2 rounded-xl text-xs bg-white/80 border" style="border-color: var(--border-soft);">
+                    ${m.currentTask
+                      ? `<span class="font-semibold">📌 ${escapeHTML(m.currentTask)}</span>`
+                      : `<span class="italic" style="color: var(--text-muted);">Chưa ghim mục tiêu cụ thể</span>`}
+                  </div>
+                </div>
+              </div>
+            </div>
+          `;
+        }).join("");
+      }
+
+      // Render Bảng Xếp Hạng Chăm Chỉ (sắp xếp theo totalMinutes)
+      const ranked = [...visibleMembers].sort((a, b) => (b.totalMinutes || 0) - (a.totalMinutes || 0));
+      const maxMins = Math.max(1, ranked[0]?.totalMinutes || 1);
+      const lbEl = document.getElementById("leaderboard-list");
+
+      if (ranked.length === 0) {
+        lbEl.innerHTML = `<p class="text-center text-xs py-4" style="color: var(--text-muted);">Chưa có dữ liệu xếp hạng</p>`;
+      } else {
+        lbEl.innerHTML = ranked.map((m, idx) => {
+          const rankIcon = idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : `#${idx + 1}`;
+          const pct = Math.min(100, Math.round(((m.totalMinutes || 0) / maxMins) * 100));
+          return `
+            <div class="p-2.5 rounded-2xl border" style="background-color: var(--bg-soft); border-color: var(--border-soft);">
+              <div class="flex items-center justify-between gap-2 text-xs mb-1">
+                <div class="flex items-center gap-2 min-w-0">
+                  <span class="font-heading font-extrabold w-6 text-center shrink-0">${rankIcon}</span>
+                  <span class="font-bold truncate">${escapeHTML(m.displayName || "Học viên")}</span>
+                </div>
+                <span class="font-extrabold shrink-0" style="color: var(--primary);">${m.totalMinutes || 0} phút</span>
+              </div>
+              <div class="w-full h-1.5 rounded-full overflow-hidden bg-white">
+                <div class="h-full rounded-full" style="width: ${pct}%; background-color: var(--primary);"></div>
+              </div>
+            </div>
+          `;
+        }).join("");
+      }
+    }
+
+    // Gửi tin nhắn / sticker vào collection messages
+    async function postMessageToFirestore(text) {
+      if (!currentUser || !db || !text.trim()) return;
+      try {
+        await addDoc(collection(db, "artifacts", appId, "public", "data", "messages"), {
+          uid: currentUser.uid,
+          displayName: currentUserProfile?.displayName || "Học viên",
+          role: currentUserProfile?.role || "student",
+          text: text.trim(),
+          createdAt: Date.now()
+        });
+      } catch (err) {
+        showToast("Không gửi được tin nhắn: " + err.message, "⚠️");
+      }
+    }
+
+    window.sendChatMessage = async function(e) {
+      e.preventDefault();
+      const input = document.getElementById("chat-text-input");
+      const val = input.value;
+      input.value = "";
+      await postMessageToFirestore(val);
+    };
+
+    window.sendQuickSticker = async function(stickerText) {
+      await postMessageToFirestore(stickerText);
+    };
+
+    window.deleteChatMessage = async function(msgId) {
+      if (!db) return;
+      try {
+        await deleteDoc(doc(db, "artifacts", appId, "public", "data", "messages", msgId));
+        showToast("Đã xóa tin nhắn", "🗑️");
+      } catch (_) {}
+    };
+
+    function renderChatMessages() {
+      const box = document.getElementById("chat-messages-box");
+      const isAdmin = currentUserProfile && currentUserProfile.role === "admin";
+
+      if (chatMessages.length === 0) {
+        box.innerHTML = `<div class="h-full flex items-center justify-center text-center text-xs" style="color: var(--text-muted);">Hãy gửi lời chào hoặc sticker cổ vũ cả lớp nhé! 🌸</div>`;
+        return;
+      }
+
+      box.innerHTML = chatMessages.map(msg => {
+        const isMine = currentUser && msg.uid === currentUser.uid;
+        const canDel = isAdmin || isMine;
+        const timeStr = msg.createdAt
+          ? new Date(msg.createdAt).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })
+          : "";
+        return `
+          <div class="p-2.5 rounded-2xl bg-white border text-xs" style="border-color: var(--border-soft);">
+            <div class="flex items-center justify-between gap-1 mb-1">
+              <div class="flex items-center gap-1.5 min-w-0">
+                <span class="font-bold truncate" style="color: var(--primary);">${escapeHTML(msg.displayName)}</span>
+                ${msg.role === "admin" ? `<span class="px-1.5 py-0.2 rounded bg-amber-100 text-amber-800 text-[9px] font-extrabold">Admin</span>` : ""}
+                <span class="text-[10px]" style="color: var(--text-muted);">${timeStr}</span>
+              </div>
+              ${canDel ? `<button onclick="deleteChatMessage('${msg.id}')" title="Xóa tin nhắn" class="text-[10px] px-1.5 rounded hover:bg-rose-100 hover:text-rose-600" style="color: var(--text-muted);">✕</button>` : ""}
+            </div>
+            <p class="leading-relaxed break-words">${escapeHTML(msg.text)}</p>
+          </div>
+        `;
+      }).join("");
+
+      box.scrollTop = box.scrollHeight;
+    }
+
+    /* -------------------------------------------------------------------
+       10. TAB 3: THỜI KHÓA BIỂU CHUNG & KHO TÀI LIỆU CHUNG
+       ------------------------------------------------------------------- */
+    const TT_ROWS = [
+      { id: "morning", label: "🌅 Buổi Sáng", sub: "07:30 - 11:30" },
+      { id: "afternoon", label: "☀️ Buổi Chiều", sub: "13:30 - 17:00" },
+      { id: "evening", label: "🌙 Buổi Tối", sub: "19:30 - 21:30" }
+    ];
+    const TT_DAYS = ["Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7", "Chủ Nhật"];
+
+    function getTtCellStyle(cat) {
+      const m = {
+        "Toán": "bg-rose-50 border-rose-200 text-rose-900",
+        "Ngữ Văn": "bg-amber-50 border-amber-200 text-amber-950",
+        "Ngoại Ngữ": "bg-sky-50 border-sky-200 text-sky-950",
+        "Tự Học": "bg-emerald-50 border-emerald-200 text-emerald-950",
+        "Khác": "bg-violet-50 border-violet-200 text-violet-950"
+      };
+      return m[cat] || m["Khác"];
+    }
+
+    function renderSharedTimetable() {
+      const tbody = document.getElementById("shared-timetable-body");
+      const isAdmin = currentUserProfile && currentUserProfile.role === "admin";
+      const ttData = generalSettings.timetable || {};
+
+      tbody.innerHTML = TT_ROWS.map((row, rIdx) => {
+        const borderB = rIdx < TT_ROWS.length - 1 ? "border-b" : "";
+        const cells = TT_DAYS.map((_, dIdx) => {
+          const key = `${row.id}_${dIdx}`;
+          const cell = ttData[key];
+          const borderR = dIdx < 6 ? "border-r" : "";
+          const clickAttr = isAdmin ? `onclick="openTimetableEditor('${key}', '${TT_DAYS[dIdx]} • ${row.label}')"` : "";
+          const cursorCls = isAdmin ? "cursor-pointer hover:bg-black/[0.02]" : "";
+
+          if (!cell) {
+            return `
+              <td ${clickAttr} class="p-2 align-top h-24 ${cursorCls} ${borderB} ${borderR}" style="border-color: var(--border-soft);">
+                ${isAdmin ? `<div class="w-full h-full rounded-xl border border-dashed border-transparent hover:border-gray-300 flex items-center justify-center text-[11px] font-bold opacity-40 hover:opacity-100">+ Thêm</div>` : ""}
+              </td>
+            `;
+          }
+
+          const isLink = cell.note && /^https?:\/\//i.test(cell.note.trim());
+          return `
+            <td ${clickAttr} class="p-2 align-top h-24 ${cursorCls} ${borderB} ${borderR}" style="border-color: var(--border-soft);">
+              <div class="h-full p-2 rounded-xl border flex flex-col justify-between ${getTtCellStyle(cell.category)}">
+                <div>
+                  <div class="flex items-center justify-between gap-1 mb-1">
+                    <span class="px-1.5 py-0.5 rounded bg-white/80 text-[10px] font-extrabold">${escapeHTML(cell.category)}</span>
+                    ${cell.time ? `<span class="text-[10px] font-bold opacity-75">${escapeHTML(cell.time)}</span>` : ""}
+                  </div>
+                  <div class="font-heading text-xs font-bold leading-snug line-clamp-2">${escapeHTML(cell.subject)}</div>
+                </div>
+                ${cell.note ? (
+                  isLink
+                    ? `<a href="${escapeHTML(cell.note.trim())}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" class="mt-1 text-[10px] font-extrabold underline">🔗 Vào lớp</a>`
+                    : `<div class="mt-1 text-[10px] opacity-75 truncate">📍 ${escapeHTML(cell.note)}</div>`
+                ) : ""}
+              </div>
+            </td>
+          `;
+        }).join("");
+
+        return `
+          <tr>
+            <td class="p-3 align-middle border-r ${borderB}" style="background-color: var(--bg-card); border-color: var(--border-soft);">
+              <div class="font-heading text-xs sm:text-sm font-bold">${row.label}</div>
+              <div class="text-[11px]" style="color: var(--text-muted);">${row.sub}</div>
+            </td>
+            ${cells}
+          </tr>
+        `;
+      }).join("");
+    }
+
+    window.openTimetableEditor = function(key, label) {
+      if (!currentUserProfile || currentUserProfile.role !== "admin") return;
+      const cell = (generalSettings.timetable || {})[key];
+      document.getElementById("tt-edit-key").value = key;
+      document.getElementById("tt-edit-subtitle").textContent = label;
+      const delBtn = document.getElementById("tt-edit-del-btn");
+
+      if (cell) {
+        document.getElementById("tt-edit-subject").value = cell.subject || "";
+        document.getElementById("tt-edit-time").value = cell.time || "";
+        document.getElementById("tt-edit-cat").value = cell.category || "Toán";
+        document.getElementById("tt-edit-note").value = cell.note || "";
+        delBtn.classList.remove("hidden");
+      } else {
+        document.getElementById("tt-edit-subject").value = "";
+        document.getElementById("tt-edit-time").value = "";
+        document.getElementById("tt-edit-cat").value = "Toán";
+        document.getElementById("tt-edit-note").value = "";
+        delBtn.classList.add("hidden");
+      }
+
+      const m = document.getElementById("modal-tt-editor");
+      m.classList.remove("hidden");
+      m.classList.add("flex");
+    };
+
+    window.closeTimetableEditor = function() {
+      const m = document.getElementById("modal-tt-editor");
+      m.classList.add("hidden");
+      m.classList.remove("flex");
+    };
+
+    window.saveSharedTimetableCell = async function(e) {
+      e.preventDefault();
+      if (!db || currentUserProfile?.role !== "admin") return;
+      const key = document.getElementById("tt-edit-key").value;
+      const nextTt = { ...(generalSettings.timetable || {}) };
+      nextTt[key] = {
+        subject: document.getElementById("tt-edit-subject").value.trim(),
+        time: document.getElementById("tt-edit-time").value.trim(),
+        category: document.getElementById("tt-edit-cat").value,
+        note: document.getElementById("tt-edit-note").value.trim()
+      };
+      try {
+        await updateDoc(doc(db, "artifacts", appId, "public", "data", "settings", "general"), {
+          timetable: nextTt
+        });
+        closeTimetableEditor();
+        showToast("Đã cập nhật Thời Khóa Biểu chung!", "📅");
+      } catch (err) {
+        showToast("Lỗi cập nhật: " + err.message, "⚠️");
+      }
+    };
+
+    window.deleteSharedTimetableCell = async function() {
+      if (!db || currentUserProfile?.role !== "admin") return;
+      const key = document.getElementById("tt-edit-key").value;
+      const nextTt = { ...(generalSettings.timetable || {}) };
+      delete nextTt[key];
+      try {
+        await updateDoc(doc(db, "artifacts", appId, "public", "data", "settings", "general"), {
+          timetable: nextTt
+        });
+        closeTimetableEditor();
+        showToast("Đã xóa ô lịch học", "🗑️");
+      } catch (_) {}
+    };
+
+    window.renderSharedDocuments = function() {
+      const catFilter = document.getElementById("shared-doc-filter").value;
+      const q = (document.getElementById("shared-doc-search").value || "").toLowerCase().trim();
+
+      const filtered = sharedDocs.filter(d => {
+        const okCat = catFilter === "Tất cả" || d.category === catFilter;
+        const okQ = (d.title || "").toLowerCase().includes(q) || (d.desc || "").toLowerCase().includes(q);
+        return okCat && okQ;
+      });
+
+      const grid = document.getElementById("shared-docs-grid");
+      if (filtered.length === 0) {
+        grid.innerHTML = `<div class="col-span-full text-center py-8 rounded-2xl border border-dashed text-xs" style="border-color: var(--border-soft); color: var(--text-muted);">Chưa có tài liệu nào trong mục này 📚</div>`;
+        return;
+      }
+
+      grid.innerHTML = filtered.map(d => `
+        <article class="p-5 rounded-2xl border flex flex-col justify-between transition hover:-translate-y-0.5" style="background-color: var(--bg-soft); border-color: var(--border-soft);">
+          <div>
+            <span class="px-2.5 py-1 rounded-full text-[11px] font-bold inline-block mb-2.5 ${getCategoryBadge(d.category)}">
+              ${escapeHTML(d.category)}
+            </span>
+            <h3 class="font-heading text-base font-bold leading-snug mb-1.5">${escapeHTML(d.title)}</h3>
+            <p class="text-xs leading-relaxed mb-4" style="color: var(--text-muted);">${escapeHTML(d.desc || "Tài liệu học tập chung.")}</p>
+          </div>
+          <a href="${escapeHTML(d.url)}" target="_blank" rel="noopener noreferrer" class="btn-primary w-full py-2 px-4 rounded-xl text-xs font-bold text-center">
+            Mở tài liệu ↗
+          </a>
+        </article>
+      `).join("");
+    };
+
+    /* -------------------------------------------------------------------
+       11. TAB 4: BẢNG ĐIỀU KHIỂN QUẢN TRỊ ADMIN (TOÀN BỘ THÀNH VIÊN & NỘI DUNG)
+       ------------------------------------------------------------------- */
+    let adminActionCallback = null;
+
+    function openAdminActionModal({ title, desc, showInput = false, inputLabel = "", defaultInput = "", onConfirm }) {
+      document.getElementById("adm-modal-title").textContent = title;
+      document.getElementById("adm-modal-desc").textContent = desc;
+      const wrap = document.getElementById("adm-modal-input-wrap");
+      const inp = document.getElementById("adm-modal-input");
+      if (showInput) {
+        wrap.classList.remove("hidden");
+        document.getElementById("adm-modal-input-label").textContent = inputLabel;
+        inp.value = defaultInput;
+      } else {
+        wrap.classList.add("hidden");
+      }
+      adminActionCallback = () => onConfirm(inp.value);
+      const m = document.getElementById("modal-admin-action");
+      m.classList.remove("hidden");
+      m.classList.add("flex");
+    }
+
+    window.closeAdminActionModal = function() {
+      const m = document.getElementById("modal-admin-action");
+      m.classList.add("hidden");
+      m.classList.remove("flex");
+      adminActionCallback = null;
+    };
+
+    document.getElementById("adm-modal-confirm-btn").addEventListener("click", async () => {
+      if (adminActionCallback) {
+        await adminActionCallback();
+      }
+      closeAdminActionModal();
+    });
+
+    window.renderAdminMembersTable = function() {
+      document.getElementById("admin-members-total").textContent = allMembers.length;
+      const q = (document.getElementById("admin-member-search")?.value || "").toLowerCase().trim();
+
+      const filtered = allMembers
+        .filter(m =>
+          (m.displayName || "").toLowerCase().includes(q) ||
+          (m.email || "").toLowerCase().includes(q) ||
+          (m.uid || "").toLowerCase().includes(q)
+        )
+        .sort((a, b) => (b.lastActive || 0) - (a.lastActive || 0));
+
+      const tbody = document.getElementById("admin-members-tbody");
+      tbody.innerHTML = filtered.map(m => {
+        const online = isMemberTrulyOnline(m);
+        const isMe = currentUser && m.uid === currentUser.uid;
+        const avatar = m.photoURL || buildFallbackAvatar(m.displayName);
+
+        let statusBadge = `<span class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-gray-100 text-gray-600">Ngoại tuyến</span>`;
+        if (m.isBanned) {
+          statusBadge = `<span class="px-2 py-0.5 rounded-full text-[11px] font-extrabold bg-rose-100 text-rose-700">🚫 Đã khóa</span>`;
+        } else if (online) {
+          statusBadge = `<span class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-700">🟢 Trực tuyến</span>`;
+        }
+
+        return `
+          <tr class="border-b hover:bg-black/[0.015]" style="border-color: var(--border-soft);">
+            <td class="p-3.5">
+              <div class="flex items-center gap-2.5">
+                <img src="${escapeHTML(avatar)}" onerror="this.src='${buildFallbackAvatar(m.displayName)}'" class="w-8 h-8 rounded-full object-cover border" style="border-color: var(--border-soft);" />
+                <div>
+                  <div class="font-bold flex items-center gap-1.5">
+                    <span>${escapeHTML(m.displayName || "Học viên")}</span>
+                    ${m.role === "admin" ? `<span class="px-1.5 py-0.2 rounded bg-amber-100 text-amber-800 text-[10px] font-extrabold">👑 Admin</span>` : ""}
+                  </div>
+                  <div class="text-[11px]" style="color: var(--text-muted);">${escapeHTML(m.currentTask || "Không có mục tiêu ghim")}</div>
+                </div>
+              </div>
+            </td>
+            <td class="p-3.5 text-xs">
+              <div class="font-semibold">${escapeHTML(m.email || "(Đăng nhập nhanh)")}</div>
+              <div class="text-[10px] font-mono opacity-60">${escapeHTML(m.uid)}</div>
+            </td>
+            <td class="p-3.5 text-center">
+              <span class="font-extrabold" style="color: var(--primary);">${m.totalMinutes || 0}p</span>
+              <div class="text-[10px]" style="color: var(--text-muted);">Hôm nay: ${m.todayMinutes || 0}p</div>
+            </td>
+            <td class="p-3.5 text-center">${statusBadge}</td>
+            <td class="p-3.5 text-right">
+              <div class="inline-flex flex-wrap items-center justify-end gap-1.5">
+                <button onclick="adminPromptAdjustMinutes('${m.uid}', '${escapeHTML(m.displayName).replace(/'/g, "\\'")}', ${m.totalMinutes || 0})" class="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-sky-50 text-sky-700 hover:bg-sky-100">
+                  ⏱️ +/- Phút
+                </button>
+                <button onclick="adminPromptKickMember('${m.uid}', '${escapeHTML(m.displayName).replace(/'/g, "\\'")}')" class="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-amber-50 text-amber-800 hover:bg-amber-100">
+                  👋 Mời nghỉ
+                </button>
+                ${!isMe ? `
+                  <button onclick="adminPromptToggleBan('${m.uid}', '${escapeHTML(m.displayName).replace(/'/g, "\\'")}', ${!!m.isBanned})" class="px-2.5 py-1 rounded-lg text-[11px] font-bold ${m.isBanned ? "bg-emerald-50 text-emerald-700 hover:bg-emerald-100" : "bg-rose-50 text-rose-700 hover:bg-rose-100"}">
+                    ${m.isBanned ? "🔓 Mở khóa" : "🚫 Khóa"}
+                  </button>
+                  <button onclick="adminPromptToggleRole('${m.uid}', '${escapeHTML(m.displayName).replace(/'/g, "\\'")}', '${m.role || "student"}')" class="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-violet-50 text-violet-700 hover:bg-violet-100">
+                    ${m.role === "admin" ? "Gỡ Admin" : "👑 Cấp Admin"}
+                  </button>
+                ` : ""}
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join("");
+    };
+
+    window.adminPromptAdjustMinutes = function(uid, name, currentTotal) {
+      openAdminActionModal({
+        title: `⏱️ Cộng / Trừ phút học cho ${name}`,
+        desc: `Hiện tại học viên đang có ${currentTotal} phút tích lũy. Nhập số phút muốn cộng thêm (hoặc số âm để trừ bớt):`,
+        showInput: true,
+        inputLabel: "Số phút điều chỉnh (VD: 25 hoặc -10)",
+        defaultInput: "25",
+        onConfirm: async (val) => {
+          const delta = parseInt(val, 10);
+          if (isNaN(delta) || delta === 0) return;
+          const nextVal = Math.max(0, currentTotal + delta);
+          await updateDoc(doc(db, "artifacts", appId, "public", "data", "users", uid), {
+            totalMinutes: nextVal
+          });
+          showToast(`Đã cập nhật tổng phút của ${name} thành ${nextVal} phút!`, "⏱️");
+        }
+      });
+    };
+
+    window.adminPromptKickMember = function(uid, name) {
+      openAdminActionModal({
+        title: `👋 Mời ${name} tạm nghỉ ngơi`,
+        desc: "Thao tác này sẽ đặt lại trạng thái của thành viên về Ngoại tuyến trên Phòng Học Chung.",
+        onConfirm: async () => {
+          await updateDoc(doc(db, "artifacts", appId, "public", "data", "users", uid), {
+            isOnline: false,
+            isStudying: false,
+            statusText: "💤 Đã được mời nghỉ ngơi"
+          });
+          showToast(`Đã đặt lại trạng thái của ${name}`, "👋");
+        }
+      });
+    };
+
+    window.adminPromptToggleBan = function(uid, name, currentlyBanned) {
+      openAdminActionModal({
+        title: currentlyBanned ? `🔓 Mở khóa cho ${name}?` : `🚫 Khóa tài khoản ${name}?`,
+        desc: currentlyBanned
+          ? "Thành viên này sẽ có thể truy cập lại vào phòng học bình thường."
+          : "Thành viên này sẽ lập tức bị chặn khỏi phòng học cho đến khi bạn mở khóa lại.",
+        onConfirm: async () => {
+          await updateDoc(doc(db, "artifacts", appId, "public", "data", "users", uid), {
+            isBanned: !currentlyBanned,
+            isOnline: false,
+            isStudying: false
+          });
+          showToast(currentlyBanned ? `Đã mở khóa cho ${name}` : `Đã khóa tài khoản ${name}`, "🛡️");
+        }
+      });
+    };
+
+    window.adminPromptToggleRole = function(uid, name, currentRole) {
+      const nextRole = currentRole === "admin" ? "student" : "admin";
+      openAdminActionModal({
+        title: nextRole === "admin" ? `👑 Cấp quyền Admin cho ${name}?` : `Gỡ quyền Admin của ${name}?`,
+        desc: nextRole === "admin"
+          ? "Người này sẽ có toàn quyền quản lý thành viên, thông báo và tài liệu của phòng học."
+          : "Người này sẽ trở về vai trò Học viên thông thường.",
+        onConfirm: async () => {
+          await updateDoc(doc(db, "artifacts", appId, "public", "data", "users", uid), {
+            role: nextRole
+          });
+          showToast(`Đã cập nhật vai trò của ${name}!`, "👑");
+        }
+      });
+    };
+
+    window.adminSaveGeneralSettings = async function(e) {
+      e.preventDefault();
+      if (!db || currentUserProfile?.role !== "admin") return;
+      try {
+        await setDoc(
+          doc(db, "artifacts", appId, "public", "data", "settings", "general"),
+          {
+            siteTitle: document.getElementById("adm-site-title").value.trim(),
+            siteSlogan: document.getElementById("adm-site-slogan").value.trim(),
+            announcement: document.getElementById("adm-announcement").value.trim(),
+            examTitle: document.getElementById("adm-exam-title").value.trim(),
+            examDatetime: document.getElementById("adm-exam-datetime").value,
+            examGoal: document.getElementById("adm-exam-goal").value.trim()
+          },
+          { merge: true }
+        );
+        showToast("Đã đồng bộ Thông báo & Ngày thi cho toàn bộ lớp!", "📢");
+      } catch (err) {
+        showToast("Lỗi lưu cấu hình: " + err.message, "⚠️");
+      }
+    };
+
+    window.adminAddSharedDocument = async function(e) {
+      e.preventDefault();
+      if (!db || currentUserProfile?.role !== "admin") return;
+      const title = document.getElementById("adm-doc-title").value.trim();
+      const category = document.getElementById("adm-doc-cat").value;
+      const url = document.getElementById("adm-doc-url").value.trim();
+      const desc = document.getElementById("adm-doc-desc").value.trim();
+      if (!title || !url) return;
+
+      try {
+        await addDoc(collection(db, "artifacts", appId, "public", "data", "documents"), {
+          title,
+          category,
+          url,
+          desc,
+          createdAt: Date.now()
+        });
+        e.target.reset();
+        showToast("Đã đăng tải tài liệu chung!", "📚");
+      } catch (err) {
+        showToast("Không thể đăng tài liệu: " + err.message, "⚠️");
+      }
+    };
+
+    window.adminDeleteSharedDoc = async function(docId) {
+      if (!db || currentUserProfile?.role !== "admin") return;
+      try {
+        await deleteDoc(doc(db, "artifacts", appId, "public", "data", "documents", docId));
+        showToast("Đã xóa tài liệu chung", "🗑️");
+      } catch (_) {}
+    };
+
+    function renderAdminDocsList() {
+      document.getElementById("adm-docs-count").textContent = sharedDocs.length;
+      const ul = document.getElementById("adm-docs-list");
+      if (sharedDocs.length === 0) {
+        ul.innerHTML = `<li class="text-xs italic" style="color: var(--text-muted);">Chưa có tài liệu nào.</li>`;
+        return;
+      }
+      ul.innerHTML = sharedDocs.map(d => `
+        <li class="flex items-center justify-between gap-2 p-2.5 rounded-xl border bg-white text-xs" style="border-color: var(--border-soft);">
+          <div class="truncate">
+            <span class="font-bold">[${escapeHTML(d.category)}]</span> ${escapeHTML(d.title)}
+          </div>
+          <button onclick="adminDeleteSharedDoc('${d.id}')" class="px-2 py-1 rounded-lg bg-rose-50 text-rose-600 font-bold hover:bg-rose-100 shrink-0">
+            Xóa
+          </button>
+        </li>
+      `).join("");
+    }
+
+    // Sao chép Firestore Rules bằng document.execCommand('copy') an toàn trong iframe
+    window.copyFirestoreRules = function() {
+      const code = document.getElementById("firestore-rules-code").textContent;
+      const ta = document.createElement("textarea");
+      ta.value = code;
+      document.body.appendChild(ta);
+      ta.select();
+      try {
+        document.execCommand("copy");
+        showToast("Đã sao chép Firestore Rules!", "📋");
+      } catch (_) {
+        showToast("Không thể sao chép tự động", "⚠️");
+      }
+      ta.remove();
+    };
+
+    // Đóng gói & Xuất file index.html hoàn chỉnh kèm Firebase Config để chạy độc lập trên .id.vn
+    window.exportStandaloneWithFirebase = function() {
+      const rawCfg = document.getElementById("export-firebase-config").value.trim();
+      const adminMail = document.getElementById("export-admin-email").value.trim();
+
+      let parsedCfg = resolveFirebaseConfig();
+      if (rawCfg) {
+        try {
+          parsedCfg = parseFirebaseConfigText(rawCfg);
+        } catch (err) {
+          showToast(err.message || "Đoạn mã firebaseConfig chưa hợp lệ", "⚠️");
+          return;
+        }
+      }
+
+      if (!parsedCfg || !parsedCfg.apiKey) {
+        showToast("Vui lòng dán đoạn mã firebaseConfig trước khi xuất tệp!", "⚠️");
+        return;
+      }
+
+      const currentTheme = document.documentElement.getAttribute("data-theme") || "peach";
+      let htmlSource = "<!DOCTYPE html>\n" + document.documentElement.outerHTML;
+      htmlSource = htmlSource.replace(/<html lang="vi" data-theme="[^"]*">/, `<html lang="vi" data-theme="${currentTheme}">`);
+
+      const replacement =
+        "/* __CUSTOM_FIREBASE_START__ */\n    const CUSTOM_FIREBASE_CONFIG = " +
+        JSON.stringify(parsedCfg, null, 6) +
+        ";\n    const CUSTOM_ADMIN_EMAIL = " +
+        JSON.stringify(adminMail || (currentUserProfile?.email || "")) +
+        ";\n    /* __CUSTOM_FIREBASE_END__ */";
+
+      htmlSource = htmlSource.replace(
+        /\/\* __CUSTOM_FIREBASE_START__ \*\/[\s\S]*?\/\* __CUSTOM_FIREBASE_END__ \*\//,
+        replacement
+      );
+
+      const blob = new Blob([htmlSource], { type: "text/html;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "index.html";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+
+      showToast("Đã tải xuống tệp index.html hoàn chỉnh sẵn sàng cho tên miền .id.vn!", "🚀");
+    };
+
+    /* -------------------------------------------------------------------
+       12. KHỞI CHẠY ỨNG DỤNG KHI TẢI TRANG
+       ------------------------------------------------------------------- */
+    window.addEventListener("DOMContentLoaded", () => {
+      const savedTheme = (() => {
+        try { return localStorage.getItem("ghn_rt_theme") || "peach"; } catch (_) { return "peach"; }
+      })();
+      setTheme(savedTheme);
+      switchTab("focus");
+      renderPomoClock();
+
+      // Điền sẵn tên/email đã dùng gần nhất vào form đăng nhập nhanh
+      try {
+        const lastName = localStorage.getItem("ghn_last_guest_name");
+        const lastEmail = localStorage.getItem("ghn_last_guest_email");
+        if (lastName) document.getElementById("guest-name-input").value = lastName;
+        if (lastEmail) document.getElementById("guest-email-input").value = lastEmail;
+      } catch (_) {}
+
+      // Cập nhật đồng hồ đếm ngược kỳ thi mỗi giây
+      setInterval(updateExamBannerCountdown, 1000);
+
+      // Khởi tạo Firebase
+      initFirebaseServices();
+    });
+  </script>
+
+</body></html>
