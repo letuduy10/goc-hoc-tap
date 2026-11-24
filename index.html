@@ -3631,7 +3631,7 @@ service cloud.firestore {
   })();
 </script>
 <!-- =====================================================================
-     TÍNH NĂNG NUÔI MÈO HOẠT HÌNH & TRANG TRÍ NHÀ (MY TALKING TOM STYLE)
+     TÍNH NĂNG NUÔI MÈO HOẠT HÌNH & ADMIN CẤP XU CÁ CHO THÀNH VIÊN
      ===================================================================== -->
 <style>
   @keyframes catBreathe {
@@ -3677,17 +3677,15 @@ service cloud.firestore {
 <script>
   (function () {
     const COINS_PER_MINUTE = 10; // 1 phút học = 10 Xu Cá (1 giờ = 600 Xu)
-    const STARTER_COINS = 100;   // Tặng sẵn 100 Xu để mua đồ trang trí
+    const STARTER_COINS = 100;   // Tặng sẵn 100 Xu ban đầu
 
     const SHOP_CATALOG = [
-      // 1. THỨC ĂN & CHĂM SÓC
       { id: 'food_milk', tab: 'care', icon: '🥛', name: 'Sữa tươi ấm', price: 20, hunger: 18, happy: 6, exp: 8, desc: '+18% No • +6% Vui • +8 EXP' },
       { id: 'food_fish', tab: 'care', icon: '🐟', name: 'Cá thu nướng', price: 45, hunger: 35, happy: 12, exp: 18, desc: '+35% No • +12% Vui • +18 EXP' },
       { id: 'food_sushi', tab: 'care', icon: '🍣', name: 'Set Sashimi Cá Hồi', price: 100, hunger: 75, happy: 25, exp: 40, desc: '+75% No • +25% Vui • +40 EXP' },
       { id: 'toy_yarn', tab: 'care', icon: '🧶', name: 'Cuộn len xanh dương', price: 60, hunger: 0, happy: 35, exp: 22, desc: '+35% Vui • +22 EXP' },
       { id: 'toy_wand', tab: 'care', icon: '🪶', name: 'Cần câu lông vũ', price: 120, hunger: 0, happy: 65, exp: 45, desc: '+65% Vui • +45 EXP' },
 
-      // 2. QUẦN ÁO & PHỤ KIỆN MẶC LÊN MÈO (Mua 1 lần dùng vĩnh viễn)
       { id: 'cloth_hoodie', tab: 'clothes', slot: 'outfit', icon: '🧥', name: 'Áo Hoodie Xanh YNWA', price: 150, exp: 35, desc: 'Áo nỉ xanh dương năng động' },
       { id: 'cloth_suit', tab: 'clothes', slot: 'outfit', icon: '👔', name: 'Áo Sơ Mi Thắt Nơ', price: 240, exp: 50, desc: 'Phong cách công tử lịch lãm' },
       { id: 'cloth_cape', tab: 'clothes', slot: 'outfit', icon: '🦸', name: 'Áo Choàng Siêu Mèo', price: 350, exp: 80, desc: 'Áo choàng đỏ rực chiến binh' },
@@ -3697,9 +3695,8 @@ service cloud.firestore {
       { id: 'glass_study', tab: 'clothes', slot: 'glasses', icon: '👓', name: 'Kính Cận Học Bá', price: 100, exp: 20, desc: 'Kính tròn tri thức đáng yêu' },
       { id: 'glass_cool', tab: 'clothes', slot: 'glasses', icon: '🕶️', name: 'Kính Râm Ngầu Lòi', price: 220, exp: 45, desc: 'Chống chói mắt cực chất' },
 
-      // 3. NHÀ CỬA & NỘI THẤT TRANG TRÍ (Mua 1 lần dùng vĩnh viễn)
       { id: 'wall_sky', tab: 'house', slot: 'wall', icon: '🩵', name: 'Tường Xanh Pastel', price: 0, exp: 0, desc: 'Màu tường mặc định dịu mắt' },
-      { id: 'wall_cream', tab: 'house', slot: 'wall', icon: '奶油', emoji: '🧱', name: 'Tường Kem Ấm Áp', price: 160, exp: 30, desc: 'Không gian phòng học ấm cúng' },
+      { id: 'wall_cream', tab: 'house', slot: 'wall', icon: '🧱', name: 'Tường Kem Ấm Áp', price: 160, exp: 30, desc: 'Không gian phòng học ấm cúng' },
       { id: 'wall_night', tab: 'house', slot: 'wall', icon: '🌌', name: 'Tường Đêm Đầy Sao', price: 320, exp: 70, desc: 'Bầu trời đêm lấp lánh ánh sao' },
       { id: 'floor_wood', tab: 'house', slot: 'floor', icon: '🪵', name: 'Sàn Gỗ Sáng', price: 0, exp: 0, desc: 'Sàn gỗ tự nhiên mặc định' },
       { id: 'floor_rug', tab: 'house', slot: 'floor', icon: '🔵', name: 'Thảm Tròn Xanh Hoàng Gia', price: 180, exp: 35, desc: 'Thảm lông mềm mại giữa phòng' },
@@ -3710,18 +3707,22 @@ service cloud.firestore {
 
     let activeShopTab = 'care';
     let catSpeech = 'Chạm vào người mình hoặc mua quần áo, nội thất trang trí phòng nhé sen! 🐾';
-    let catMoodAnim = 'idle'; // idle | happy | eating | sleeping
+    let catMoodAnim = 'idle';
     let soundEnabled = true;
     let observedMinutes = 0;
     let particles = [];
+    let roomMembersCache = [];
+    let unsubscribeCatSnapshot = null;
 
     let petData = {
       name: 'Tom Xanh',
       hunger: 80,
       happiness: 85,
       exp: 0,
+      bonusCoins: 0,
       spentCoins: 0,
       maxMinutesSeen: 0,
+      seenGiftId: 0,
       isSleeping: false,
       owned: ['wall_sky', 'floor_wood'],
       equipped: {
@@ -3736,7 +3737,14 @@ service cloud.firestore {
       lastUpdated: Date.now()
     };
 
-    // Phát âm thanh Meow / Purr nhẹ nhàng bằng Web Audio API (không cần file MP3)
+    function isCurrentUserAdmin() {
+      const adminBtn = Array.from(document.querySelectorAll('button')).find(
+        b => b.textContent && b.textContent.includes('Quản Trị Admin') && !b.classList.contains('hidden')
+      );
+      if (adminBtn) return true;
+      return (document.body ? document.body.innerText : '').includes('👑 Admin');
+    }
+
     function playMeowSound(type) {
       if (!soundEnabled) return;
       try {
@@ -3812,9 +3820,11 @@ service cloud.firestore {
     function getWallet() {
       const mins = readMinutesFromPage();
       if (mins > (petData.maxMinutesSeen || 0)) petData.maxMinutesSeen = mins;
-      const earned = STARTER_COINS + mins * COINS_PER_MINUTE;
-      const balance = Math.max(0, earned - (petData.spentCoins || 0));
-      return { mins, earned, spent: petData.spentCoins || 0, balance };
+      const studyEarned = STARTER_COINS + mins * COINS_PER_MINUTE;
+      const bonus = Number(petData.bonusCoins || 0);
+      const totalEarned = studyEarned + bonus;
+      const balance = Math.max(0, totalEarned - (petData.spentCoins || 0));
+      return { mins, studyEarned, bonus, totalEarned, spent: petData.spentCoins || 0, balance };
     }
 
     async function loadPetData() {
@@ -3828,7 +3838,6 @@ service cloud.firestore {
         }
       } catch (e) {}
 
-      // Giảm nhẹ độ no & vui theo thời gian thực
       const hours = Math.max(0, (Date.now() - (petData.lastUpdated || Date.now())) / 3600000);
       if (hours >= 0.3) {
         const drop = Math.floor(hours * 2);
@@ -3847,15 +3856,27 @@ service cloud.firestore {
             const fbM = Number(d.totalMinutes || d.studyMinutes || d.minutes || d.accumulatedMinutes || 0);
             if (fbM > observedMinutes) observedMinutes = fbM;
           }
-          const pDoc = await firebase.firestore().collection('cat_pets_v2').doc(uid).get();
-          if (pDoc.exists) {
-            const remote = pDoc.data();
-            petData = Object.assign({}, petData, remote, {
-              equipped: Object.assign({}, petData.equipped, remote.equipped || {})
-            });
-          }
-          localStorage.setItem(getStorageKey(), JSON.stringify(petData));
-          renderCatTabContent();
+
+          if (unsubscribeCatSnapshot) unsubscribeCatSnapshot();
+          unsubscribeCatSnapshot = firebase.firestore().collection('cat_pets_v2').doc(uid).onSnapshot((pDoc) => {
+            if (pDoc.exists) {
+              const remote = pDoc.data();
+              petData = Object.assign({}, petData, remote, {
+                equipped: Object.assign({}, petData.equipped, remote.equipped || {})
+              });
+              if (remote.lastGift && remote.lastGift.id && remote.lastGift.id !== petData.seenGiftId) {
+                petData.seenGiftId = remote.lastGift.id;
+                const sign = remote.lastGift.amount >= 0 ? '+' : '';
+                const reasonText = remote.lastGift.reason ? ` (${remote.lastGift.reason})` : '';
+                catSpeech = `Ting ting! Admin vừa cấp ${sign}${remote.lastGift.amount} Xu Cá${reasonText} 🎉`;
+                playMeowSound('meow');
+                spawnParticles('🎁');
+                savePetData();
+              }
+              localStorage.setItem(getStorageKey(), JSON.stringify(petData));
+              renderCatTabContent();
+            }
+          });
         }
       } catch (e) {}
     }
@@ -3871,7 +3892,164 @@ service cloud.firestore {
       } catch (e) {}
     }
 
-    // Tương tác chạm vào mèo (Đầu hoặc Bụng)
+    // Tải danh sách thành viên trong phòng từ Firebase để Admin chọn cấp Xu
+    window.refreshCoinMemberList = async function () {
+      try {
+        if (window.firebase && firebase.firestore) {
+          const snap = await firebase.firestore().collection('users').get();
+          const list = [];
+          snap.forEach(doc => {
+            const d = doc.data() || {};
+            list.push({
+              uid: doc.id,
+              name: d.name || d.displayName || d.username || 'Thành viên',
+              email: d.email || ''
+            });
+          });
+          roomMembersCache = list;
+          updateAllMemberSelects();
+        }
+      } catch (e) {}
+    };
+
+    function updateAllMemberSelects() {
+      const selects = document.querySelectorAll('.admin-coin-member-select');
+      selects.forEach(sel => {
+        const currentVal = sel.value;
+        let html = `<option value="__SELF__">⭐ Chính tôi (Tài khoản đang đăng nhập)</option>`;
+        roomMembersCache.forEach(m => {
+          const label = m.email ? `${escapeHtml(m.name)} (${escapeHtml(m.email)})` : `${escapeHtml(m.name)} — ID: ${m.uid.slice(0, 6)}`;
+          html += `<option value="${escapeHtml(m.uid)}">👤 ${label}</option>`;
+        });
+        sel.innerHTML = html;
+        if (currentVal) sel.value = currentVal;
+      });
+    }
+
+    // Hàm xử lý cấp Xu Cá cho bản thân hoặc thành viên khác
+    window.grantXuCaToMember = async function (formPrefix) {
+      const selectEl = document.getElementById(formPrefix + '-member');
+      const amountEl = document.getElementById(formPrefix + '-amount');
+      const reasonEl = document.getElementById(formPrefix + '-reason');
+      if (!selectEl || !amountEl) return;
+
+      const targetUid = selectEl.value;
+      const amount = parseInt(amountEl.value, 10);
+      const reason = reasonEl ? reasonEl.value.trim() : '';
+
+      if (isNaN(amount) || amount === 0) {
+        if (typeof showToast === 'function') showToast('⚠️ Vui lòng nhập số Xu Cá hợp lệ (khác 0).');
+        return;
+      }
+
+      const currentUid = (window.firebase && firebase.auth && firebase.auth().currentUser)
+        ? firebase.auth().currentUser.uid
+        : null;
+
+      // Trường hợp 1: Cấp cho chính mình
+      if (targetUid === '__SELF__' || (currentUid && targetUid === currentUid)) {
+        const giftId = Date.now();
+        petData.bonusCoins = Math.max(0, Number(petData.bonusCoins || 0) + amount);
+        petData.seenGiftId = giftId;
+        const sign = amount >= 0 ? '+' : '';
+        catSpeech = `Ting ting! Đã nạp ${sign}${amount.toLocaleString('vi-VN')} Xu Cá vào ví! Mua sắm thôi sen ơi 🐟🎉`;
+        catMoodAnim = 'happy';
+        playMeowSound('meow');
+        spawnParticles('💰');
+        await savePetData();
+        renderCatTabContent();
+        if (typeof showToast === 'function') showToast(`✅ Đã cấp ${sign}${amount.toLocaleString('vi-VN')} Xu Cá cho chính bạn!`);
+        setTimeout(() => { catMoodAnim = 'idle'; renderCatTabContent(); }, 700);
+        return;
+      }
+
+      // Trường hợp 2: Cấp cho thành viên khác trên Firebase
+      try {
+        if (!window.firebase || !firebase.firestore) {
+          if (typeof showToast === 'function') showToast('⚠️ Cần kết nối Firebase để cấp Xu cho thành viên khác.');
+          return;
+        }
+        const docRef = firebase.firestore().collection('cat_pets_v2').doc(targetUid);
+        const snap = await docRef.get();
+        const existingBonus = snap.exists ? Number(snap.data().bonusCoins || 0) : 0;
+        const updatedBonus = Math.max(0, existingBonus + amount);
+
+        await docRef.set({
+          bonusCoins: updatedBonus,
+          lastGift: {
+            id: Date.now(),
+            amount: amount,
+            reason: reason || 'Quà thưởng từ Admin'
+          }
+        }, { merge: true });
+
+        const memberObj = roomMembersCache.find(m => m.uid === targetUid);
+        const memberName = memberObj ? memberObj.name : 'thành viên';
+        const sign = amount >= 0 ? '+' : '';
+        if (reasonEl) reasonEl.value = '';
+        if (typeof showToast === 'function') {
+          showToast(`🎁 Đã cấp ${sign}${amount.toLocaleString('vi-VN')} Xu Cá cho ${memberName}!`);
+        }
+      } catch (err) {
+        if (typeof showToast === 'function') {
+          showToast('⚠️ Lỗi quyền Firebase: Hãy bật quyền ghi cho collection cat_pets_v2 trong Firestore Rules.');
+        }
+      }
+    };
+
+    function buildAdminGrantCardHtml(prefix) {
+      return `
+        <div class="pastel-card rounded-3xl p-5 bg-white border mb-5" style="border-color: var(--border-soft);">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
+            <div>
+              <h3 class="text-base sm:text-lg font-extrabold flex items-center gap-2" style="color: var(--primary);">
+                🎁 Cấp Xu Cá Cho Bản Thân & Thành Viên (Admin)
+              </h3>
+              <p class="text-xs font-medium" style="color: var(--text-muted);">
+                Chọn người nhận và số Xu Cá muốn thưởng (nhập số âm nếu muốn trừ bớt)
+              </p>
+            </div>
+            <button type="button" onclick="refreshCoinMemberList()" class="btn-soft px-3 py-1.5 rounded-xl text-xs font-bold self-start sm:self-auto">
+              🔄 Tải lại DS thành viên
+            </button>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-12 gap-2.5 p-3.5 rounded-2xl border" style="background-color: var(--bg-soft); border-color: var(--border-soft);">
+            <div class="sm:col-span-4">
+              <label class="block text-[11px] font-bold mb-1" style="color: var(--text-muted);">Người nhận Xu Cá</label>
+              <select id="${prefix}-member" class="admin-coin-member-select w-full px-3 py-2 rounded-xl border text-xs font-bold bg-white focus:outline-none" style="border-color: var(--border-soft); color: var(--text-main);">
+                <option value="__SELF__">⭐ Chính tôi (Tài khoản đang đăng nhập)</option>
+              </select>
+            </div>
+            <div class="sm:col-span-3">
+              <label class="block text-[11px] font-bold mb-1" style="color: var(--text-muted);">Số Xu Cá cấp</label>
+              <input type="number" id="${prefix}-amount" value="500" step="50" class="w-full px-3 py-2 rounded-xl border text-xs font-extrabold bg-white focus:outline-none" style="border-color: var(--border-soft); color: var(--primary);">
+            </div>
+            <div class="sm:col-span-3">
+              <label class="block text-[11px] font-bold mb-1" style="color: var(--text-muted);">Lời nhắn / Lý do</label>
+              <input type="text" id="${prefix}-reason" placeholder="VD: Thưởng chăm chỉ..." maxlength="40" class="w-full px-3 py-2 rounded-xl border text-xs bg-white focus:outline-none" style="border-color: var(--border-soft);">
+            </div>
+            <div class="sm:col-span-2 flex items-end">
+              <button type="button" onclick="grantXuCaToMember('${prefix}')" class="btn-primary w-full py-2 px-3 rounded-xl text-xs font-extrabold shadow-sm">
+                🐟 Cấp Xu
+              </button>
+            </div>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-1.5 mt-2.5">
+            <span class="text-[11px] font-bold mr-1" style="color: var(--text-muted);">Chọn nhanh:</span>
+            ${[100, 500, 1000, 5000].map(val => `
+              <button type="button" onclick="document.getElementById('${prefix}-amount').value=${val}"
+                class="px-2.5 py-1 rounded-lg text-[11px] font-bold border bg-white hover:bg-gray-50 transition"
+                style="border-color: var(--border-soft); color: var(--primary);">
+                +${val.toLocaleString('vi-VN')} Xu
+              </button>
+            `).join('')}
+          </div>
+        </div>
+      `;
+    }
+
     window.interactWithCat = function (zone) {
       if (petData.isSleeping) {
         petData.isSleeping = false;
@@ -3958,7 +4136,6 @@ service cloud.firestore {
       const isPermanent = item.tab === 'clothes' || item.tab === 'house';
       const isOwned = isPermanent && (petData.owned || []).includes(item.id);
 
-      // Nếu đồ đã sở hữu -> Mặc/Tháo hoặc Bày/Cất
       if (isOwned) {
         const currentEq = petData.equipped[item.slot];
         if (currentEq === item.id && item.slot !== 'wall' && item.slot !== 'floor') {
@@ -3978,9 +4155,9 @@ service cloud.firestore {
       }
 
       if (wallet.balance < item.price) {
-        catSpeech = `Thiếu ${item.price - wallet.balance} Xu Cá rồi! Bật đồng hồ học thêm vài phút nhé sen 🥺`;
+        catSpeech = `Thiếu ${item.price - wallet.balance} Xu Cá rồi! Học thêm hoặc dùng quyền Admin cấp Xu nhé sen 🥺`;
         renderCatTabContent();
-        if (typeof showToast === 'function') showToast('⚠️ Chưa đủ Xu Cá! Hãy học thêm để tích lũy Xu nhé.');
+        if (typeof showToast === 'function') showToast('⚠️ Chưa đủ Xu Cá!');
         return;
       }
 
@@ -4017,25 +4194,19 @@ service cloud.firestore {
       }, 900);
     };
 
-    // Vẽ toàn bộ Căn Phòng + Con Mèo Hoạt Hình SVG + Quần Áo + Nội Thất
     function renderInteractiveRoomSVG() {
       const eq = petData.equipped || {};
       const isNight = petData.isSleeping || eq.wall === 'wall_night';
-
-      // Màu tường
       let wallFill = '#E0F2FE';
       if (eq.wall === 'wall_cream') wallFill = '#FEF3C7';
       if (eq.wall === 'wall_night') wallFill = '#1E293B';
 
-      // Màu sàn
       let floorFill = '#FDE68A';
       if (eq.wall === 'wall_night') floorFill = '#334155';
-
       const jumpClass = catMoodAnim === 'happy' ? 'cat-jump-once' : '';
 
       return `
         <div class="relative w-full rounded-2xl overflow-hidden border select-none" style="border-color: var(--border-soft);">
-          <!-- Bong bóng thoại của mèo -->
           <div class="absolute top-2.5 left-3 right-3 z-10 flex justify-center pointer-events-none">
             <div class="px-3.5 py-1.5 rounded-2xl text-xs font-bold shadow-sm border max-w-md text-center"
               style="background-color: rgba(255,255,255,0.94); border-color: var(--border-soft); color: var(--text-main);">
@@ -4043,16 +4214,13 @@ service cloud.firestore {
             </div>
           </div>
 
-          <!-- Hiệu ứng hạt bay lên -->
           <div class="absolute inset-0 z-20 pointer-events-none overflow-hidden">
             ${particles.map(p => `
               <span class="cat-particle absolute bottom-28 text-2xl" style="left: ${p.left}%;">${p.emoji}</span>
             `).join('')}
           </div>
 
-          <!-- Sân khấu SVG tương tác -->
           <svg viewBox="0 0 300 265" class="w-full h-auto block">
-            <!-- 1. TƯỜNG NHÀ -->
             <rect x="0" y="0" width="300" height="190" fill="${wallFill}" />
             ${eq.wall === 'wall_night' ? `
               <circle cx="35" cy="55" r="1.5" fill="#FDE047" />
@@ -4061,7 +4229,6 @@ service cloud.firestore {
               <circle cx="270" cy="70" r="1.5" fill="#FFFFFF" />
             ` : ''}
 
-            <!-- CỬA SỔ PHÒNG -->
             <g transform="translate(22, 48)">
               <rect x="0" y="0" width="64" height="72" rx="8" fill="${isNight ? '#0F172A' : '#BAE6FD'}" stroke="#FFFFFF" stroke-width="4" />
               ${isNight
@@ -4072,14 +4239,12 @@ service cloud.firestore {
               <line x1="0" y1="36" x2="64" y2="36" stroke="#FFFFFF" stroke-width="3" />
             </g>
 
-            <!-- TRANH TREO TƯỜNG BÊN PHẢI -->
             <g transform="translate(222, 54)">
               <rect x="0" y="0" width="52" height="42" rx="6" fill="#FFFFFF" stroke="#93C5FD" stroke-width="3" />
               <circle cx="26" cy="21" r="10" fill="#DBEAFE" />
               <text x="26" y="25" text-anchor="middle" font-size="13">🐳</text>
             </g>
 
-            <!-- 2. SÀN NHÀ & THẢM -->
             <rect x="0" y="190" width="300" height="75" fill="${floorFill}" />
             <line x1="0" y1="190" x2="300" y2="190" stroke="rgba(0,0,0,0.08)" stroke-width="2" />
             ${eq.floor === 'floor_rug' ? `
@@ -4089,7 +4254,6 @@ service cloud.firestore {
               <ellipse cx="150" cy="238" rx="72" ry="15" fill="rgba(37, 99, 235, 0.12)" />
             `}
 
-            <!-- 3. NỘI THẤT TRANG TRÍ TRÁI (KỆ SÁCH) -->
             ${eq.leftDecor === 'decor_books' ? `
               <g transform="translate(14, 134)">
                 <rect x="0" y="0" width="52" height="68" rx="4" fill="#92400E" />
@@ -4103,7 +4267,6 @@ service cloud.firestore {
               </g>
             ` : ''}
 
-            <!-- 4. NỘI THẤT TRANG TRÍ PHẢI (CÂY XƯƠNG RỒNG HOẶC BÀN LAPTOP) -->
             ${eq.rightDecor === 'decor_plant' ? `
               <g transform="translate(234, 146)">
                 <polygon points="10,36 42,36 37,60 15,60" fill="#EA580C" />
@@ -4118,23 +4281,18 @@ service cloud.firestore {
                 <rect x="0" y="26" width="74" height="6" rx="2" fill="#D97706" />
                 <rect x="6" y="32" width="6" height="26" fill="#B45309" />
                 <rect x="62" y="32" width="6" height="26" fill="#B45309" />
-                <!-- Laptop mini -->
                 <polygon points="22,8 52,8 55,24 19,24" fill="#3B82F6" stroke="#1E3A8A" stroke-width="1.5" />
                 <rect x="16" y="24" width="42" height="3" rx="1" fill="#94A3B8" />
               </g>
             ` : ''}
 
-            <!-- 5. NHÂN VẬT MÈO HOẠT HÌNH TRUNG TÂM -->
             <g class="${jumpClass}">
-              <!-- Đuôi mèo vẫy -->
               <path class="cat-tail-anim" d="M 188 212 Q 228 195 222 162" fill="none" stroke="#94A3B8" stroke-width="12" stroke-linecap="round" />
 
-              <!-- Thân mèo (thở nhịp nhàng + bấm vào bụng) -->
               <g class="cat-body-anim" onclick="interactWithCat('belly')" style="cursor: pointer;">
                 <ellipse cx="150" cy="196" rx="44" ry="42" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="2.5" />
                 <ellipse cx="150" cy="200" rx="28" ry="28" fill="#EFF6FF" />
 
-                <!-- QUẦN ÁO MẶC TRÊN THÂN MÈO -->
                 ${eq.outfit === 'cloth_hoodie' ? `
                   <path d="M 108 175 Q 150 185 192 175 L 196 224 Q 150 234 104 224 Z" fill="#2563EB" />
                   <path d="M 132 178 L 150 194 L 168 178" fill="none" stroke="#93C5FD" stroke-width="3" />
@@ -4151,14 +4309,11 @@ service cloud.firestore {
                   <polygon points="150,188 154,197 164,197 156,203 159,212 150,206 141,212 144,203 136,197 146,197" fill="#FACC15" />
                 ` : ''}
 
-                <!-- Hai chân trước & chân sau -->
                 <ellipse cx="126" cy="233" rx="15" ry="10" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="2" />
                 <ellipse cx="174" cy="233" rx="15" ry="10" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="2" />
               </g>
 
-              <!-- ĐẦU MÈO (Bấm vào đầu để xoa đầu) -->
               <g onclick="interactWithCat('head')" style="cursor: pointer;">
-                <!-- Tai trái & Tai phải -->
                 <g class="cat-ear-left">
                   <polygon points="102,110 95,66 132,88" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="2.5" stroke-linejoin="round" />
                   <polygon points="105,104 101,75 125,90" fill="#BFDBFE" />
@@ -4168,16 +4323,11 @@ service cloud.firestore {
                   <polygon points="195,104 199,75 175,90" fill="#BFDBFE" />
                 </g>
 
-                <!-- Khuôn mặt tròn -->
                 <ellipse cx="150" cy="126" rx="54" ry="46" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="2.5" />
-                <!-- Vệt trán mèo -->
                 <path d="M 143 82 L 143 94 M 150 80 L 150 96 M 157 82 L 157 94" stroke="#94A3B8" stroke-width="2.5" stroke-linecap="round" />
-
-                <!-- Má hồng -->
                 <ellipse cx="115" cy="138" rx="8" ry="5" fill="#FBCFE8" opacity="0.8" />
                 <ellipse cx="185" cy="138" rx="8" ry="5" fill="#FBCFE8" opacity="0.8" />
 
-                <!-- MẮT MÈO (Thay đổi theo trạng thái Ngủ / Vui / Bình thường) -->
                 ${petData.isSleeping ? `
                   <path d="M 122 128 Q 130 135 138 128" fill="none" stroke="#334155" stroke-width="3" stroke-linecap="round" />
                   <path d="M 162 128 Q 170 135 178 128" fill="none" stroke="#334155" stroke-width="3" stroke-linecap="round" />
@@ -4195,7 +4345,6 @@ service cloud.firestore {
                   </g>
                 `)}
 
-                <!-- Mũi & Miệng mèo -->
                 <polygon points="146,138 154,138 150,143" fill="#F472B6" />
                 ${catMoodAnim === 'eating' ? `
                   <ellipse cx="150" cy="150" rx="7" ry="6" fill="#FB7185" />
@@ -4203,13 +4352,11 @@ service cloud.firestore {
                   <path d="M 140 146 Q 145 152 150 145 Q 155 152 160 146" fill="none" stroke="#475569" stroke-width="2.2" stroke-linecap="round" />
                 `}
 
-                <!-- Râu mèo -->
                 <line x1="90" y1="132" x2="108" y2="135" stroke="#94A3B8" stroke-width="1.8" stroke-linecap="round" />
                 <line x1="88" y1="142" x2="108" y2="141" stroke="#94A3B8" stroke-width="1.8" stroke-linecap="round" />
                 <line x1="192" y1="135" x2="210" y2="132" stroke="#94A3B8" stroke-width="1.8" stroke-linecap="round" />
                 <line x1="192" y1="141" x2="212" y2="142" stroke="#94A3B8" stroke-width="1.8" stroke-linecap="round" />
 
-                <!-- KÍNH MẶT (NẾU ĐANG ĐEO) -->
                 ${eq.glasses === 'glass_study' ? `
                   <circle cx="130" cy="126" r="13" fill="rgba(255,255,255,0.2)" stroke="#1E293B" stroke-width="2.5" />
                   <circle cx="170" cy="126" r="13" fill="rgba(255,255,255,0.2)" stroke="#1E293B" stroke-width="2.5" />
@@ -4219,11 +4366,8 @@ service cloud.firestore {
                   <rect x="115" y="117" width="29" height="17" rx="5" fill="#0F172A" />
                   <rect x="156" y="117" width="29" height="17" rx="5" fill="#0F172A" />
                   <line x1="144" y1="123" x2="156" y2="123" stroke="#0F172A" stroke-width="3" />
-                  <line x1="120" y1="120" x2="127" y2="130" stroke="rgba(255,255,255,0.45)" stroke-width="2" />
-                  <line x1="161" y1="120" x2="168" y2="130" stroke="rgba(255,255,255,0.45)" stroke-width="2" />
                 ` : ''}
 
-                <!-- MŨ ĐỘI ĐẦU (NẾU ĐANG ĐỘI) -->
                 ${eq.hat === 'hat_cap' ? `
                   <path d="M 122 86 Q 150 62 178 86 Z" fill="#2563EB" />
                   <rect x="122" y="84" width="66" height="6" rx="3" fill="#1D4ED8" />
@@ -4239,14 +4383,12 @@ service cloud.firestore {
               </g>
             </g>
 
-            <!-- LỚP PHỦ TỐI KHI MÈO NGỦ -->
             ${petData.isSleeping ? `
               <rect x="0" y="0" width="300" height="265" fill="rgba(15, 23, 42, 0.36)" pointer-events="none" />
               <text x="195" y="95" font-size="16" font-weight="bold" fill="#FEF08A">Zzz...</text>
             ` : ''}
           </svg>
 
-          <!-- Thanh nút tương tác nhanh dưới đáy phòng -->
           <div class="flex items-center justify-between gap-2 px-3 py-2.5 bg-white border-t" style="border-color: var(--border-soft);">
             <div class="flex items-center gap-1.5">
               <button type="button" onclick="interactWithCat('head')" class="btn-soft px-2.5 py-1.5 rounded-xl text-xs font-bold">
@@ -4272,10 +4414,12 @@ service cloud.firestore {
       const level = Math.floor((petData.exp || 0) / 100) + 1;
       const expProgress = (petData.exp || 0) % 100;
       const items = SHOP_CATALOG.filter(i => i.tab === activeShopTab);
+      const adminMode = isCurrentUserAdmin();
 
       panel.innerHTML = `
+        ${adminMode ? buildAdminGrantCardHtml('cat-tab-grant') : ''}
+
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          <!-- CỘT TRÁI: CĂN PHÒNG & CON MÈO ĐỘNG -->
           <div class="lg:col-span-5 pastel-card rounded-3xl p-4 sm:p-5 bg-white space-y-4">
             <div class="flex items-center justify-between gap-2">
               <div class="flex items-center gap-2">
@@ -4287,10 +4431,8 @@ service cloud.firestore {
               <span class="text-xs font-bold" style="color: var(--text-muted);">${expProgress}/100 EXP</span>
             </div>
 
-            <!-- Sân khấu phòng ở & mèo tương tác -->
             ${renderInteractiveRoomSVG()}
 
-            <!-- Đổi tên mèo -->
             <div class="flex items-center gap-1.5">
               <input type="text" id="tom-cat-name-input" maxlength="22" placeholder="Đặt tên mới cho mèo..."
                 class="w-full px-3 py-1.5 rounded-xl border text-xs font-semibold bg-white focus:outline-none"
@@ -4300,7 +4442,6 @@ service cloud.firestore {
               </button>
             </div>
 
-            <!-- Chỉ số No & Vui -->
             <div class="grid grid-cols-2 gap-3 pt-1">
               <div class="p-2.5 rounded-2xl border" style="background-color: var(--bg-soft); border-color: var(--border-soft);">
                 <div class="flex justify-between text-xs font-bold mb-1">
@@ -4323,24 +4464,23 @@ service cloud.firestore {
             </div>
           </div>
 
-          <!-- CỘT PHẢI: VÍ XU TỪ GIỜ HỌC & SHOP QUẦN ÁO / NHÀ CỬA -->
           <div class="lg:col-span-7 space-y-5">
             <div class="pastel-card rounded-3xl p-5 bg-white flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
                 <p class="text-xs font-bold uppercase tracking-wider" style="color: var(--text-muted);">
-                  Ví Xu Cá Từ Giờ Học (1 phút học = 10 Xu)
+                  Ví Xu Cá (Học 1 phút = 10 Xu + Thưởng Admin)
                 </p>
                 <div class="flex items-baseline gap-2 mt-1">
                   <span class="text-2xl sm:text-3xl font-extrabold" style="color: var(--primary);">
                     🐟 ${wallet.balance.toLocaleString('vi-VN')} Xu Cá
                   </span>
                   <span class="text-xs font-semibold" style="color: var(--text-muted);">
-                    (${wallet.mins} phút tích lũy)
+                    (${wallet.mins} phút học)
                   </span>
                 </div>
               </div>
               <div class="px-3.5 py-2 rounded-2xl border text-xs font-semibold" style="background-color: var(--bg-soft); border-color: var(--border-soft);">
-                <p>Tổng kiếm được: <strong>${wallet.earned} Xu</strong></p>
+                <p>Từ giờ học: <strong>${wallet.studyEarned} Xu</strong> • Admin cấp: <strong>${wallet.bonus} Xu</strong></p>
                 <p class="mt-0.5">Đã chi tiêu: <strong>${wallet.spent} Xu</strong></p>
               </div>
             </div>
@@ -4375,7 +4515,7 @@ service cloud.firestore {
                       <div class="flex items-center gap-3 min-w-0">
                         <div class="w-11 h-11 rounded-2xl bg-white border flex items-center justify-center text-2xl shrink-0"
                           style="border-color: var(--border-soft);">
-                          ${item.emoji || item.icon}
+                          ${item.icon}
                         </div>
                         <div class="min-w-0">
                           <p class="text-sm font-bold truncate" style="color: var(--text-main);">${item.name}</p>
@@ -4394,6 +4534,22 @@ service cloud.firestore {
           </div>
         </div>
       `;
+
+      if (adminMode) updateAllMemberSelects();
+    }
+
+    function mountAdminCoinPanel() {
+      if (!isCurrentUserAdmin() || document.getElementById('admin-tab-coin-grant-wrapper')) return;
+      const panels = Array.from(document.querySelectorAll('.animate-tab'));
+      // Tìm khung nội dung của tab Quản Trị Admin (thường là tab cuối cùng)
+      const adminPanel = panels.find(p => p.innerText && (p.innerText.includes('Mục tiêu chung') || p.innerText.includes('Quản lý thành viên') || p.innerText.includes('Admin')));
+      if (adminPanel) {
+        const box = document.createElement('div');
+        box.id = 'admin-tab-coin-grant-wrapper';
+        box.innerHTML = buildAdminGrantCardHtml('admin-panel-grant');
+        adminPanel.insertAdjacentElement('afterbegin', box);
+        updateAllMemberSelects();
+      }
     }
 
     function mountTalkingCatTab() {
@@ -4434,6 +4590,7 @@ service cloud.firestore {
         });
         catPanel.classList.remove('hidden');
         renderCatTabContent();
+        if (isCurrentUserAdmin() && roomMembersCache.length === 0) refreshCoinMemberList();
       });
 
       Array.from(navBar.querySelectorAll('button')).forEach(btn => {
@@ -4448,10 +4605,14 @@ service cloud.firestore {
       });
 
       loadPetData();
+      setTimeout(() => {
+        if (isCurrentUserAdmin()) refreshCoinMemberList();
+      }, 1200);
     }
 
     setInterval(function () {
       mountTalkingCatTab();
+      mountAdminCoinPanel();
       const prev = petData.maxMinutesSeen || 0;
       const now = readMinutesFromPage();
       if (now > prev) {
