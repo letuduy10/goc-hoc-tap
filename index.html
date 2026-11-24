@@ -3724,8 +3724,9 @@ service cloud.firestore {
       { id: 'decor_desk', tab: 'house', slot: 'rightDecor', icon: '💻', name: 'Laptop & Đèn Bàn Học', price: 360, exp: 80, desc: 'Đặt thêm laptop và đèn vàng ấm lên bàn' },
       { id: 'decor_books', tab: 'house', slot: 'leftDecor', icon: '📚', name: 'Tủ Sách Gỗ Bên Cửa Sổ', price: 260, exp: 55, desc: 'Kệ gỗ nhiều ngăn xếp đầy sách pastel' }
     ];
-
+    
     let activeShopTab = 'breeds';
+    let previewEquip = {};
     let catSpeech = 'Học xong thì về chăm góc nhỏ này cùng mình nhé sen ơi! 🐾';
     let catMoodAnim = 'idle';
     let soundEnabled = true;
@@ -4150,7 +4151,24 @@ service cloud.firestore {
       renderCatTabContent();
       if (typeof showToast === 'function') showToast(`🐱 Đã đặt tên mèo thành "${petData.name}"!`);
     };
+      window.toggleTryOnItem = function (itemId) {
+  const item = SHOP_CATALOG.find(i => i.id === itemId);
+  if (!item || !item.slot) return;
+  if (previewEquip[item.slot] === item.id) {
+    delete previewEquip[item.slot];
+    catSpeech = `Đã tháo thử ${item.name}!`;
+  } else {
+    previewEquip[item.slot] = item.id;
+    catSpeech = `Đang mặc thử ${item.name} — sen thấy hợp với mình không? 👀✨`;
+  }
+  renderCatTabContent();
+};
 
+window.clearTryOnPreview = function () {
+  previewEquip = {};
+  catSpeech = 'Đã quay lại trang phục gốc của mình rồi nè! 🐾';
+  renderCatTabContent();
+};
     window.switchTomShopTab = function (tab) {
       activeShopTab = tab;
       renderCatTabContent();
@@ -4200,6 +4218,7 @@ service cloud.firestore {
       if (isPermanent) {
         petData.owned = Array.from(new Set([...(petData.owned || []), item.id]));
         petData.equipped[item.slot] = item.id;
+        delete previewEquip[item.slot];
         catMoodAnim = 'happy';
         playMeowSound('meow');
         spawnParticles('🎉');
@@ -4279,7 +4298,7 @@ service cloud.firestore {
 
     // Vẽ toàn bộ Góc Học Tập Pastel Lo-Fi + Con Mèo Mềm Mại + Quần Áo May Đo
     function renderInteractiveRoomSVG() {
-      const eq = petData.equipped || {};
+      const eq = Object.assign({}, petData.equipped || {}, previewEquip);
       const breedId = eq.breed || 'breed_white';
       const pal = getBreedPalette(breedId);
       const isNight = petData.isSleeping || eq.wall === 'wall_night';
@@ -4730,7 +4749,15 @@ service cloud.firestore {
             </div>
 
             ${renderInteractiveRoomSVG()}
-
+            ${Object.keys(previewEquip).length > 0 ? `
+  <div class="flex items-center justify-between gap-2 px-3 py-2 rounded-xl border text-xs font-bold"
+    style="background-color: var(--bg-soft); border-color: var(--primary-light); color: var(--primary);">
+    <span>👀 Đang mặc thử đồ (Chưa trừ Xu Cá)</span>
+    <button type="button" onclick="clearTryOnPreview()" class="px-2.5 py-1 rounded-lg bg-white border text-[11px] font-extrabold">
+      ↩️ Về đồ gốc
+    </button>
+  </div>
+` : ''}
             <div class="flex items-center gap-1.5">
               <input type="text" id="tom-cat-name-input" maxlength="22" placeholder="Đặt tên mới cho mèo..."
                 class="w-full px-3 py-1.5 rounded-xl border text-xs font-semibold bg-white focus:outline-none"
@@ -4825,7 +4852,19 @@ service cloud.firestore {
                           <p class="text-[11px] truncate" style="color: var(--text-muted);">${item.desc}</p>
                         </div>
                       </div>
-                      <button type="button" onclick="handleTomShopAction('${item.id}')"
+                      <div class="flex items-center gap-1.5 shrink-0">
+  ${!isOwned && isPerm ? `
+    <button type="button" onclick="toggleTryOnItem('${item.id}')"
+      class="px-2 py-1.5 rounded-xl text-xs font-bold border transition ${previewEquip[item.slot] === item.id ? 'btn-primary' : 'bg-white hover:bg-gray-50'}"
+      style="border-color: var(--border-soft); ${previewEquip[item.slot] === item.id ? '' : 'color: var(--primary);'}">
+      ${previewEquip[item.slot] === item.id ? 'Đang thử' : '👁️ Thử'}
+    </button>
+  ` : ''}
+  <button type="button" onclick="handleTomShopAction('${item.id}')"
+    class="px-2.5 py-1.5 rounded-xl text-xs font-extrabold whitespace-nowrap transition ${isEquipped ? 'btn-soft' : 'btn-primary'}">
+    ${isOwned ? (isEquipped ? 'Đang dùng' : 'Sử dụng') : `🐟 ${item.price}`}
+  </button>
+</div>
                         class="px-2.5 py-1.5 rounded-xl text-xs font-extrabold whitespace-nowrap shrink-0 transition ${isEquipped ? 'btn-soft' : 'btn-primary'}">
                         ${isOwned ? (isEquipped ? 'Đang dùng' : 'Sử dụng') : `🐟 ${item.price}`}
                       </button>
