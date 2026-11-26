@@ -11217,6 +11217,970 @@ service cloud.firestore {
     }, 500);
   })();
 </script>
+  <!-- =====================================================================
+     BẢNG QUYỀN ADMIN NÂNG CAO (ẨN HOÀN TOÀN VỚI THÀNH VIÊN THƯỜNG)
+     Xem TKB riêng tư, Mục tiêu, Chỗ nuôi mèo & Quản trị thành viên
+     (Dán đoạn này ngay trước thẻ </body> trong file index (2).html)
+     ===================================================================== -->
+<style>
+  .ynwa-adm-box {
+    width: 100%;
+    margin: 14px 0 20px;
+    padding: 18px;
+    border-radius: 22px;
+    background: #0f172a;
+    color: #e2e8f0;
+    border: 1px solid #334155;
+    box-shadow: 0 12px 30px rgba(15, 23, 42, 0.25);
+    font-family: inherit;
+  }
+  .ynwa-adm-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding-bottom: 12px;
+    margin-bottom: 14px;
+    border-bottom: 1px solid #1e293b;
+  }
+  .ynwa-adm-title {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 800;
+    color: #f8fafc;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .ynwa-adm-badge {
+    font-size: 10px;
+    font-weight: 800;
+    padding: 3px 8px;
+    border-radius: 9999px;
+    background: rgba(244, 63, 94, 0.2);
+    color: #fda4af;
+    border: 1px solid rgba(244, 63, 94, 0.4);
+    text-transform: uppercase;
+  }
+  .ynwa-adm-layout {
+    display: grid;
+    grid-template-columns: 240px 1fr;
+    gap: 14px;
+  }
+  @media (max-width: 820px) {
+    .ynwa-adm-layout {
+      grid-template-columns: 1fr;
+    }
+  }
+  .ynwa-adm-sidebar {
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 16px;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 520px;
+  }
+  .ynwa-adm-search {
+    width: 100%;
+    padding: 8px 10px;
+    border-radius: 10px;
+    border: 1px solid #475569;
+    background: #0f172a;
+    color: #f8fafc;
+    font-size: 12px;
+    outline: none;
+    box-sizing: border-box;
+  }
+  .ynwa-adm-user-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    overflow-y: auto;
+    flex: 1;
+  }
+  .ynwa-adm-user-btn {
+    width: 100%;
+    text-align: left;
+    padding: 9px 10px;
+    border-radius: 12px;
+    border: 1px solid transparent;
+    background: #0f172a;
+    color: #cbd5e1;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+  }
+  .ynwa-adm-user-btn:hover {
+    border-color: #6366f1;
+    color: #ffffff;
+  }
+  .ynwa-adm-user-btn.active {
+    background: #312e81;
+    border-color: #818cf8;
+    color: #ffffff;
+  }
+  .ynwa-adm-user-name {
+    font-size: 12.5px;
+    font-weight: 700;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .ynwa-adm-user-sub {
+    font-size: 10.5px;
+    color: #94a3b8;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .ynwa-adm-main {
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 16px;
+    padding: 14px;
+    min-height: 360px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .ynwa-adm-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    border-bottom: 1px solid #334155;
+    padding-bottom: 10px;
+  }
+  .ynwa-adm-tab {
+    padding: 7px 12px;
+    border-radius: 10px;
+    border: 1px solid #475569;
+    background: #0f172a;
+    color: #cbd5e1;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .ynwa-adm-tab.active {
+    background: #4f46e5;
+    border-color: #6366f1;
+    color: #ffffff;
+  }
+  .ynwa-adm-card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+    gap: 10px;
+  }
+  .ynwa-adm-item {
+    background: #0f172a;
+    border: 1px solid #334155;
+    border-radius: 12px;
+    padding: 10px 12px;
+    font-size: 12px;
+  }
+  .ynwa-adm-stat-bar {
+    height: 8px;
+    border-radius: 9999px;
+    background: #334155;
+    overflow: hidden;
+    margin-top: 4px;
+  }
+  .ynwa-adm-stat-fill {
+    height: 100%;
+    border-radius: 9999px;
+    transition: width 0.25s ease;
+  }
+  .ynwa-adm-btn {
+    padding: 7px 12px;
+    border-radius: 10px;
+    border: 1px solid #475569;
+    background: #334155;
+    color: #f8fafc;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .ynwa-adm-btn:hover { background: #475569; }
+  .ynwa-adm-btn-primary {
+    background: #4f46e5;
+    border-color: #6366f1;
+  }
+  .ynwa-adm-btn-primary:hover { background: #4338ca; }
+  .ynwa-adm-btn-danger {
+    background: #9f1239;
+    border-color: #e11d48;
+  }
+  .ynwa-adm-textarea, .ynwa-adm-input {
+    width: 100%;
+    padding: 8px 10px;
+    border-radius: 10px;
+    border: 1px solid #475569;
+    background: #0f172a;
+    color: #f8fafc;
+    font-size: 12px;
+    box-sizing: border-box;
+    outline: none;
+  }
+  .ynwa-adm-empty {
+    text-align: center;
+    padding: 28px 12px;
+    color: #94a3b8;
+    font-size: 12.5px;
+    border: 1px dashed #475569;
+    border-radius: 14px;
+  }
+  /* Popup ẩn khi Admin bấm Ctrl + Shift + A từ bất kỳ trang nào */
+  .ynwa-adm-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    background: rgba(2, 6, 23, 0.72);
+    backdrop-filter: blur(4px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+  }
+  .ynwa-adm-overlay.open { display: flex; }
+  .ynwa-adm-overlay-inner {
+    width: 100%;
+    max-width: 980px;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+</style>
+
+<script type="module">
+  import { getApps, getApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+  import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+  import {
+    getFirestore,
+    collection,
+    doc,
+    getDoc,
+    getDocs,
+    setDoc,
+    updateDoc,
+    onSnapshot,
+    serverTimestamp
+  } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+  (function () {
+    if (window.__ynwaHiddenAdminLoaded) return;
+    window.__ynwaHiddenAdminLoaded = true;
+
+    const appId = typeof __app_id !== "undefined" ? __app_id : "goc-hoc-nho-prod";
+
+    // =================================================================
+    // CẤU HÌNH DANH SÁCH ADMIN ĐƯỢC PHÉP MỞ QUYỀN NÀY
+    // (Ngoài ra code cũng tự nhận diện nếu user doc có role === "admin" hoặc isAdmin === true)
+    // =================================================================
+    const ADMIN_EMAILS = [
+      // "email-cua-ban@gmail.com"
+    ].map(e => e.toLowerCase());
+
+    const ADMIN_UIDS = [
+      // "uid-admin-cua-ban"
+    ];
+
+    // Tên các subcollection phổ biến trong artifacts/{appId}/users/{uid}/...
+    // Admin có thể đổi trực tiếp trong giao diện nếu app bạn đặt tên khác
+    const DEFAULT_PATHS = {
+      scheduleCols: ["schedules", "private_schedules", "timetable", "tkb", "schedule"],
+      goalCols:     ["goals", "todos", "tasks", "objectives", "daily_goals"],
+      catCols:      ["cat", "cats", "pet", "pets", "cat_data", "game"]
+    };
+
+    let customPaths = (() => {
+      try {
+        const saved = JSON.parse(localStorage.getItem("ynwa_adm_paths") || "null");
+        return saved || { scheduleCol: "", goalCol: "", catCol: "" };
+      } catch {
+        return { scheduleCol: "", goalCol: "", catCol: "" };
+      }
+    })();
+
+    let db = null;
+    let auth = null;
+    let currentUser = null;
+    let isVerifiedAdmin = false;
+    let allUsers = [];
+    let selectedUid = null;
+    let activeTab = "schedule"; // "schedule" | "goals" | "cat" | "controls"
+    let inspectedCache = new Map(); // uid -> { schedules, goals, catInfo, adminNote, rawUser }
+
+    function esc(v) {
+      return String(v ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }
+
+    function notify(msg, icon = "🛡️") {
+      if (typeof window.showToast === "function") window.showToast(msg, icon);
+    }
+
+    // -----------------------------------------------------------------
+    // 1. KIỂM TRA QUYỀN ADMIN NGẦM (THÀNH VIÊN THƯỜNG KHÔNG BAO GIỜ THẤY)
+    // -----------------------------------------------------------------
+    function checkIsAdmin(user, userDocData) {
+      if (!user) return false;
+      const email = (user.email || "").toLowerCase();
+      if (ADMIN_EMAILS.includes(email) || ADMIN_UIDS.includes(user.uid)) return true;
+      if (userDocData) {
+        const role = String(userDocData.role || "").toLowerCase();
+        if (role === "admin" || role === "owner" || role === "superadmin" || userDocData.isAdmin === true) {
+          return true;
+        }
+      }
+      // Dự phòng: kiểm tra biến toàn cục nếu file gốc có dùng
+      if (window.isAdmin === true || window.currentUserRole === "admin") return true;
+      return false;
+    }
+
+    // -----------------------------------------------------------------
+    // 2. TÌM MỤC ADMIN SẴN CÓ ĐỂ GẮN BẢNG GIÁM SÁT VÀO
+    // -----------------------------------------------------------------
+    function findAdminHost() {
+      const ids = ["tab-admin", "panel-admin", "admin-panel", "admin-section", "admin-modal-body", "admin-content"];
+      for (const id of ids) {
+        const el = document.getElementById(id);
+        if (el) return el;
+      }
+      const headings = Array.from(document.querySelectorAll("h1, h2, h3, h4"));
+      const h = headings.find(el => {
+        const t = (el.textContent || "").toLowerCase();
+        return t.includes("quản trị") || t.includes("admin");
+      });
+      if (h) return h.closest("section, [id^='tab-'], [id^='panel-'], .pastel-card") || h.parentElement;
+      return null;
+    }
+
+    function buildInspectorHTML() {
+      return `
+        <div class="ynwa-adm-box" id="ynwa-adm-inspector">
+          <div class="ynwa-adm-head">
+            <div>
+              <h3 class="ynwa-adm-title">
+                <span>🛡️ Trung Tâm Giám Sát Nội Bộ</span>
+                <span class="ynwa-adm-badge">Chỉ Admin Thấy</span>
+              </h3>
+              <div style="font-size:11.5px; color:#94a3b8; margin-top:3px;">
+                Xem thời khóa biểu riêng tư, mục tiêu cá nhân, khu nuôi mèo & điều chỉnh dữ liệu từng thành viên (phím tắt nhanh: Ctrl + Shift + A)
+              </div>
+            </div>
+            <div style="display:flex; gap:6px; flex-wrap:wrap;">
+              <button type="button" class="ynwa-adm-btn" id="ynwa-adm-refresh">🔄 Tải lại dữ liệu</button>
+              <button type="button" class="ynwa-adm-btn" id="ynwa-adm-config-btn">⚙️ Đường dẫn DB</button>
+            </div>
+          </div>
+
+          <div id="ynwa-adm-config-box" style="display:none; background:#1e293b; border:1px solid #475569; border-radius:12px; padding:10px; margin-bottom:12px;">
+            <div style="font-size:11.5px; font-weight:700; color:#cbd5e1; margin-bottom:8px;">
+              Tùy chỉnh tên subcollection riêng (để trống = tự động dò tất cả tên phổ biến):
+            </div>
+            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(170px, 1fr)); gap:8px;">
+              <input id="ynwa-cfg-schedule" class="ynwa-adm-input" placeholder="TKB riêng (vd: private_schedules)" value="${esc(customPaths.scheduleCol)}" />
+              <input id="ynwa-cfg-goal" class="ynwa-adm-input" placeholder="Mục tiêu (vd: goals)" value="${esc(customPaths.goalCol)}" />
+              <input id="ynwa-cfg-cat" class="ynwa-adm-input" placeholder="Nuôi mèo (vd: cat)" value="${esc(customPaths.catCol)}" />
+            </div>
+            <div style="margin-top:8px; text-align:right;">
+              <button type="button" id="ynwa-cfg-save" class="ynwa-adm-btn ynwa-adm-btn-primary">Lưu & Quét lại</button>
+            </div>
+          </div>
+
+          <div class="ynwa-adm-layout">
+            <div class="ynwa-adm-sidebar">
+              <input type="text" id="ynwa-adm-search" class="ynwa-adm-search" placeholder="🔍 Tìm tên hoặc email..." />
+              <div id="ynwa-adm-user-list" class="ynwa-adm-user-list"></div>
+            </div>
+
+            <div class="ynwa-adm-main">
+              <div id="ynwa-adm-selected-header" style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+                <div style="font-size:13px; color:#94a3b8;">← Chọn một thành viên bên trái để xem dữ liệu riêng tư</div>
+              </div>
+
+              <div class="ynwa-adm-tabs">
+                <button type="button" class="ynwa-adm-tab active" data-adm-tab="schedule">📅 TKB Riêng Tư</button>
+                <button type="button" class="ynwa-adm-tab" data-adm-tab="goals">🎯 Mục Tiêu</button>
+                <button type="button" class="ynwa-adm-tab" data-adm-tab="cat">🐱 Chỗ Nuôi Mèo</button>
+                <button type="button" class="ynwa-adm-tab" data-adm-tab="controls">⚡ Quyền Admin Mở Rộng</button>
+              </div>
+
+              <div id="ynwa-adm-tab-body" style="flex:1;"></div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function mountAdminUI() {
+      if (!isVerifiedAdmin) return;
+      if (document.getElementById("ynwa-adm-inspector")) return;
+
+      const host = findAdminHost();
+      if (host) {
+        const wrapper = document.createElement("div");
+        wrapper.innerHTML = buildInspectorHTML();
+        host.appendChild(wrapper.firstElementChild);
+        bindInspectorEvents();
+        renderUserList();
+      } else {
+        // Nếu trang chưa có tab Admin rõ ràng, tạo sẵn overlay bí mật mở bằng Ctrl+Shift+A
+        ensureOverlay();
+      }
+    }
+
+    function ensureOverlay() {
+      if (!isVerifiedAdmin) return;
+      let overlay = document.getElementById("ynwa-adm-overlay");
+      if (!overlay) {
+        overlay = document.createElement("div");
+        overlay.id = "ynwa-adm-overlay";
+        overlay.className = "ynwa-adm-overlay";
+        overlay.innerHTML = `
+          <div class="ynwa-adm-overlay-inner">
+            <div style="text-align:right; margin-bottom:6px;">
+              <button type="button" id="ynwa-adm-overlay-close" class="ynwa-adm-btn ynwa-adm-btn-danger">✕ Đóng bảng ẩn</button>
+            </div>
+            <div id="ynwa-adm-overlay-slot"></div>
+          </div>
+        `;
+        document.body.appendChild(overlay);
+        overlay.addEventListener("click", (e) => {
+          if (e.target === overlay) overlay.classList.remove("open");
+        });
+        document.getElementById("ynwa-adm-overlay-close").addEventListener("click", () => {
+          overlay.classList.remove("open");
+        });
+      }
+
+      if (!document.getElementById("ynwa-adm-inspector")) {
+        const slot = document.getElementById("ynwa-adm-overlay-slot");
+        slot.innerHTML = buildInspectorHTML();
+        bindInspectorEvents();
+        renderUserList();
+      }
+    }
+
+    // Phím tắt ẩn Ctrl + Shift + A chỉ hoạt động khi đã xác thực là Admin
+    document.addEventListener("keydown", (e) => {
+      if (!isVerifiedAdmin) return;
+      if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === "a") {
+        e.preventDefault();
+        ensureOverlay();
+        const inspector = document.getElementById("ynwa-adm-inspector");
+        const slot = document.getElementById("ynwa-adm-overlay-slot");
+        if (inspector && slot && !slot.contains(inspector)) {
+          slot.appendChild(inspector);
+        }
+        document.getElementById("ynwa-adm-overlay").classList.toggle("open");
+      }
+    });
+
+    function bindInspectorEvents() {
+      const searchEl = document.getElementById("ynwa-adm-search");
+      if (searchEl) searchEl.addEventListener("input", renderUserList);
+
+      document.querySelectorAll("[data-adm-tab]").forEach(btn => {
+        btn.addEventListener("click", () => {
+          activeTab = btn.getAttribute("data-adm-tab");
+          document.querySelectorAll("[data-adm-tab]").forEach(b => b.classList.toggle("active", b === btn));
+          renderTabContent();
+        });
+      });
+
+      document.getElementById("ynwa-adm-refresh")?.addEventListener("click", () => {
+        if (selectedUid) inspectMember(selectedUid, true);
+      });
+
+      document.getElementById("ynwa-adm-config-btn")?.addEventListener("click", () => {
+        const box = document.getElementById("ynwa-adm-config-box");
+        box.style.display = box.style.display === "none" ? "block" : "none";
+      });
+
+      document.getElementById("ynwa-cfg-save")?.addEventListener("click", () => {
+        customPaths = {
+          scheduleCol: document.getElementById("ynwa-cfg-schedule").value.trim(),
+          goalCol: document.getElementById("ynwa-cfg-goal").value.trim(),
+          catCol: document.getElementById("ynwa-cfg-cat").value.trim()
+        };
+        localStorage.setItem("ynwa_adm_paths", JSON.stringify(customPaths));
+        notify("Đã lưu cấu hình đường dẫn DB!", "⚙️");
+        if (selectedUid) inspectMember(selectedUid, true);
+      });
+    }
+
+    // -----------------------------------------------------------------
+    // 3. QUÉT DỮ LIỆU RIÊNG TƯ CỦA TỪNG THÀNH VIÊN
+    // -----------------------------------------------------------------
+    async function safeReadSubcollection(uid, colName) {
+      try {
+        const snap = await getDocs(collection(db, "artifacts", appId, "users", uid, colName));
+        return snap.docs.map(d => ({ id: d.id, _source: `users/${uid}/${colName}`, ...d.data() }));
+      } catch {
+        return [];
+      }
+    }
+
+    async function safeReadPublicFiltered(colName, uid) {
+      try {
+        const snap = await getDocs(collection(db, "artifacts", appId, "public", "data", colName));
+        return snap.docs
+          .map(d => ({ id: d.id, _source: `public/${colName}`, ...d.data() }))
+          .filter(x => x.uid === uid || x.userId === uid || x.memberUid === uid || x.ownerUid === uid || x.id === uid);
+      } catch {
+        return [];
+      }
+    }
+
+    async function inspectMember(uid, force = false) {
+      if (!isVerifiedAdmin || !db) return;
+      selectedUid = uid;
+      renderUserList();
+
+      const body = document.getElementById("ynwa-adm-tab-body");
+      const header = document.getElementById("ynwa-adm-selected-header");
+      const userObj = allUsers.find(u => u.id === uid) || { id: uid };
+
+      if (header) {
+        header.innerHTML = `
+          <div>
+            <div style="font-size:15px; font-weight:800; color:#fff;">
+              👤 ${esc(userObj.displayName || userObj.name || "Thành viên")}
+              <span style="font-size:11px; font-weight:600; color:#94a3b8; margin-left:6px;">(${esc(userObj.email || uid)})</span>
+            </div>
+            <div style="font-size:11px; color:#94a3b8; margin-top:2px;">
+              UID: <code>${esc(uid)}</code> • Vai trò: <strong>${esc(userObj.role || (userObj.isAdmin ? "admin" : "member"))}</strong>
+            </div>
+          </div>
+        `;
+      }
+
+      if (!force && inspectedCache.has(uid)) {
+        renderTabContent();
+        return;
+      }
+
+      if (body) {
+        body.innerHTML = `<div class="ynwa-adm-empty">⏳ Đang tải dữ liệu riêng tư của thành viên...</div>`;
+      }
+
+      // 1) Đọc trực tiếp user doc (cả bản public và bản private nếu có)
+      let privateProfile = {};
+      try {
+        const pDoc = await getDoc(doc(db, "artifacts", appId, "users", uid, "profile", "main"));
+        if (pDoc.exists()) privateProfile = pDoc.data();
+      } catch {}
+
+      const mergedUser = { ...userObj, ...privateProfile };
+
+      // 2) Quét Thời khóa biểu riêng tư
+      const schedCols = customPaths.scheduleCol ? [customPaths.scheduleCol] : DEFAULT_PATHS.scheduleCols;
+      const schedResults = (await Promise.all([
+        ...schedCols.map(c => safeReadSubcollection(uid, c)),
+        safeReadPublicFiltered("private_schedules", uid)
+      ])).flat();
+
+      // Lấy thêm nếu TKB riêng lưu ngay trong field của user doc
+      const inlineSched = mergedUser.privateSchedule || mergedUser.schedule || mergedUser.timetable || mergedUser.tkb;
+      if (Array.isArray(inlineSched)) {
+        inlineSched.forEach((item, idx) => schedResults.push({ id: `inline-${idx}`, _source: "userDoc", ...item }));
+      }
+
+      // 3) Quét Mục tiêu
+      const goalCols = customPaths.goalCols ? [customPaths.goalCols] : DEFAULT_PATHS.goalCols;
+      const goalResults = (await Promise.all([
+        ...goalCols.map(c => safeReadSubcollection(uid, c)),
+        safeReadPublicFiltered("goals", uid),
+        safeReadPublicFiltered("todos", uid)
+      ])).flat();
+
+      const inlineGoals = mergedUser.goals || mergedUser.dailyGoals || mergedUser.todos || mergedUser.tasks;
+      if (Array.isArray(inlineGoals)) {
+        inlineGoals.forEach((g, idx) => {
+          goalResults.push(typeof g === "string"
+            ? { id: `inline-g-${idx}`, title: g, done: false, _source: "userDoc" }
+            : { id: `inline-g-${idx}`, _source: "userDoc", ...g }
+          );
+        });
+      } else if (typeof mergedUser.goal === "string" && mergedUser.goal.trim()) {
+        goalResults.push({ id: "inline-goal-str", title: mergedUser.goal, _source: "userDoc" });
+      }
+
+      // 4) Quét Chỗ nuôi mèo (Cat / Pet)
+      const catCols = customPaths.catCols ? [customPaths.catCols] : DEFAULT_PATHS.catCols;
+      const catDocs = (await Promise.all([
+        ...catCols.map(c => safeReadSubcollection(uid, c)),
+        safeReadPublicFiltered("cats", uid),
+        safeReadPublicFiltered("pets", uid)
+      ])).flat();
+
+      const inlineCat = mergedUser.cat || mergedUser.pet || mergedUser.catData || mergedUser.petData || null;
+      const catList = [...catDocs];
+      if (inlineCat && typeof inlineCat === "object") {
+        catList.unshift({ id: "userDoc-cat", _source: "userDoc", ...inlineCat });
+      } else if (mergedUser.catName || mergedUser.catLevel !== undefined || mergedUser.catHunger !== undefined) {
+        catList.unshift({
+          id: "userDoc-flat-cat",
+          _source: "userDoc",
+          name: mergedUser.catName || "Mèo cưng",
+          level: mergedUser.catLevel,
+          exp: mergedUser.catExp,
+          hunger: mergedUser.catHunger,
+          happiness: mergedUser.catHappiness,
+          coins: mergedUser.coins ?? mergedUser.fish ?? mergedUser.points
+        });
+      }
+
+      // 5) Đọc ghi chú nội bộ của Admin về thành viên này
+      let adminNote = "";
+      try {
+        const noteDoc = await getDoc(doc(db, "artifacts", appId, "admin_only", "member_notes", "items", uid));
+        if (noteDoc.exists()) adminNote = noteDoc.data().note || "";
+      } catch {}
+
+      inspectedCache.set(uid, {
+        schedules: schedResults,
+        goals: goalResults,
+        cats: catList,
+        adminNote,
+        rawUser: mergedUser
+      });
+
+      renderTabContent();
+    }
+
+    // -----------------------------------------------------------------
+    // 4. HIỂN THỊ DANH SÁCH & NỘI DUNG TỪNG TAB GIÁM SÁT
+    // -----------------------------------------------------------------
+    function renderUserList() {
+      const listEl = document.getElementById("ynwa-adm-user-list");
+      if (!listEl) return;
+      const q = (document.getElementById("ynwa-adm-search")?.value || "").trim().toLowerCase();
+
+      const filtered = allUsers.filter(u => {
+        const hay = `${u.displayName || ""} ${u.name || ""} ${u.email || ""} ${u.id}`.toLowerCase();
+        return hay.includes(q);
+      });
+
+      if (filtered.length === 0) {
+        listEl.innerHTML = `<div style="font-size:12px; color:#94a3b8; text-align:center; padding:16px;">Không tìm thấy thành viên</div>`;
+        return;
+      }
+
+      listEl.innerHTML = filtered.map(u => {
+        const isAdm = String(u.role || "").toLowerCase() === "admin" || u.isAdmin === true;
+        const activeCls = u.id === selectedUid ? "active" : "";
+        return `
+          <button type="button" class="ynwa-adm-user-btn ${activeCls}" data-inspect-uid="${esc(u.id)}">
+            <div style="min-width:0;">
+              <div class="ynwa-adm-user-name">${esc(u.displayName || u.name || "Không tên")}</div>
+              <div class="ynwa-adm-user-sub">${esc(u.email || u.id.slice(0, 14))}</div>
+            </div>
+            ${isAdm ? `<span style="font-size:10px; padding:2px 6px; border-radius:999px; background:#4f46e5; color:#fff; font-weight:800;">ADM</span>` : ""}
+          </button>
+        `;
+      }).join("");
+
+      listEl.querySelectorAll("[data-inspect-uid]").forEach(btn => {
+        btn.addEventListener("click", () => inspectMember(btn.getAttribute("data-inspect-uid")));
+      });
+    }
+
+    function renderTabContent() {
+      const body = document.getElementById("ynwa-adm-tab-body");
+      if (!body) return;
+      if (!selectedUid || !inspectedCache.has(selectedUid)) {
+        body.innerHTML = `<div class="ynwa-adm-empty">Hãy chọn một thành viên ở cột bên trái.</div>`;
+        return;
+      }
+
+      const data = inspectedCache.get(selectedUid);
+
+      // TAB 1: THỜI KHÓA BIỂU RIÊNG TƯ
+      if (activeTab === "schedule") {
+        if (!data.schedules.length) {
+          body.innerHTML = `<div class="ynwa-adm-empty">Thành viên này chưa có dữ liệu Thời khóa biểu riêng tư (hoặc tên collection khác — bấm <strong>⚙️ Đường dẫn DB</strong> để nhập đúng tên).</div>`;
+          return;
+        }
+        body.innerHTML = `
+          <div style="font-size:12px; color:#94a3b8; margin-bottom:10px;">Tìm thấy <strong>${data.schedules.length}</strong> mục thời khóa biểu riêng tư:</div>
+          <div class="ynwa-adm-card-grid">
+            ${data.schedules.map(s => {
+              const day = s.day || s.weekday || s.thu || s.date || "Không rõ ngày";
+              const time = s.startTime ? `${s.startTime}${s.endTime ? " – " + s.endTime : ""}` : (s.time || s.period || "--:--");
+              const title = s.subject || s.title || s.name || s.content || "Mục học tập";
+              const note = s.note || s.description || s.room || "";
+              return `
+                <div class="ynwa-adm-item">
+                  <div style="display:flex; justify-content:space-between; color:#818cf8; font-weight:800; margin-bottom:4px;">
+                    <span>📆 ${esc(day)}</span>
+                    <span>🕒 ${esc(time)}</span>
+                  </div>
+                  <div style="font-weight:800; color:#f8fafc; font-size:13px;">${esc(title)}</div>
+                  ${note ? `<div style="color:#94a3b8; margin-top:4px;">📝 ${esc(note)}</div>` : ""}
+                  <div style="font-size:10px; color:#64748b; margin-top:6px;">Nguồn: ${esc(s._source || "")}</div>
+                </div>
+              `;
+            }).join("")}
+          </div>
+        `;
+        return;
+      }
+
+      // TAB 2: MỤC TIÊU CÁ NHÂN
+      if (activeTab === "goals") {
+        if (!data.goals.length) {
+          body.innerHTML = `<div class="ynwa-adm-empty">Thành viên này chưa tạo mục tiêu nào.</div>`;
+          return;
+        }
+        const doneCount = data.goals.filter(g => g.done === true || g.completed === true || g.status === "done").length;
+        body.innerHTML = `
+          <div style="font-size:12px; color:#94a3b8; margin-bottom:10px;">
+            Tổng <strong>${data.goals.length}</strong> mục tiêu • Hoàn thành: <strong style="color:#34d399;">${doneCount}/${data.goals.length}</strong>
+          </div>
+          <div class="ynwa-adm-card-grid">
+            ${data.goals.map(g => {
+              const isDone = g.done === true || g.completed === true || g.status === "done";
+              const text = g.title || g.text || g.name || g.content || g.goal || "Mục tiêu";
+              const deadline = g.deadline || g.dueDate || g.targetDate || "";
+              const progress = g.progress !== undefined ? `${g.progress}%` : "";
+              return `
+                <div class="ynwa-adm-item" style="border-left:3px solid ${isDone ? "#10b981" : "#f59e0b"};">
+                  <div style="display:flex; align-items:center; justify-content:space-between; gap:6px;">
+                    <span style="font-weight:800; color:${isDone ? "#6ee7b7" : "#f8fafc"}; ${isDone ? "text-decoration:line-through;" : ""}">
+                      ${isDone ? "✅" : "🎯"} ${esc(text)}
+                    </span>
+                    ${progress ? `<span style="font-size:11px; color:#38bdf8; font-weight:800;">${esc(progress)}</span>` : ""}
+                  </div>
+                  ${deadline ? `<div style="color:#fbbf24; font-size:11px; margin-top:5px;">⏳ Hạn: ${esc(deadline)}</div>` : ""}
+                  ${g.note ? `<div style="color:#94a3b8; font-size:11px; margin-top:4px;">${esc(g.note)}</div>` : ""}
+                </div>
+              `;
+            }).join("")}
+          </div>
+        `;
+        return;
+      }
+
+      // TAB 3: CHỖ NUÔI MÈO (PET / CAT)
+      if (activeTab === "cat") {
+        if (!data.cats.length) {
+          body.innerHTML = `<div class="ynwa-adm-empty">Chưa thấy dữ liệu nuôi mèo của thành viên này. Nếu tên collection khác, hãy nhập trong nút <strong>⚙️ Đường dẫn DB</strong>.</div>`;
+          return;
+        }
+        body.innerHTML = `
+          <div class="ynwa-adm-card-grid">
+            ${data.cats.map(cat => {
+              const name = cat.name || cat.catName || cat.petName || "Bé Mèo";
+              const level = cat.level ?? cat.lv ?? 1;
+              const exp = cat.exp ?? cat.xp ?? 0;
+              const hunger = Number(cat.hunger ?? cat.food ?? cat.fullness ?? 0);
+              const happy = Number(cat.happiness ?? cat.mood ?? cat.affection ?? 0);
+              const energy = Number(cat.energy ?? cat.stamina ?? 0);
+              const coins = cat.coins ?? cat.fish ?? cat.treats ?? cat.gold ?? data.rawUser.coins ?? 0;
+              const breed = cat.breed || cat.skin || cat.type || cat.avatar || "Mèo nhà";
+              const items = Array.isArray(cat.items || cat.inventory) ? (cat.items || cat.inventory) : [];
+
+              const bar = (label, val, color) => {
+                const pct = Math.max(0, Math.min(100, isNaN(val) ? 0 : val));
+                return `
+                  <div style="margin-top:7px;">
+                    <div style="display:flex; justify-content:space-between; font-size:11px; color:#cbd5e1;">
+                      <span>${label}</span><span>${pct}%</span>
+                    </div>
+                    <div class="ynwa-adm-stat-bar">
+                      <div class="ynwa-adm-stat-fill" style="width:${pct}%; background:${color};"></div>
+                    </div>
+                  </div>
+                `;
+              };
+
+              return `
+                <div class="ynwa-adm-item">
+                  <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;">
+                    <span style="font-size:14px; font-weight:800; color:#fde68a;">🐱 ${esc(name)}</span>
+                    <span style="font-size:11px; padding:2px 8px; border-radius:999px; background:#312e81; color:#c7d2fe; font-weight:800;">
+                      Lv.${esc(level)} (${esc(exp)} XP)
+                    </span>
+                  </div>
+                  <div style="font-size:11.5px; color:#94a3b8; margin-bottom:6px;">
+                    Giống/Skin: <strong style="color:#e2e8f0;">${esc(breed)}</strong> • Tiền/Cá: <strong style="color:#34d399;">${esc(coins)}</strong>
+                  </div>
+                  ${bar("🍖 Độ no", hunger, "#fb923c")}
+                  ${bar("💖 Độ vui vẻ", happy, "#f472b6")}
+                  ${energy ? bar("⚡ Năng lượng", energy, "#38bdf8") : ""}
+                  ${items.length ? `<div style="margin-top:8px; font-size:11px; color:#cbd5e1;">🎒 Đồ sở hữu: ${esc(items.map(i => typeof i === "string" ? i : (i.name || i.id)).join(", "))}</div>` : ""}
+                </div>
+              `;
+            }).join("")}
+          </div>
+        `;
+        return;
+      }
+
+      // TAB 4: QUYỀN ADMIN MỞ RỘNG (CHỈ ADMIN THẤY & DÙNG)
+      if (activeTab === "controls") {
+        const u = data.rawUser;
+        const isTargetAdmin = String(u.role || "").toLowerCase() === "admin" || u.isAdmin === true;
+        const isMuted = u.isMuted === true || u.locked === true;
+
+        body.innerHTML = `
+          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:12px;">
+            <div class="ynwa-adm-item">
+              <div style="font-weight:800; color:#f8fafc; margin-bottom:8px;">👑 Quyền hạn & Trạng thái</div>
+              <div style="display:flex; flex-direction:column; gap:8px;">
+                <button type="button" id="ynwa-adm-toggle-role" class="ynwa-adm-btn ynwa-adm-btn-primary">
+                  ${isTargetAdmin ? "⬇️ Hạ xuống Thành viên thường" : "⬆️ Cấp quyền Admin cho người này"}
+                </button>
+                <button type="button" id="ynwa-adm-toggle-mute" class="ynwa-adm-btn ${isMuted ? "" : "ynwa-adm-btn-danger"}">
+                  ${isMuted ? "🔓 Mở khóa tương tác thành viên" : "🔇 Tạm khóa tương tác / Cảnh báo"}
+                </button>
+              </div>
+            </div>
+
+            <div class="ynwa-adm-item">
+              <div style="font-weight:800; color:#f8fafc; margin-bottom:8px;">🎁 Tặng / Chỉnh điểm & Xu nuôi mèo</div>
+              <div style="display:flex; gap:6px; align-items:center;">
+                <input type="number" id="ynwa-adm-coins-input" class="ynwa-adm-input" value="${esc(u.coins ?? u.points ?? 0)}" />
+                <button type="button" id="ynwa-adm-save-coins" class="ynwa-adm-btn ynwa-adm-btn-primary" style="white-space:nowrap;">Cập nhật</button>
+              </div>
+              <div style="font-size:11px; color:#94a3b8; margin-top:6px;">
+                Ghi trực tiếp vào trường <code>coins</code> & <code>points</code> của thành viên.
+              </div>
+            </div>
+
+            <div class="ynwa-adm-item" style="grid-column: 1 / -1;">
+              <div style="font-weight:800; color:#f8fafc; margin-bottom:6px;">🕵️ Ghi chú mật của Admin (Thành viên hoàn toàn không biết)</div>
+              <textarea id="ynwa-adm-secret-note" rows="3" class="ynwa-adm-textarea" placeholder="Ghi nhận xét về tiến độ học, lịch học hoặc lưu ý riêng...">${esc(data.adminNote)}</textarea>
+              <div style="margin-top:8px; text-align:right;">
+                <button type="button" id="ynwa-adm-save-note" class="ynwa-adm-btn ynwa-adm-btn-primary">💾 Lưu ghi chú mật</button>
+              </div>
+            </div>
+
+            <div class="ynwa-adm-item" style="grid-column: 1 / -1;">
+              <details>
+                <summary style="cursor:pointer; font-weight:700; color:#94a3b8;">🧾 Xem dữ liệu JSON gốc của thành viên (Debug)</summary>
+                <pre style="margin-top:8px; max-height:200px; overflow:auto; font-size:11px; color:#a5b4fc; white-space:pre-wrap;">${esc(JSON.stringify(u, null, 2))}</pre>
+              </details>
+            </div>
+          </div>
+        `;
+
+        // Bắt sự kiện quyền nâng cao
+        document.getElementById("ynwa-adm-toggle-role")?.addEventListener("click", async () => {
+          const nextAdmin = !isTargetAdmin;
+          try {
+            await updateDoc(doc(db, "artifacts", appId, "public", "data", "users", selectedUid), {
+              role: nextAdmin ? "admin" : "member",
+              isAdmin: nextAdmin,
+              updatedAt: serverTimestamp()
+            });
+            notify(nextAdmin ? "Đã cấp quyền Admin!" : "Đã chuyển về Thành viên!", "👑");
+            inspectMember(selectedUid, true);
+          } catch (err) {
+            notify("Lỗi cập nhật quyền: " + err.message, "⚠️");
+          }
+        });
+
+        document.getElementById("ynwa-adm-toggle-mute")?.addEventListener("click", async () => {
+          try {
+            await updateDoc(doc(db, "artifacts", appId, "public", "data", "users", selectedUid), {
+              isMuted: !isMuted,
+              locked: !isMuted,
+              updatedAt: serverTimestamp()
+            });
+            notify(!isMuted ? "Đã tạm khóa tương tác thành viên." : "Đã mở khóa thành viên.", "🛡️");
+            inspectMember(selectedUid, true);
+          } catch (err) {
+            notify("Lỗi cập nhật trạng thái: " + err.message, "⚠️");
+          }
+        });
+
+        document.getElementById("ynwa-adm-save-coins")?.addEventListener("click", async () => {
+          const val = Number(document.getElementById("ynwa-adm-coins-input").value || 0);
+          try {
+            await updateDoc(doc(db, "artifacts", appId, "public", "data", "users", selectedUid), {
+              coins: val,
+              points: val,
+              updatedAt: serverTimestamp()
+            });
+            notify(`Đã cập nhật điểm/xu thành ${val}!`, "🎁");
+            inspectMember(selectedUid, true);
+          } catch (err) {
+            notify("Lỗi cập nhật điểm: " + err.message, "⚠️");
+          }
+        });
+
+        document.getElementById("ynwa-adm-save-note")?.addEventListener("click", async () => {
+          const note = document.getElementById("ynwa-adm-secret-note").value;
+          try {
+            await setDoc(doc(db, "artifacts", appId, "admin_only", "member_notes", "items", selectedUid), {
+              note,
+              updatedBy: currentUser.uid,
+              updatedAt: serverTimestamp()
+            }, { merge: true });
+            data.adminNote = note;
+            notify("Đã lưu ghi chú mật của Admin!", "🕵️");
+          } catch (err) {
+            notify("Lỗi lưu ghi chú mật (kiểm tra Firestore Rules): " + err.message, "⚠️");
+          }
+        });
+      }
+    }
+
+    // -----------------------------------------------------------------
+    // 5. KẾT NỐI FIREBASE & XÁC THỰC NGẦM
+    // -----------------------------------------------------------------
+    function bootFirebase() {
+      if (!getApps().length) return false;
+      const app = getApp();
+      auth = getAuth(app);
+      db = getFirestore(app);
+
+      onAuthStateChanged(auth, async (user) => {
+        currentUser = user || null;
+        isVerifiedAdmin = false;
+        if (!user) return;
+
+        let myDoc = null;
+        try {
+          const snap = await getDoc(doc(db, "artifacts", appId, "public", "data", "users", user.uid));
+          if (snap.exists()) myDoc = snap.data();
+        } catch {}
+
+        isVerifiedAdmin = checkIsAdmin(user, myDoc);
+
+        // Nếu KHÔNG phải Admin -> Dừng hoàn toàn, không tạo bất kỳ HTML nào
+        if (!isVerifiedAdmin) return;
+
+        // Nếu ĐÚNG là Admin -> Lắng nghe danh sách thành viên & gắn bảng giám sát
+        const usersCol = collection(db, "artifacts", appId, "public", "data", "users");
+        onSnapshot(usersCol, (snap) => {
+          allUsers = snap.docs
+            .map(d => ({ id: d.id, ...d.data() }))
+            .sort((a, b) => (a.displayName || "").localeCompare(b.displayName || "", "vi"));
+          mountAdminUI();
+          renderUserList();
+        });
+      });
+
+      return true;
+    }
+
+    const timer = setInterval(() => {
+      if (bootFirebase()) clearInterval(timer);
+    }, 500);
+  })();
+</script>
   rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
