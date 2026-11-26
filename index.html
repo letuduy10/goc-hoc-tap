@@ -13526,4 +13526,703 @@ service cloud.firestore {
     setTimeout(enlargePomodoroCircle, 1000);
   })();
 </script>
+  <!-- =====================================================================
+     THÊM 4 ÂM THANH MỚI: LỚP HỌC, ĐẠI DƯƠNG, ĐƯỜNG PHỐ, FÜR ELISE
+     (Tổng hợp Web Audio API trực tiếp, không cần mạng tải nhạc)
+     (Dán đoạn này ngay trước thẻ </body> trong file index (2).html)
+     ===================================================================== -->
+<style>
+  .ynwa-snd-card {
+    background: #eff6ff;
+    border: 1px solid #dbeafe;
+    border-radius: 18px;
+    padding: 14px 16px;
+    transition: all 0.2s ease;
+  }
+  .ynwa-snd-card.is-playing {
+    background: #e0ecff;
+    border-color: #93c5fd;
+    box-shadow: 0 4px 14px rgba(37, 99, 235, 0.08);
+  }
+  .ynwa-snd-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .ynwa-snd-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+  }
+  .ynwa-snd-icon {
+    font-size: 26px;
+    line-height: 1;
+    flex-shrink: 0;
+    user-select: none;
+  }
+  .ynwa-snd-title {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 800;
+    color: #1e293b;
+    line-height: 1.3;
+  }
+  .ynwa-snd-desc {
+    margin: 2px 0 0;
+    font-size: 12.5px;
+    color: #64748b;
+    line-height: 1.35;
+  }
+  .ynwa-snd-btn {
+    padding: 7px 16px;
+    border-radius: 12px;
+    border: 1px solid #dbeafe;
+    background: #ffffff;
+    color: #1e3a8a;
+    font-size: 13px;
+    font-weight: 800;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: all 0.15s ease;
+  }
+  .ynwa-snd-btn:hover {
+    background: #f8fafc;
+    border-color: #93c5fd;
+  }
+  .ynwa-snd-card.is-playing .ynwa-snd-btn {
+    background: #2563eb;
+    border-color: #2563eb;
+    color: #ffffff;
+  }
+  .ynwa-snd-bottom {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 12px;
+  }
+  .ynwa-snd-speaker {
+    width: 16px;
+    height: 16px;
+    color: #94a3b8;
+    flex-shrink: 0;
+  }
+  .ynwa-snd-card.is-playing .ynwa-snd-speaker {
+    color: #2563eb;
+  }
+  .ynwa-snd-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    flex: 1;
+    height: 6px;
+    border-radius: 9999px;
+    background: #dbeafe;
+    outline: none;
+    cursor: pointer;
+  }
+  .ynwa-snd-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 9999px;
+    background: #2563eb;
+    border: 2.5px solid #ffffff;
+    box-shadow: 0 2px 6px rgba(37, 99, 235, 0.35);
+    cursor: pointer;
+  }
+  .ynwa-snd-slider::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    border-radius: 9999px;
+    background: #2563eb;
+    border: 2.5px solid #ffffff;
+    box-shadow: 0 2px 6px rgba(37, 99, 235, 0.35);
+    cursor: pointer;
+  }
+  .ynwa-snd-val {
+    font-size: 13px;
+    font-weight: 800;
+    color: #2563eb;
+    min-width: 38px;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+</style>
+
+<script>
+  (function () {
+    if (window.__ynwaExtraSoundsLoaded) return;
+    window.__ynwaExtraSoundsLoaded = true;
+
+    const EXTRA_SOUNDS = [
+      {
+        id: "classroom",
+        icon: "🏫",
+        title: "Âm Thanh Lớp Học",
+        desc: "Tiếng lật sách khẽ, bút viết & không gian học tập yên ắng",
+        defaultVol: 45
+      },
+      {
+        id: "ocean",
+        icon: "🌊",
+        title: "Âm Thanh Đại Dương",
+        desc: "Sóng biển vỗ bờ nhịp nhàng & gió biển dịu nhẹ",
+        defaultVol: 50
+      },
+      {
+        id: "street",
+        icon: "🏙️",
+        title: "Tiếng Ồn Đường Phố",
+        desc: "Tiếng xe cộ lướt qua từ xa & nhịp sống đô thị êm dịu",
+        defaultVol: 35
+      },
+      {
+        id: "furelise",
+        icon: "🎼",
+        title: "Âm Thanh Für Elise",
+        desc: "Giai điệu piano Beethoven cổ điển dịu nhẹ lặp lại",
+        defaultVol: 50
+      }
+    ];
+
+    let audioCtx = null;
+    const activeEngines = new Map(); // id -> { masterGain, stopFn, maxGain }
+    const volumes = new Map(EXTRA_SOUNDS.map(s => [s.id, s.defaultVol]));
+
+    function getAudioContext() {
+      if (!audioCtx) {
+        const Ctx = window.AudioContext || window.webkitAudioContext;
+        audioCtx = new Ctx();
+      }
+      if (audioCtx.state === "suspended") {
+        audioCtx.resume();
+      }
+      return audioCtx;
+    }
+
+    // Tạo bộ đệm nhiễu hồng (Pink Noise) & nhiễu nâu (Brown Noise) mượt mà
+    function createNoiseBuffer(ctx, type = "pink", seconds = 5) {
+      const length = ctx.sampleRate * seconds;
+      const buffer = ctx.createBuffer(1, length, ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+
+      if (type === "brown") {
+        let lastOut = 0.0;
+        for (let i = 0; i < length; i++) {
+          const white = Math.random() * 2 - 1;
+          data[i] = (lastOut + 0.02 * white) / 1.02;
+          lastOut = data[i];
+          data[i] *= 2.8;
+        }
+      } else {
+        // Paul Kellet's Pink Noise filter
+        let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0;
+        for (let i = 0; i < length; i++) {
+          const white = Math.random() * 2 - 1;
+          b0 = 0.99886 * b0 + white * 0.0555179;
+          b1 = 0.99332 * b1 + white * 0.0750759;
+          b2 = 0.96900 * b2 + white * 0.1538520;
+          b3 = 0.86650 * b3 + white * 0.3104856;
+          b4 = 0.55000 * b4 + white * 0.5329522;
+          b5 = -0.7616 * b5 - white * 0.0168980;
+          data[i] = (b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362) * 0.08;
+          b6 = white * 0.115926;
+        }
+      }
+      return buffer;
+    }
+
+    // -----------------------------------------------------------------
+    // 1. ÂM THANH LỚP HỌC (Nền phòng học + tiếng lật giấy + tiếng viết)
+    // -----------------------------------------------------------------
+    function startClassroomEngine(ctx, volPct) {
+      const maxGain = 0.55;
+      const master = ctx.createGain();
+      master.gain.setValueAtTime(0.0001, ctx.currentTime);
+      master.gain.setTargetAtTime((volPct / 100) * maxGain, ctx.currentTime, 0.08);
+      master.connect(ctx.destination);
+
+      const pinkBuf = createNoiseBuffer(ctx, "pink", 6);
+      const brownBuf = createNoiseBuffer(ctx, "brown", 6);
+
+      // Nền không gian lớp học yên tĩnh
+      const roomSrc = ctx.createBufferSource();
+      roomSrc.buffer = brownBuf;
+      roomSrc.loop = true;
+      const roomFilter = ctx.createBiquadFilter();
+      roomFilter.type = "lowpass";
+      roomFilter.frequency.value = 260;
+      const roomGain = ctx.createGain();
+      roomGain.gain.value = 0.42;
+      roomSrc.connect(roomFilter);
+      roomFilter.connect(roomGain);
+      roomGain.connect(master);
+      roomSrc.start();
+
+      // Tiếng lật trang sách & tiếng bút viết ngẫu nhiên tự nhiên
+      let stopped = false;
+      const timers = [];
+
+      function triggerPageFlip() {
+        if (stopped) return;
+        const now = ctx.currentTime;
+        const src = ctx.createBufferSource();
+        src.buffer = pinkBuf;
+        src.loop = true;
+
+        const bp = ctx.createBiquadFilter();
+        bp.type = "bandpass";
+        bp.frequency.setValueAtTime(1600 + Math.random() * 900, now);
+        bp.Q.value = 1.4;
+
+        const env = ctx.createGain();
+        const peak = 0.12 + Math.random() * 0.1;
+        env.gain.setValueAtTime(0.0001, now);
+        env.gain.linearRampToValueAtTime(peak, now + 0.07);
+        env.gain.exponentialRampToValueAtTime(0.0001, now + 0.36);
+
+        src.connect(bp);
+        bp.connect(env);
+        env.connect(master);
+        src.start(now, Math.random() * 3, 0.42);
+
+        timers.push(setTimeout(triggerPageFlip, 3200 + Math.random() * 4800));
+      }
+
+      function triggerPencilScratch() {
+        if (stopped) return;
+        const now = ctx.currentTime;
+        const strokes = 2 + Math.floor(Math.random() * 3);
+        for (let i = 0; i < strokes; i++) {
+          const t0 = now + i * 0.19;
+          const src = ctx.createBufferSource();
+          src.buffer = pinkBuf;
+          const hp = ctx.createBiquadFilter();
+          hp.type = "bandpass";
+          hp.frequency.value = 2800 + Math.random() * 800;
+          hp.Q.value = 2.5;
+
+          const env = ctx.createGain();
+          env.gain.setValueAtTime(0.0001, t0);
+          env.gain.linearRampToValueAtTime(0.06, t0 + 0.03);
+          env.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.13);
+
+          src.connect(hp);
+          hp.connect(env);
+          env.connect(master);
+          src.start(t0, Math.random() * 4, 0.15);
+        }
+        timers.push(setTimeout(triggerPencilScratch, 2400 + Math.random() * 3500));
+      }
+
+      timers.push(setTimeout(triggerPageFlip, 1100));
+      timers.push(setTimeout(triggerPencilScratch, 600));
+
+      return {
+        masterGain: master,
+        maxGain,
+        stopFn() {
+          stopped = true;
+          timers.forEach(clearTimeout);
+          master.gain.setTargetAtTime(0.0001, ctx.currentTime, 0.05);
+          setTimeout(() => {
+            try { roomSrc.stop(); } catch {}
+            try { master.disconnect(); } catch {}
+          }, 180);
+        }
+      };
+    }
+
+    // -----------------------------------------------------------------
+    // 2. ÂM THANH ĐẠI DƯƠNG (Sóng biển vỗ bờ nhịp nhàng ~9 giây/đợt)
+    // -----------------------------------------------------------------
+    function startOceanEngine(ctx, volPct) {
+      const maxGain = 0.65;
+      const master = ctx.createGain();
+      master.gain.setValueAtTime(0.0001, ctx.currentTime);
+      master.gain.setTargetAtTime((volPct / 100) * maxGain, ctx.currentTime, 0.1);
+      master.connect(ctx.destination);
+
+      const pinkBuf = createNoiseBuffer(ctx, "pink", 8);
+
+      // Lớp sóng chính
+      const waveSrc = ctx.createBufferSource();
+      waveSrc.buffer = pinkBuf;
+      waveSrc.loop = true;
+
+      const waveFilter = ctx.createBiquadFilter();
+      waveFilter.type = "lowpass";
+      waveFilter.frequency.value = 420;
+      waveFilter.Q.value = 0.7;
+
+      const waveGain = ctx.createGain();
+      waveGain.gain.value = 0.55;
+
+      // LFO điều biến nhịp sóng lên - xuống tự nhiên
+      const lfo = ctx.createOscillator();
+      lfo.type = "sine";
+      lfo.frequency.value = 0.11; // ~9 giây mỗi đợt sóng
+
+      const lfoFilterDepth = ctx.createGain();
+      lfoFilterDepth.gain.value = 340; // Quét tần số từ ~80Hz lên ~760Hz
+
+      const lfoAmpDepth = ctx.createGain();
+      lfoAmpDepth.gain.value = 0.35;
+
+      lfo.connect(lfoFilterDepth);
+      lfoFilterDepth.connect(waveFilter.frequency);
+
+      lfo.connect(lfoAmpDepth);
+      lfoAmpDepth.connect(waveGain.gain);
+
+      waveSrc.connect(waveFilter);
+      waveFilter.connect(waveGain);
+      waveGain.connect(master);
+
+      waveSrc.start();
+      lfo.start();
+
+      return {
+        masterGain: master,
+        maxGain,
+        stopFn() {
+          master.gain.setTargetAtTime(0.0001, ctx.currentTime, 0.06);
+          setTimeout(() => {
+            try { waveSrc.stop(); lfo.stop(); } catch {}
+            try { master.disconnect(); } catch {}
+          }, 220);
+        }
+      };
+    }
+
+    // -----------------------------------------------------------------
+    // 3. TIẾNG ỒN ĐƯỜNG PHỐ (Nền đô thị xa + xe lướt qua dịu nhẹ)
+    // -----------------------------------------------------------------
+    function startStreetEngine(ctx, volPct) {
+      const maxGain = 0.55;
+      const master = ctx.createGain();
+      master.gain.setValueAtTime(0.0001, ctx.currentTime);
+      master.gain.setTargetAtTime((volPct / 100) * maxGain, ctx.currentTime, 0.08);
+      master.connect(ctx.destination);
+
+      const brownBuf = createNoiseBuffer(ctx, "brown", 7);
+      const pinkBuf = createNoiseBuffer(ctx, "pink", 7);
+
+      // Nền rì rầm thành phố từ xa
+      const rumbleSrc = ctx.createBufferSource();
+      rumbleSrc.buffer = brownBuf;
+      rumbleSrc.loop = true;
+
+      const rumbleLp = ctx.createBiquadFilter();
+      rumbleLp.type = "lowpass";
+      rumbleLp.frequency.value = 175;
+
+      const rumbleGain = ctx.createGain();
+      rumbleGain.gain.value = 0.55;
+
+      rumbleSrc.connect(rumbleLp);
+      rumbleLp.connect(rumbleGain);
+      rumbleGain.connect(master);
+      rumbleSrc.start();
+
+      // Tiếng xe chạy lướt qua theo hiệu ứng Doppler êm
+      let stopped = false;
+      const timers = [];
+
+      function triggerPassingCar() {
+        if (stopped) return;
+        const now = ctx.currentTime;
+        const dur = 2.6 + Math.random() * 1.6;
+
+        const carSrc = ctx.createBufferSource();
+        carSrc.buffer = pinkBuf;
+        carSrc.loop = true;
+
+        const bp = ctx.createBiquadFilter();
+        bp.type = "bandpass";
+        bp.Q.value = 1.1;
+        bp.frequency.setValueAtTime(480, now);
+        bp.frequency.exponentialRampToValueAtTime(210, now + dur);
+
+        const carGain = ctx.createGain();
+        carGain.gain.setValueAtTime(0.0001, now);
+        carGain.gain.linearRampToValueAtTime(0.22 + Math.random() * 0.12, now + dur * 0.42);
+        carGain.gain.exponentialRampToValueAtTime(0.0001, now + dur);
+
+        carSrc.connect(bp);
+        bp.connect(carGain);
+        carGain.connect(master);
+        carSrc.start(now, Math.random() * 3, dur + 0.1);
+
+        timers.push(setTimeout(triggerPassingCar, 3800 + Math.random() * 5200));
+      }
+
+      timers.push(setTimeout(triggerPassingCar, 900));
+
+      return {
+        masterGain: master,
+        maxGain,
+        stopFn() {
+          stopped = true;
+          timers.forEach(clearTimeout);
+          master.gain.setTargetAtTime(0.0001, ctx.currentTime, 0.05);
+          setTimeout(() => {
+            try { rumbleSrc.stop(); } catch {}
+            try { master.disconnect(); } catch {}
+          }, 180);
+        }
+      };
+    }
+
+    // -----------------------------------------------------------------
+    // 4. ÂM THANH FÜR ELISE (Piano Beethoven cổ điển lặp lại dịu nhẹ)
+    // -----------------------------------------------------------------
+    function startFurEliseEngine(ctx, volPct) {
+      const maxGain = 0.48;
+      const master = ctx.createGain();
+      master.gain.setValueAtTime(0.0001, ctx.currentTime);
+      master.gain.setTargetAtTime((volPct / 100) * maxGain, ctx.currentTime, 0.06);
+
+      // Tạo độ vang ấm kiểu phòng đàn piano (Delay + Lowpass)
+      const warmFilter = ctx.createBiquadFilter();
+      warmFilter.type = "lowpass";
+      warmFilter.frequency.value = 2400;
+
+      const delay = ctx.createDelay();
+      delay.delayTime.value = 0.24;
+      const delayFeedback = ctx.createGain();
+      delayFeedback.gain.value = 0.22;
+      const delayWet = ctx.createGain();
+      delayWet.gain.value = 0.25;
+
+      warmFilter.connect(master);
+      warmFilter.connect(delay);
+      delay.connect(delayFeedback);
+      delayFeedback.connect(delay);
+      delay.connect(delayWet);
+      delayWet.connect(master);
+      master.connect(ctx.destination);
+
+      function midiToFreq(m) {
+        return 440 * Math.pow(2, (m - 69) / 12);
+      }
+
+      // Bản phối Für Elise (nhịp 3/8, đơn vị = 1 nốt móc kép ~0.16s)
+      // [midiNote, stepOffset, durationSteps, velocity]
+      const STEP = 0.165;
+      const SCORE = [
+        // Pickup
+        [76, 0, 1.2, 0.85], [75, 1, 1.2, 0.8],
+        // Ô nhịp 1
+        [76, 2, 1.2, 0.9], [75, 3, 1.2, 0.8], [76, 4, 1.2, 0.9],
+        [71, 5, 1.2, 0.8], [74, 6, 1.2, 0.85], [72, 7, 1.2, 0.8],
+        // Ô nhịp 2 (Am)
+        [69, 8, 3.2, 0.95], [45, 8, 5.5, 0.45],
+        [60, 11, 1.2, 0.65], [64, 12, 1.2, 0.7], [69, 13, 1.2, 0.75],
+        // Ô nhịp 3 (E7)
+        [71, 14, 3.2, 0.9], [52, 14, 5.5, 0.45],
+        [64, 17, 1.2, 0.65], [68, 18, 1.2, 0.7], [71, 19, 1.2, 0.75],
+        // Ô nhịp 4 (Am + pickup)
+        [72, 20, 3.2, 0.95], [45, 20, 5.5, 0.45],
+        [64, 23, 1.2, 0.65], [76, 24, 1.2, 0.85], [75, 25, 1.2, 0.8],
+        // Ô nhịp 5
+        [76, 26, 1.2, 0.9], [75, 27, 1.2, 0.8], [76, 28, 1.2, 0.9],
+        [71, 29, 1.2, 0.8], [74, 30, 1.2, 0.85], [72, 31, 1.2, 0.8],
+        // Ô nhịp 6 (Am)
+        [69, 32, 3.2, 0.95], [45, 32, 5.5, 0.45],
+        [60, 35, 1.2, 0.65], [64, 36, 1.2, 0.7], [69, 37, 1.2, 0.75],
+        // Ô nhịp 7 (E7)
+        [71, 38, 3.2, 0.9], [52, 38, 5.5, 0.45],
+        [64, 41, 1.2, 0.65], [72, 42, 1.2, 0.8], [71, 43, 1.2, 0.75],
+        // Ô nhịp 8 (Am + chuyển đoạn B)
+        [69, 44, 3.2, 0.95], [45, 44, 5.5, 0.45],
+        [71, 47, 1.2, 0.75], [72, 48, 1.2, 0.8], [74, 49, 1.2, 0.85],
+        // Ô nhịp 9 (C major)
+        [76, 50, 3.2, 0.95], [48, 50, 5.5, 0.45], [55, 51, 4.5, 0.35],
+        [77, 53, 1.2, 0.8], [76, 54, 1.2, 0.85], [74, 55, 1.2, 0.8],
+        // Ô nhịp 10 (G major)
+        [74, 56, 3.2, 0.9], [43, 56, 5.5, 0.45], [55, 57, 4.5, 0.35],
+        [76, 59, 1.2, 0.8], [74, 60, 1.2, 0.85], [72, 61, 1.2, 0.8],
+        // Ô nhịp 11 (Am)
+        [72, 62, 3.2, 0.9], [45, 62, 5.5, 0.45], [52, 63, 4.5, 0.35],
+        [74, 65, 1.2, 0.8], [72, 66, 1.2, 0.85], [71, 67, 1.2, 0.8],
+        // Ô nhịp 12 (E7 kết & quay lại từ đầu)
+        [71, 68, 3.6, 0.9], [52, 68, 5.5, 0.45]
+      ];
+      const TOTAL_STEPS = 74;
+
+      let stopped = false;
+      let loopTimer = null;
+
+      function playPianoNote(midi, startTime, durSec, vel) {
+        const freq = midiToFreq(midi);
+
+        // Kết hợp sóng Triangle (thân âm ấm) + Sine (họa âm mượt)
+        const osc1 = ctx.createOscillator();
+        const osc2 = ctx.createOscillator();
+        osc1.type = "triangle";
+        osc2.type = "sine";
+        osc1.frequency.setValueAtTime(freq, startTime);
+        osc2.frequency.setValueAtTime(freq * 2, startTime);
+
+        const subGain = ctx.createGain();
+        subGain.gain.value = 0.16;
+
+        const env = ctx.createGain();
+        const peak = 0.28 * vel;
+        env.gain.setValueAtTime(0.0001, startTime);
+        env.gain.linearRampToValueAtTime(peak, startTime + 0.015);
+        env.gain.exponentialRampToValueAtTime(peak * 0.45, startTime + 0.18);
+        env.gain.exponentialRampToValueAtTime(0.0001, startTime + durSec + 0.45);
+
+        osc1.connect(env);
+        osc2.connect(subGain);
+        subGain.connect(env);
+        env.connect(warmFilter);
+
+        osc1.start(startTime);
+        osc2.start(startTime);
+        osc1.stop(startTime + durSec + 0.5);
+        osc2.stop(startTime + durSec + 0.5);
+      }
+
+      function scheduleLoop() {
+        if (stopped) return;
+        const baseTime = ctx.currentTime + 0.05;
+        SCORE.forEach(([midi, step, durSteps, vel]) => {
+          playPianoNote(midi, baseTime + step * STEP, durSteps * STEP, vel);
+        });
+        loopTimer = setTimeout(scheduleLoop, TOTAL_STEPS * STEP * 1000);
+      }
+
+      scheduleLoop();
+
+      return {
+        masterGain: master,
+        maxGain,
+        stopFn() {
+          stopped = true;
+          clearTimeout(loopTimer);
+          master.gain.setTargetAtTime(0.0001, ctx.currentTime, 0.05);
+          setTimeout(() => {
+            try { master.disconnect(); } catch {}
+          }, 200);
+        }
+      };
+    }
+
+    function toggleSound(id) {
+      const card = document.querySelector(`[data-extra-snd-card="${id}"]`);
+      const btn = card?.querySelector(".ynwa-snd-btn");
+
+      if (activeEngines.has(id)) {
+        const eng = activeEngines.get(id);
+        eng.stopFn();
+        activeEngines.delete(id);
+        if (card) card.classList.remove("is-playing");
+        if (btn) btn.textContent = "Bật";
+        return;
+      }
+
+      const ctx = getAudioContext();
+      const vol = volumes.get(id) ?? 50;
+      let engine = null;
+
+      if (id === "classroom") engine = startClassroomEngine(ctx, vol);
+      else if (id === "ocean") engine = startOceanEngine(ctx, vol);
+      else if (id === "street") engine = startStreetEngine(ctx, vol);
+      else if (id === "furelise") engine = startFurEliseEngine(ctx, vol);
+
+      if (engine) {
+        activeEngines.set(id, engine);
+        if (card) card.classList.add("is-playing");
+        if (btn) btn.textContent = "Đang bật";
+      }
+    }
+
+    function setSoundVolume(id, newVol) {
+      volumes.set(id, newVol);
+      const card = document.querySelector(`[data-extra-snd-card="${id}"]`);
+      const valEl = card?.querySelector(".ynwa-snd-val");
+      if (valEl) valEl.textContent = `${newVol}%`;
+
+      if (activeEngines.has(id) && audioCtx) {
+        const eng = activeEngines.get(id);
+        eng.masterGain.gain.setTargetAtTime((newVol / 100) * eng.maxGain, audioCtx.currentTime, 0.03);
+      }
+    }
+
+    // -----------------------------------------------------------------
+    // 5. CHÈN 4 THẺ ÂM THANH VÀO ĐÚNG MỤC "ÂM THANH LOFI & THIÊN NHIÊN"
+    // -----------------------------------------------------------------
+    function mountExtraSounds() {
+      if (document.getElementById("ynwa-extra-sounds-anchor")) return true;
+
+      // Tìm thẻ chứa "Tiếng Quán Cà Phê Yên Tĩnh" hoặc "Nhạc Lofi Chill"
+      const nodes = Array.from(document.querySelectorAll("h1, h2, h3, h4, div, span, p"));
+      const refTitle = nodes.find(el => {
+        if (el.children.length > 0) return false;
+        const t = (el.textContent || "").trim();
+        return t === "Tiếng Quán Cà Phê Yên Tĩnh" || t === "Nhạc Lofi Chill";
+      });
+
+      if (!refTitle) return false;
+
+      // Tìm thẻ card bao ngoài cùng của mục âm thanh đó (chứa input[type=range])
+      let sampleCard = refTitle.parentElement;
+      while (sampleCard && sampleCard !== document.body) {
+        if (sampleCard.querySelector('input[type="range"]')) break;
+        sampleCard = sampleCard.parentElement;
+      }
+
+      if (!sampleCard || !sampleCard.parentElement) return false;
+      const listContainer = sampleCard.parentElement;
+
+      const anchor = document.createElement("div");
+      anchor.id = "ynwa-extra-sounds-anchor";
+      anchor.style.display = "contents";
+
+      EXTRA_SOUNDS.forEach(snd => {
+        const card = document.createElement("div");
+        card.className = "ynwa-snd-card";
+        card.setAttribute("data-extra-snd-card", snd.id);
+        card.innerHTML = `
+          <div class="ynwa-snd-top">
+            <div class="ynwa-snd-info">
+              <span class="ynwa-snd-icon">${snd.icon}</span>
+              <div>
+                <h4 class="ynwa-snd-title">${snd.title}</h4>
+                <p class="ynwa-snd-desc">${snd.desc}</p>
+              </div>
+            </div>
+            <button type="button" class="ynwa-snd-btn">Bật</button>
+          </div>
+          <div class="ynwa-snd-bottom">
+            <svg class="ynwa-snd-speaker" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/>
+            </svg>
+            <input type="range" class="ynwa-snd-slider" min="0" max="100" value="${snd.defaultVol}" />
+            <span class="ynwa-snd-val">${snd.defaultVol}%</span>
+          </div>
+        `;
+
+        card.querySelector(".ynwa-snd-btn").addEventListener("click", () => toggleSound(snd.id));
+        card.querySelector(".ynwa-snd-slider").addEventListener("input", (e) => {
+          setSoundVolume(snd.id, Number(e.target.value));
+        });
+
+        anchor.appendChild(card);
+      });
+
+      listContainer.appendChild(anchor);
+      return true;
+    }
+
+    const timer = setInterval(() => {
+      if (mountExtraSounds()) clearInterval(timer);
+    }, 400);
+  })();
+</script>
 </body></html>
