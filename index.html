@@ -11217,4 +11217,27 @@ service cloud.firestore {
     }, 500);
   })();
 </script>
+  rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isAdmin() {
+      return request.auth != null && (
+        request.auth.uid in ['UID_ADMIN_CUA_BAN'] ||
+        get(/databases/$(database)/documents/artifacts/goc-hoc-nho-prod/public/data/users/$(request.auth.uid)).data.role == 'admin'
+      );
+    }
+
+    // Dữ liệu riêng tư từng người (TKB riêng, Mục tiêu, Chỗ nuôi mèo)
+    // Chủ tài khoản xem được của chính mình; Admin xem được của tất cả mọi người
+    match /artifacts/{appId}/users/{userId}/{document=**} {
+      allow read, write: if request.auth != null && (request.auth.uid == userId || isAdmin());
+    }
+
+    // Khu vực ghi chú mật chỉ riêng Admin đọc/ghi (thành viên hoàn toàn bị chặn)
+    match /artifacts/{appId}/admin_only/{document=**} {
+      allow read, write: if isAdmin();
+    }
+  }
+}
 </body></html>
