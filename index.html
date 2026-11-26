@@ -12204,4 +12204,669 @@ service cloud.firestore {
     }
   }
 }
+  <!-- =====================================================================
+     LỊCH HỌC RIÊNG TƯ CỦA TỪNG THÀNH VIÊN (CHỈ LỊCH CỦA TÔI)
+     Hỗ trợ tải ảnh TKB riêng + thêm ca học cá nhân (Thành viên khác không thấy)
+     (Dán ngay trước thẻ </body> trong file index (2).html)
+     ===================================================================== -->
+<style>
+  .ynwa-priv-tkb {
+    width: 100%;
+    margin: 14px 0 20px;
+    padding: 18px;
+    border-radius: 22px;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+    font-family: inherit;
+    box-sizing: border-box;
+  }
+  .ynwa-priv-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 14px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #f1f5f9;
+  }
+  .ynwa-priv-title {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 800;
+    color: #1e293b;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .ynwa-priv-badge {
+    font-size: 11px;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 9999px;
+    background: #ecfdf5;
+    color: #047857;
+    border: 1px solid #a7f3d0;
+  }
+  .ynwa-priv-mode-tabs {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 14px;
+  }
+  .ynwa-priv-mode-btn {
+    padding: 8px 14px;
+    border-radius: 12px;
+    border: 1px solid #cbd5e1;
+    background: #f8fafc;
+    color: #475569;
+    font-size: 12.5px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .ynwa-priv-mode-btn.active {
+    background: #4f46e5;
+    border-color: #4f46e5;
+    color: #ffffff;
+  }
+  .ynwa-priv-form {
+    background: #f8fafc;
+    border: 1px dashed #cbd5e1;
+    border-radius: 16px;
+    padding: 14px;
+    margin-bottom: 16px;
+  }
+  .ynwa-priv-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 10px;
+  }
+  .ynwa-priv-input, .ynwa-priv-select {
+    width: 100%;
+    padding: 9px 11px;
+    border-radius: 11px;
+    border: 1px solid #cbd5e1;
+    background: #ffffff;
+    color: #0f172a;
+    font-size: 13px;
+    outline: none;
+    box-sizing: border-box;
+  }
+  .ynwa-priv-input:focus, .ynwa-priv-select:focus {
+    border-color: #6366f1;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
+  }
+  .ynwa-priv-btn {
+    padding: 9px 15px;
+    border-radius: 11px;
+    border: none;
+    background: #4f46e5;
+    color: #ffffff;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: opacity 0.15s ease;
+  }
+  .ynwa-priv-btn:hover { opacity: 0.92; }
+  .ynwa-priv-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .ynwa-priv-dropzone {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 18px 12px;
+    border-radius: 14px;
+    border: 2px dashed #a5b4fc;
+    background: #eef2ff;
+    color: #3730a3;
+    cursor: pointer;
+    text-align: center;
+    font-size: 13px;
+    font-weight: 700;
+  }
+  .ynwa-priv-dropzone:hover { background: #e0e7ff; }
+  .ynwa-priv-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+    gap: 12px;
+  }
+  .ynwa-priv-card {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 15px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    position: relative;
+  }
+  .ynwa-priv-thumb {
+    width: 100%;
+    height: 155px;
+    object-fit: cover;
+    border-radius: 10px;
+    border: 1px solid #e2e8f0;
+    cursor: zoom-in;
+    background: #f1f5f9;
+  }
+  .ynwa-priv-del {
+    padding: 4px 8px;
+    border-radius: 8px;
+    border: 1px solid #fecdd3;
+    background: #fff1f2;
+    color: #be123c;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .ynwa-priv-del:hover { background: #ffe4e6; }
+  .ynwa-priv-empty {
+    text-align: center;
+    padding: 24px 12px;
+    color: #64748b;
+    font-size: 13px;
+    border: 1px dashed #cbd5e1;
+    border-radius: 14px;
+    background: #f8fafc;
+  }
+  .ynwa-priv-lightbox {
+    position: fixed;
+    inset: 0;
+    z-index: 10050;
+    background: rgba(15, 23, 42, 0.85);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 18px;
+  }
+  .ynwa-priv-lightbox.open { display: flex; }
+  .ynwa-priv-lightbox img {
+    max-width: 95vw;
+    max-height: 88vh;
+    border-radius: 14px;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+  }
+</style>
+
+<script type="module">
+  import { getApps, getApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+  import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+  import {
+    getFirestore,
+    collection,
+    addDoc,
+    deleteDoc,
+    doc,
+    onSnapshot,
+    query,
+    orderBy,
+    serverTimestamp
+  } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+  (function () {
+    if (window.__ynwaPrivateScheduleLoaded) return;
+    window.__ynwaPrivateScheduleLoaded = true;
+
+    const appId = typeof __app_id !== "undefined" ? __app_id : "goc-hoc-nho-prod";
+
+    let db = null;
+    let auth = null;
+    let currentUser = null;
+    let unsubSchedules = null;
+    let mySchedules = [];
+    let formMode = "upload"; // "upload" | "manual"
+    let pendingImageData = "";
+    let pendingFileName = "";
+
+    function esc(v) {
+      return String(v ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }
+
+    function notify(msg, icon = "📅") {
+      if (typeof window.showToast === "function") window.showToast(msg, icon);
+      else console.log(icon, msg);
+    }
+
+    // Nén ảnh thời khóa biểu để lưu trực tiếp vào Firestore nhanh & nhẹ (< 350KB)
+    function compressImageToDataURL(file, maxWidth = 1280, quality = 0.78) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onerror = () => reject(new Error("Không đọc được file ảnh."));
+        reader.onload = (ev) => {
+          const img = new Image();
+          img.onerror = () => reject(new Error("File không phải định dạng ảnh hợp lệ."));
+          img.onload = () => {
+            let w = img.width;
+            let h = img.height;
+            if (w > maxWidth) {
+              h = Math.round((h * maxWidth) / w);
+              w = maxWidth;
+            }
+            const canvas = document.createElement("canvas");
+            canvas.width = w;
+            canvas.height = h;
+            const ctx = canvas.getContext("2d");
+            ctx.fillStyle = "#ffffff";
+            ctx.fillRect(0, 0, w, h);
+            ctx.drawImage(img, 0, 0, w, h);
+            const dataUrl = canvas.toDataURL("image/jpeg", quality);
+            resolve(dataUrl);
+          };
+          img.src = ev.target.result;
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
+    // Tìm đúng vùng "Chỉ lịch của tôi" hoặc mục "Thời khóa biểu" trong giao diện sẵn có
+    function findScheduleHost() {
+      const exactIds = [
+        "my-schedule-container",
+        "my-schedule-panel",
+        "only-my-schedule",
+        "tab-schedule",
+        "panel-schedule",
+        "schedule-section",
+        "tkb-section",
+        "timetable-section"
+      ];
+      for (const id of exactIds) {
+        const el = document.getElementById(id);
+        if (el) return el;
+      }
+
+      // Tìm nút hoặc tiêu đề có chữ "Chỉ lịch của tôi"
+      const allNodes = Array.from(document.querySelectorAll("button, a, label, h2, h3, h4, span, div"));
+      const myOnlyEl = allNodes.find(el => {
+        if (el.children.length > 2) return false;
+        const t = (el.textContent || "").trim().toLowerCase();
+        return t === "chỉ lịch của tôi" || t.includes("chỉ lịch của tôi");
+      });
+      if (myOnlyEl) {
+        const section = myOnlyEl.closest("section, [id^='tab-'], [id^='panel-'], .pastel-card, main");
+        if (section) return section;
+      }
+
+      // Dự phòng: tìm mục có tiêu đề "Thời khóa biểu"
+      const headings = Array.from(document.querySelectorAll("h1, h2, h3, h4"));
+      const tkbHeading = headings.find(h => {
+        const t = (h.textContent || "").toLowerCase();
+        return t.includes("thời khóa biểu") || t.includes("lịch học");
+      });
+      if (tkbHeading) {
+        return tkbHeading.closest("section, [id^='tab-'], [id^='panel-'], .pastel-card") || tkbHeading.parentElement;
+      }
+
+      return null;
+    }
+
+    // Tự động ẩn/hiện theo nút lọc "Chỉ lịch của tôi" nếu app gốc có chế độ chuyển tab lọc
+    function bindMyScheduleFilterToggle(box) {
+      const buttons = Array.from(document.querySelectorAll("button, [role='tab'], input[type='radio'], input[type='checkbox']"));
+      const myBtn = buttons.find(el => (el.textContent || el.value || "").toLowerCase().includes("chỉ lịch của tôi"));
+      if (!myBtn) return;
+
+      const groupParent = myBtn.parentElement;
+      if (!groupParent) return;
+
+      const siblingBtns = Array.from(groupParent.querySelectorAll("button, [role='tab']"));
+      if (siblingBtns.length > 1) {
+        siblingBtns.forEach(btn => {
+          btn.addEventListener("click", () => {
+            const isMyOnly = (btn.textContent || "").toLowerCase().includes("chỉ lịch của tôi");
+            box.style.display = isMyOnly ? "block" : "none";
+          });
+        });
+      }
+    }
+
+    function ensureLightbox() {
+      if (document.getElementById("ynwa-priv-lightbox")) return;
+      const lb = document.createElement("div");
+      lb.id = "ynwa-priv-lightbox";
+      lb.className = "ynwa-priv-lightbox";
+      lb.innerHTML = `<img id="ynwa-priv-lightbox-img" src="" alt="Thời khóa biểu riêng tư" />`;
+      lb.addEventListener("click", () => lb.classList.remove("open"));
+      document.body.appendChild(lb);
+    }
+
+    function mountPrivateScheduleBox() {
+      if (document.getElementById("ynwa-priv-tkb-box")) return;
+      const host = findScheduleHost();
+      if (!host) return;
+
+      ensureLightbox();
+
+      const box = document.createElement("div");
+      box.id = "ynwa-priv-tkb-box";
+      box.className = "ynwa-priv-tkb";
+      box.innerHTML = `
+        <div class="ynwa-priv-head">
+          <div>
+            <h3 class="ynwa-priv-title">📅 Lịch học riêng của tôi</h3>
+            <div style="font-size:12px; color:#64748b; margin-top:3px;">
+              Tải ảnh thời khóa biểu hoặc thêm ca học cá nhân của riêng bạn. Các thành viên khác không thể xem mục này.
+            </div>
+          </div>
+          <span class="ynwa-priv-badge">🔒 Riêng tư — Chỉ mình bạn thấy</span>
+        </div>
+
+        <div class="ynwa-priv-mode-tabs">
+          <button type="button" class="ynwa-priv-mode-btn active" data-priv-mode="upload">🖼️ Tải ảnh lịch học lên</button>
+          <button type="button" class="ynwa-priv-mode-btn" data-priv-mode="manual">✍️ Nhập lịch theo buổi</button>
+        </div>
+
+        <!-- Form 1: Tải ảnh thời khóa biểu riêng -->
+        <div id="ynwa-priv-form-upload" class="ynwa-priv-form">
+          <label class="ynwa-priv-dropzone" for="ynwa-priv-file-input">
+            <span style="font-size:22px;">📤</span>
+            <span id="ynwa-priv-file-label">Bấm để chọn ảnh thời khóa biểu từ máy / điện thoại</span>
+            <span style="font-size:11px; font-weight:500; color:#6366f1;">Hỗ trợ JPG, PNG, WebP (tự nén nhẹ khi tải lên)</span>
+          </label>
+          <input id="ynwa-priv-file-input" type="file" accept="image/*" style="display:none;" />
+
+          <div id="ynwa-priv-preview-wrap" style="display:none; margin-top:10px; text-align:center;">
+            <img id="ynwa-priv-preview-img" src="" alt="Xem trước" style="max-height:180px; border-radius:10px; border:1px solid #cbd5e1;" />
+          </div>
+
+          <div class="ynwa-priv-grid" style="margin-top:10px;">
+            <input id="ynwa-priv-img-title" class="ynwa-priv-input" placeholder="Tên lịch (vd: TKB Học kỳ 1, Lịch ôn thi...)" />
+            <input id="ynwa-priv-img-note" class="ynwa-priv-input" placeholder="Ghi chú riêng (không bắt buộc)" />
+          </div>
+          <div style="margin-top:10px; text-align:right;">
+            <button type="button" id="ynwa-priv-upload-btn" class="ynwa-priv-btn">⬆️ Tải lên lịch riêng của tôi</button>
+          </div>
+        </div>
+
+        <!-- Form 2: Nhập từng buổi học riêng -->
+        <div id="ynwa-priv-form-manual" class="ynwa-priv-form" style="display:none;">
+          <div class="ynwa-priv-grid">
+            <select id="ynwa-priv-day" class="ynwa-priv-select">
+              <option value="Thứ 2">Thứ 2</option>
+              <option value="Thứ 3">Thứ 3</option>
+              <option value="Thứ 4">Thứ 4</option>
+              <option value="Thứ 5">Thứ 5</option>
+              <option value="Thứ 6">Thứ 6</option>
+              <option value="Thứ 7">Thứ 7</option>
+              <option value="Chủ nhật">Chủ nhật</option>
+            </select>
+            <input id="ynwa-priv-start" type="time" class="ynwa-priv-input" value="19:00" />
+            <input id="ynwa-priv-end" type="time" class="ynwa-priv-input" value="21:00" />
+            <input id="ynwa-priv-subject" class="ynwa-priv-input" placeholder="Môn học / Nội dung *" />
+          </div>
+          <div style="display:flex; gap:10px; margin-top:10px; flex-wrap:wrap;">
+            <input id="ynwa-priv-note" class="ynwa-priv-input" style="flex:1; min-width:200px;" placeholder="Ghi chú riêng (phòng học, link zoom, bài tập...)" />
+            <button type="button" id="ynwa-priv-add-btn" class="ynwa-priv-btn">+ Thêm vào lịch riêng</button>
+          </div>
+        </div>
+
+        <div id="ynwa-priv-list-wrap"></div>
+      `;
+
+      host.appendChild(box);
+      bindMyScheduleFilterToggle(box);
+      bindPrivateScheduleEvents();
+      renderPrivateSchedules();
+    }
+
+    function bindPrivateScheduleEvents() {
+      // Chuyển tab Tải ảnh / Nhập tay
+      document.querySelectorAll("[data-priv-mode]").forEach(btn => {
+        btn.addEventListener("click", () => {
+          formMode = btn.getAttribute("data-priv-mode");
+          document.querySelectorAll("[data-priv-mode]").forEach(b => b.classList.toggle("active", b === btn));
+          document.getElementById("ynwa-priv-form-upload").style.display = formMode === "upload" ? "block" : "none";
+          document.getElementById("ynwa-priv-form-manual").style.display = formMode === "manual" ? "block" : "none";
+        });
+      });
+
+      // Chọn file ảnh
+      const fileInput = document.getElementById("ynwa-priv-file-input");
+      fileInput?.addEventListener("change", async (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        const label = document.getElementById("ynwa-priv-file-label");
+        label.textContent = "⏳ Đang xử lý ảnh...";
+        try {
+          pendingImageData = await compressImageToDataURL(file);
+          pendingFileName = file.name;
+          label.textContent = `✅ Đã chọn: ${file.name}`;
+          const prevWrap = document.getElementById("ynwa-priv-preview-wrap");
+          const prevImg = document.getElementById("ynwa-priv-preview-img");
+          prevImg.src = pendingImageData;
+          prevWrap.style.display = "block";
+        } catch (err) {
+          pendingImageData = "";
+          label.textContent = "Bấm để chọn ảnh thời khóa biểu từ máy / điện thoại";
+          notify(err.message, "⚠️");
+        }
+      });
+
+      // Lưu ảnh TKB riêng lên Firestore
+      document.getElementById("ynwa-priv-upload-btn")?.addEventListener("click", async () => {
+        if (!currentUser || !db) return notify("Vui lòng đăng nhập để tải lịch riêng!", "🔒");
+        if (!pendingImageData) return notify("Bạn chưa chọn ảnh thời khóa biểu!", "🖼️");
+
+        const titleInput = document.getElementById("ynwa-priv-img-title");
+        const noteInput = document.getElementById("ynwa-priv-img-note");
+        const btn = document.getElementById("ynwa-priv-upload-btn");
+
+        const title = titleInput.value.trim() || pendingFileName || "Thời khóa biểu cá nhân";
+        const note = noteInput.value.trim();
+
+        btn.disabled = true;
+        btn.textContent = "⏳ Đang tải lên...";
+
+        try {
+          await addDoc(collection(db, "artifacts", appId, "users", currentUser.uid, "private_schedules"), {
+            type: "image",
+            day: "Ảnh TKB",
+            title,
+            subject: title,
+            note,
+            imageData: pendingImageData,
+            isPrivate: true,
+            uid: currentUser.uid,
+            createdAt: serverTimestamp()
+          });
+
+          // Reset form
+          pendingImageData = "";
+          pendingFileName = "";
+          titleInput.value = "";
+          noteInput.value = "";
+          document.getElementById("ynwa-priv-file-input").value = "";
+          document.getElementById("ynwa-priv-file-label").textContent = "Bấm để chọn ảnh thời khóa biểu từ máy / điện thoại";
+          document.getElementById("ynwa-priv-preview-wrap").style.display = "none";
+          notify("Đã tải lên lịch học riêng của bạn!", "🔒");
+        } catch (err) {
+          notify("Không thể tải lên: " + err.message, "⚠️");
+        } finally {
+          btn.disabled = false;
+          btn.textContent = "⬆️ Tải lên lịch riêng của tôi";
+        }
+      });
+
+      // Thêm buổi học thủ công
+      document.getElementById("ynwa-priv-add-btn")?.addEventListener("click", async () => {
+        if (!currentUser || !db) return notify("Vui lòng đăng nhập để lưu lịch riêng!", "🔒");
+
+        const day = document.getElementById("ynwa-priv-day").value;
+        const startTime = document.getElementById("ynwa-priv-start").value;
+        const endTime = document.getElementById("ynwa-priv-end").value;
+        const subjectEl = document.getElementById("ynwa-priv-subject");
+        const noteEl = document.getElementById("ynwa-priv-note");
+        const subject = subjectEl.value.trim();
+
+        if (!subject) return notify("Vui lòng nhập tên môn học / nội dung!", "✍️");
+
+        const btn = document.getElementById("ynwa-priv-add-btn");
+        btn.disabled = true;
+
+        try {
+          await addDoc(collection(db, "artifacts", appId, "users", currentUser.uid, "private_schedules"), {
+            type: "entry",
+            day,
+            startTime,
+            endTime,
+            subject,
+            title: subject,
+            note: noteEl.value.trim(),
+            isPrivate: true,
+            uid: currentUser.uid,
+            createdAt: serverTimestamp()
+          });
+          subjectEl.value = "";
+          noteEl.value = "";
+          notify("Đã thêm vào lịch học riêng!", "📅");
+        } catch (err) {
+          notify("Lỗi khi lưu lịch: " + err.message, "⚠️");
+        } finally {
+          btn.disabled = false;
+        }
+      });
+    }
+
+    function renderPrivateSchedules() {
+      const wrap = document.getElementById("ynwa-priv-list-wrap");
+      if (!wrap) return;
+
+      if (!currentUser) {
+        wrap.innerHTML = `<div class="ynwa-priv-empty">Đăng nhập để tải lên và xem lịch học riêng tư của bạn.</div>`;
+        return;
+      }
+
+      if (!mySchedules.length) {
+        wrap.innerHTML = `<div class="ynwa-priv-empty">Bạn chưa tải lên lịch học riêng nào. Chỉ mình bạn nhìn thấy dữ liệu ở đây.</div>`;
+        return;
+      }
+
+      wrap.innerHTML = `
+        <div class="ynwa-priv-list">
+          ${mySchedules.map(item => {
+            if (item.type === "image" || item.imageData) {
+              return `
+                <div class="ynwa-priv-card">
+                  <img class="ynwa-priv-thumb" src="${esc(item.imageData)}" alt="${esc(item.title || "TKB riêng")}" data-zoom-img="1" />
+                  <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:8px;">
+                    <div style="min-width:0;">
+                      <div style="font-weight:800; font-size:13.5px; color:#0f172a;">🖼️ ${esc(item.title || "Ảnh thời khóa biểu")}</div>
+                      ${item.note ? `<div style="font-size:12px; color:#64748b; margin-top:2px;">${esc(item.note)}</div>` : ""}
+                    </div>
+                    <button type="button" class="ynwa-priv-del" data-del-priv="${esc(item.id)}">Xóa</button>
+                  </div>
+                </div>
+              `;
+            }
+
+            const timeStr = item.startTime
+              ? `${item.startTime}${item.endTime ? " – " + item.endTime : ""}`
+              : (item.time || "--:--");
+
+            return `
+              <div class="ynwa-priv-card" style="border-left:4px solid #6366f1;">
+                <div style="display:flex; align-items:center; justify-content:space-between; gap:6px;">
+                  <span style="font-size:12px; font-weight:800; color:#4f46e5;">📆 ${esc(item.day || "Lịch riêng")}</span>
+                  <span style="font-size:11.5px; font-weight:700; color:#64748b;">🕒 ${esc(timeStr)}</span>
+                </div>
+                <div style="font-weight:800; font-size:14px; color:#0f172a;">${esc(item.subject || item.title || "Buổi học")}</div>
+                ${item.note ? `<div style="font-size:12px; color:#475569;">📝 ${esc(item.note)}</div>` : ""}
+                <div style="margin-top:auto; display:flex; justify-content:space-between; align-items:center; padding-top:4px;">
+                  <span style="font-size:11px; color:#059669; font-weight:700;">🔒 Chỉ mình tôi</span>
+                  <button type="button" class="ynwa-priv-del" data-del-priv="${esc(item.id)}">Xóa</button>
+                </div>
+              </div>
+            `;
+          }).join("")}
+        </div>
+      `;
+
+      // Phóng to ảnh TKB khi bấm vào
+      wrap.querySelectorAll("[data-zoom-img]").forEach(img => {
+        img.addEventListener("click", () => {
+          const lb = document.getElementById("ynwa-priv-lightbox");
+          const lbImg = document.getElementById("ynwa-priv-lightbox-img");
+          if (lb && lbImg) {
+            lbImg.src = img.src;
+            lb.classList.add("open");
+          }
+        });
+      });
+
+      // Xóa mục lịch riêng
+      wrap.querySelectorAll("[data-del-priv]").forEach(btn => {
+        btn.addEventListener("click", async () => {
+          const id = btn.getAttribute("data-del-priv");
+          if (!currentUser || !id) return;
+          if (!confirm("Xóa mục lịch riêng này?")) return;
+          try {
+            await deleteDoc(doc(db, "artifacts", appId, "users", currentUser.uid, "private_schedules", id));
+            notify("Đã xóa khỏi lịch riêng.", "🗑️");
+          } catch (err) {
+            notify("Lỗi khi xóa: " + err.message, "⚠️");
+          }
+        });
+      });
+    }
+
+    // Kết nối Firebase — chỉ đăng ký lắng nghe đúng UID của người đang đăng nhập
+    function boot() {
+      if (!getApps().length) return false;
+      const app = getApp();
+      auth = getAuth(app);
+      db = getFirestore(app);
+
+      mountPrivateScheduleBox();
+
+      onAuthStateChanged(auth, (user) => {
+        if (unsubSchedules) {
+          unsubSchedules();
+          unsubSchedules = null;
+        }
+        currentUser = user || null;
+        mySchedules = [];
+
+        mountPrivateScheduleBox();
+
+        if (!user) {
+          renderPrivateSchedules();
+          return;
+        }
+
+        const q = query(
+          collection(db, "artifacts", appId, "users", user.uid, "private_schedules"),
+          orderBy("createdAt", "desc")
+        );
+
+        unsubSchedules = onSnapshot(q, (snap) => {
+          mySchedules = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+          renderPrivateSchedules();
+        }, () => {
+          // Dự phòng nếu chưa có index cho createdAt
+          unsubSchedules = onSnapshot(
+            collection(db, "artifacts", appId, "users", user.uid, "private_schedules"),
+            (snap) => {
+              mySchedules = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+              renderPrivateSchedules();
+            }
+          );
+        });
+      });
+
+      return true;
+    }
+
+    const timer = setInterval(() => {
+      if (boot()) clearInterval(timer);
+    }, 500);
+  })();
+</script>
 </body></html>
