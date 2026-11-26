@@ -9493,17 +9493,19 @@ service cloud.firestore {
   })();
 </script>
   <!-- =====================================================================
-     HIỂN THỊ THÊM SỐ GIỜ HỌC POMODORO THEO TUẦN DƯỚI TÊN TÀI KHOẢN
+     TÍNH & HIỂN THỊ PHÚT TÍCH LŨY TỔNG TOÀN BỘ THỜI GIAN + GIỜ HỌC TUẦN
      ===================================================================== -->
 <script>
   (function () {
+    let hasSyncedFirestoreAllTime = false;
+
     function normalizeUserSlug(str) {
       return String(str || '')
         .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
         .toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '') || 'member';
     }
 
-    // Tính tuần hiện tại (Thứ 2 -> Chủ Nhật)
+    // Tính mã tuần hiện tại (Thứ 2 -> Chủ Nhật)
     function getCurrentIsoWeek() {
       const now = new Date();
       const d = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
@@ -9533,10 +9535,15 @@ service cloud.firestore {
       let realName = '';
       const leafNodes = Array.from(headerPill.querySelectorAll('div, span, p, strong, b'));
       for (const el of leafNodes) {
-        if (el.id === 'ynwa-header-weekly-pomo' || el.closest('#ynwa-header-weekly-pomo')) continue;
+        if (
+          el.id === 'ynwa-header-alltime-pomo' ||
+          el.id === 'ynwa-header-weekly-pomo' ||
+          el.closest('#ynwa-header-alltime-pomo') ||
+          el.closest('#ynwa-header-weekly-pomo')
+        ) continue;
         if (el.children.length > 0) continue;
         const t = (el.textContent || '').trim();
-        if (!t || t === 'Thoát' || t.includes('Admin') || /phút tích lũy/i.test(t) || t.length < 2) continue;
+        if (!t || t === 'Thoát' || t.includes('Admin') || /phút tích lũy|tuần này/i.test(t) || t.length < 2) continue;
         realName = t;
         break;
       }
@@ -9549,15 +9556,49 @@ service cloud.firestore {
       };
     }
 
-    // Định dạng số giờ học Pomodoro tuần này (VD: "0g 0p tuần này (T48)" hoặc "2g 15p tuần này (T48)")
-    function formatWeeklyHoursLabel(totalMins, weekNo) {
+    // Định dạng tổng phút tích lũy toàn bộ thời gian (kèm quy đổi giờ nếu >= 60 phút)
+    function formatAllTimeMinutesText(totalMins) {
       const mins = Math.max(0, Math.floor(Number(totalMins) || 0));
+      if (mins < 60) {
+        return `Tổng: ${mins} phút tích lũy`;
+      }
       const h = Math.floor(mins / 60);
       const m = mins % 60;
-      return `${h}g ${m}p tuần này (T${weekNo})`;
+      return `Tổng: ${mins.toLocaleString('vi-VN')} phút tích lũy (${h}g ${m}p)`;
     }
 
-    function renderAdditionalWeeklyHoursUnderName() {
+    // Định dạng giờ học trong tuần
+    function formatWeeklyHoursText(weeklyMins, weekNo) {
+      const mins = Math.max(0, Math.floor(Number(weeklyMins) || 0));
+      const h = Math.floor(mins / 60);
+      const m = mins % 60;
+      return `Tuần này (T${weekNo}): ${h}g ${m}p`;
+    }
+
+    // Đồng bộ tổng phút tích lũy toàn bộ thời gian lên Firestore (nếu đăng nhập)
+    async function syncAllTimeWithFirestore(localKey, currentAllTime) {
+      try {
+        if (!window.firebase || !firebase.auth || !firebase.firestore) return;
+        const fbUser = firebase.auth().currentUser;
+        if (!fbUser) return;
+
+        const userRef = firebase.firestore().collection('users').doc(fbUser.uid);
+        if (!hasSyncedFirestoreAllTime) {
+          hasSyncedFirestoreAllTime = true;
+          const snap = await userRef.get();
+          if (snap.exists) {
+            const remoteAllTime = Number(snap.data().allTimePomodoroMinutes || snap.data().totalMinutes || 0);
+            if (remoteAllTime > currentAllTime) {
+              localStorage.setItem(localKey, String(remoteAllTime));
+            }
+          }
+        }
+        const latestVal = Number(localStorage.getItem(localKey) || currentAllTime);
+        await userRef.set({ allTimePomodoroMinutes: latestVal }, { merge: true });
+      } catch (e) {}
+    }
+
+    function syncAllTimeAndWeeklyHeaderStats() {
       const logoutBtn = Array.from(document.querySelectorAll('button')).find(
         b => b.textContent && b.textContent.trim() === 'Thoát'
       );
@@ -9565,26 +9606,32 @@ service cloud.firestore {
 
       const headerPill = logoutBtn.parentElement;
 
-      // Tìm đúng dòng "⏱️ 0 phút tích lũy" nằm dưới tên tài khoản
-      const totalBadgeEl = Array.from(headerPill.querySelectorAll('div, span, p')).find(el => {
+      // Tìm đúng dòng hiển thị dưới tên tài khoản
+      const badgeRowEl = Array.from(headerPill.querySelectorAll('div, span, p')).find(el => {
         const txt = (el.textContent || '').trim();
-        return /phút tích lũy/i.test(txt) && !txt.includes('Thoát') && txt.length < 70;
+        return /phút tích lũy/i.test(txt) && !txt.includes('Thoát') && txt.length < 120;
       });
-      if (!totalBadgeEl) return;
+      if (!badgeRowEl) return;
 
       const me = getHeaderUserIdentity(headerPill);
       const weekInfo = getCurrentIsoWeek();
+
       const weeklyRankKey = 'ynwa_weekly_rank_v2_' + me.uid;
-      const baselineKey = `ynwa_header_week_base_${me.uid}_${weekInfo.weekKey}`;
+      const allTimeKey = 'ynwa_alltime_pomo_mins_' + me.uid;
+      const diligentBoardKey = 'ynwa_diligent_total_mins_' + me.uid;
+      const weekSyncedCursorKey = `ynwa_alltime_cursor_${me.uid}_${weekInfo.weekKey}`;
+      const nativeBaseKey = `ynwa_native_base_${me.uid}`;
 
-      // Đọc số phút tích lũy gốc (loại trừ phần badge tuần của mình để tránh đọc nhầm)
-      const cloneEl = totalBadgeEl.cloneNode(true);
-      const injectedClone = cloneEl.querySelector('#ynwa-header-weekly-pomo');
-      if (injectedClone) injectedClone.remove();
-      const nativeText = (cloneEl.textContent || '').trim();
-      const nativeTotalMins = parseInt((nativeText.match(/(\d+)\s*phút tích lũy/i) || ['0', '0'])[1], 10) || 0;
+      // 1. Đọc số phút gốc nếu hệ thống tự cộng thêm khi kết thúc phiên
+      let nativeTotalMins = 0;
+      if (!badgeRowEl.querySelector('#ynwa-header-alltime-pomo')) {
+        const rawTxt = (badgeRowEl.textContent || '').trim();
+        nativeTotalMins = parseInt((rawTxt.match(/(\d+)\s*phút tích lũy/i) || ['0', '0'])[1], 10) || 0;
+      } else {
+        nativeTotalMins = Number(localStorage.getItem(nativeBaseKey) || 0);
+      }
 
-      // Đọc dữ liệu tuần hiện tại
+      // 2. Đọc dữ liệu tuần hiện tại
       let rec = null;
       try {
         const raw = localStorage.getItem(weeklyRankKey);
@@ -9595,7 +9642,6 @@ service cloud.firestore {
       if (rec && rec.weekKey === weekInfo.weekKey) {
         weeklyMins = Math.max(0, Number(rec.pomodoroMinutes || 0));
       } else {
-        // Sang tuần mới -> tự động đặt lại số giờ tuần về 0
         rec = {
           uid: me.uid,
           name: me.name,
@@ -9613,44 +9659,74 @@ service cloud.firestore {
         localStorage.setItem(weeklyRankKey, JSON.stringify(rec));
       }
 
-      // Đồng bộ thêm nếu hệ thống gốc vừa cộng phút mới vào tổng tích lũy
-      const savedBase = localStorage.getItem(baselineKey);
-      if (savedBase === null) {
-        localStorage.setItem(baselineKey, String(Math.max(0, nativeTotalMins - weeklyMins)));
+      // 3. Tính Tổng Phút Tích Lũy Toàn Bộ Thời Gian (cộng dồn mọi phút học, không reset khi sang tuần mới)
+      const existingDiligent = Number(localStorage.getItem(diligentBoardKey) || 0);
+      let allTimeMins = localStorage.getItem(allTimeKey) !== null
+        ? Math.max(0, Number(localStorage.getItem(allTimeKey) || 0))
+        : Math.max(nativeTotalMins, weeklyMins, existingDiligent);
+
+      const savedCursor = localStorage.getItem(weekSyncedCursorKey);
+      if (savedCursor === null) {
+        // Khởi tạo mốc đối chiếu cho tuần hiện tại
+        localStorage.setItem(weekSyncedCursorKey, String(weeklyMins));
+        allTimeMins = Math.max(allTimeMins, weeklyMins, nativeTotalMins, existingDiligent);
       } else {
-        const baseVal = parseInt(savedBase, 10) || 0;
-        const expectedNative = baseVal + weeklyMins;
-        if (nativeTotalMins > expectedNative) {
-          weeklyMins += (nativeTotalMins - expectedNative);
-          rec.pomodoroMinutes = weeklyMins;
-          rec.updatedAt = Date.now();
-          localStorage.setItem(weeklyRankKey, JSON.stringify(rec));
+        const prevWeeklyMins = Number(savedCursor) || 0;
+        if (weeklyMins !== prevWeeklyMins) {
+          const delta = weeklyMins - prevWeeklyMins;
+          allTimeMins = Math.max(0, allTimeMins + delta);
+          localStorage.setItem(weekSyncedCursorKey, String(weeklyMins));
         }
       }
 
-      // Chèn thêm thẻ hiển thị số giờ học tuần này ngay bên cạnh "0 phút tích lũy" dưới tên
-      totalBadgeEl.style.display = 'flex';
-      totalBadgeEl.style.flexWrap = 'wrap';
-      totalBadgeEl.style.alignItems = 'center';
-      totalBadgeEl.style.gap = '2px 8px';
-
-      let weeklyBadge = document.getElementById('ynwa-header-weekly-pomo');
-      if (!weeklyBadge || !totalBadgeEl.contains(weeklyBadge)) {
-        weeklyBadge = document.createElement('span');
-        weeklyBadge.id = 'ynwa-header-weekly-pomo';
-        weeklyBadge.className = 'inline-flex items-center gap-1 pl-2 border-l font-extrabold text-amber-700';
-        weeklyBadge.style.borderColor = 'var(--border-soft)';
-        totalBadgeEl.appendChild(weeklyBadge);
+      // Đảm bảo tổng toàn bộ thời gian không bao giờ nhỏ hơn số phút của riêng tuần này
+      if (allTimeMins < weeklyMins) {
+        allTimeMins = weeklyMins;
       }
 
-      const nextLabel = `📅 ${formatWeeklyHoursLabel(weeklyMins, weekInfo.weekNo)}`;
-      weeklyBadge.title = `Số giờ học Pomodoro tích lũy trong ${weekInfo.label} (${weeklyMins} phút) • Tự động đặt lại vào Thứ 2 hàng tuần`;
-      if (weeklyBadge.textContent !== nextLabel) {
-        weeklyBadge.textContent = nextLabel;
+      localStorage.setItem(allTimeKey, String(allTimeMins));
+      localStorage.setItem(diligentBoardKey, String(allTimeMins));
+      localStorage.setItem(nativeBaseKey, String(nativeTotalMins));
+
+      // 4. Hiển thị song song dưới tên tài khoản: Tổng tích lũy toàn bộ thời gian + Giờ học tuần này
+      badgeRowEl.style.display = 'flex';
+      badgeRowEl.style.flexWrap = 'wrap';
+      badgeRowEl.style.alignItems = 'center';
+      badgeRowEl.style.gap = '2px 8px';
+
+      let allTimeSpan = badgeRowEl.querySelector('#ynwa-header-alltime-pomo');
+      let weeklySpan = badgeRowEl.querySelector('#ynwa-header-weekly-pomo');
+
+      if (!allTimeSpan || !weeklySpan) {
+        badgeRowEl.innerHTML = '';
+
+        allTimeSpan = document.createElement('span');
+        allTimeSpan.id = 'ynwa-header-alltime-pomo';
+        allTimeSpan.className = 'inline-flex items-center gap-1 font-bold';
+        allTimeSpan.style.color = 'var(--primary)';
+
+        weeklySpan = document.createElement('span');
+        weeklySpan.id = 'ynwa-header-weekly-pomo';
+        weeklySpan.className = 'inline-flex items-center gap-1 pl-2 border-l font-extrabold text-amber-700';
+        weeklySpan.style.borderColor = 'var(--border-soft)';
+
+        badgeRowEl.appendChild(allTimeSpan);
+        badgeRowEl.appendChild(weeklySpan);
       }
+
+      const allTimeText = `⏱️ ${formatAllTimeMinutesText(allTimeMins)}`;
+      const weeklyText = `📅 ${formatWeeklyHoursText(weeklyMins, weekInfo.weekNo)}`;
+
+      allTimeSpan.title = `Tổng thời gian bấm giờ Pomodoro tích lũy từ trước đến nay (${allTimeMins} phút)`;
+      weeklySpan.title = `Thời gian học Pomodoro trong ${weekInfo.label} (${weeklyMins} phút) • Tự động đặt lại vào Thứ 2`;
+
+      if (allTimeSpan.textContent !== allTimeText) allTimeSpan.textContent = allTimeText;
+      if (weeklySpan.textContent !== weeklyText) weeklySpan.textContent = weeklyText;
+
+      syncAllTimeWithFirestore(allTimeKey, allTimeMins);
     }
 
-    setInterval(renderAdditionalWeeklyHoursUnderName, 1000);
+    setInterval(syncAllTimeAndWeeklyHeaderStats, 1000);
   })();
 </script>
   
