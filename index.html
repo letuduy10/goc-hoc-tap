@@ -15205,4 +15205,2021 @@ service cloud.firestore {
     }, 500);
   })();
 </script>
+  <!-- =====================================================================
+     PHÒNG NUÔI MÈO LOFI NÂNG CẤP (ÁO QUẦN CHO MÈO, MUA THÊM THÚ CƯNG,
+     ĐỔI GIỜ HỌC LẤY XU CÁ, NHIỆM VỤ & QUYỀN ADMIN PHÁT XU CÁ)
+     (Thay thế đoạn code Phòng Mèo Lofi cũ, dán ngay trước thẻ </body>)
+     ===================================================================== -->
+<style>
+  .ynwa-lofi-shell {
+    background: #fbf8f1;
+    border: 1px solid #ece5d5;
+    border-radius: 26px;
+    padding: 20px;
+    color: #3f3a34;
+    box-shadow: 0 10px 30px rgba(63, 58, 52, 0.06);
+  }
+  .ynwa-lofi-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 14px;
+    border-radius: 9999px;
+    background: #ffffff;
+    border: 1px solid #eadfcb;
+    font-weight: 800;
+    font-size: 13px;
+    color: #5c4d3c;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+  }
+  .ynwa-lofi-btn-sage {
+    padding: 8px 15px;
+    border-radius: 9999px;
+    border: none;
+    background: #88a47c;
+    color: #ffffff;
+    font-size: 12.5px;
+    font-weight: 800;
+    cursor: pointer;
+    transition: transform 0.15s ease, background 0.15s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .ynwa-lofi-btn-sage:hover { background: #76936a; transform: translateY(-1px); }
+  .ynwa-lofi-btn-sage:disabled { opacity: 0.55; cursor: not-allowed; transform: none; }
+
+  .ynwa-lofi-btn-amber {
+    padding: 8px 15px;
+    border-radius: 9999px;
+    border: 1px solid #f59e0b;
+    background: #fef3c7;
+    color: #92400e;
+    font-size: 12.5px;
+    font-weight: 800;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .ynwa-lofi-btn-amber:hover { background: #fde68a; }
+
+  /* Khung phòng Lofi tương tác */
+  .ynwa-lofi-room-stage {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16 / 11;
+    min-height: 320px;
+    border-radius: 22px;
+    overflow: hidden;
+    border: 2px solid #eadfcb;
+    box-shadow: inset 0 2px 12px rgba(63, 58, 52, 0.06);
+    user-select: none;
+  }
+  .ynwa-lofi-room-svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+
+  /* Nhân vật Mèo Lofi chính */
+  .ynwa-lofi-cat-actor {
+    position: absolute;
+    bottom: 12%;
+    left: 36%;
+    width: 108px;
+    height: 114px;
+    transform: translateX(-50%);
+    transition: left 2.4s cubic-bezier(0.45, 0.05, 0.55, 0.95);
+    cursor: pointer;
+    z-index: 7;
+  }
+  .ynwa-lofi-cat-actor.is-flipped .ynwa-lofi-cat-svg,
+  .ynwa-lofi-pet-actor.is-flipped .ynwa-lofi-pet-svg {
+    transform: scaleX(-1);
+  }
+  .ynwa-lofi-cat-svg,
+  .ynwa-lofi-pet-svg {
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+    transform-origin: center bottom;
+    animation: ynwaCatBreathe 2.6s ease-in-out infinite;
+  }
+  .ynwa-lofi-cat-actor.is-walking .ynwa-lofi-cat-svg,
+  .ynwa-lofi-pet-actor.is-walking .ynwa-lofi-pet-svg {
+    animation: ynwaCatWalkBounce 0.42s ease-in-out infinite;
+  }
+  .ynwa-lofi-cat-actor.is-happy .ynwa-lofi-cat-svg,
+  .ynwa-lofi-pet-actor.is-happy .ynwa-lofi-pet-svg {
+    animation: ynwaCatJump 0.5s ease-in-out 2;
+  }
+
+  /* Các con vật nuôi thêm trong phòng */
+  .ynwa-lofi-pet-actor {
+    position: absolute;
+    bottom: 9%;
+    width: 76px;
+    height: 76px;
+    transform: translateX(-50%);
+    transition: left 2.8s cubic-bezier(0.45, 0.05, 0.55, 0.95);
+    cursor: pointer;
+    z-index: 8;
+  }
+
+  .ynwa-lofi-cat-tail {
+    transform-origin: 72px 78px;
+    animation: ynwaTailWag 2.2s ease-in-out infinite;
+  }
+  .ynwa-lofi-pet-tail {
+    transform-origin: 64px 62px;
+    animation: ynwaTailWag 1.3s ease-in-out infinite;
+  }
+  .ynwa-lofi-cat-ear-l {
+    transform-origin: 36px 32px;
+    animation: ynwaEarTwitch 5s ease-in-out infinite;
+  }
+  .ynwa-lofi-cat-eyes {
+    transform-origin: 50px 48px;
+    animation: ynwaEyeBlink 4.2s infinite;
+  }
+
+  @keyframes ynwaCatBreathe {
+    0%, 100% { transform: scaleY(1) translateY(0); }
+    50% { transform: scaleY(1.03) translateY(-2px); }
+  }
+  @keyframes ynwaCatWalkBounce {
+    0%, 100% { transform: translateY(0) rotate(-2deg); }
+    50% { transform: translateY(-6px) rotate(2deg); }
+  }
+  @keyframes ynwaCatJump {
+    0%, 100% { transform: translateY(0) scale(1); }
+    45% { transform: translateY(-15px) scale(1.05, 0.96); }
+  }
+  @keyframes ynwaTailWag {
+    0%, 100% { transform: rotate(-10deg); }
+    50% { transform: rotate(16deg); }
+  }
+  @keyframes ynwaEarTwitch {
+    0%, 88%, 100% { transform: rotate(0deg); }
+    92% { transform: rotate(-12deg); }
+    96% { transform: rotate(4deg); }
+  }
+  @keyframes ynwaEyeBlink {
+    0%, 92%, 96%, 100% { transform: scaleY(1); }
+    94% { transform: scaleY(0.08); }
+  }
+  @keyframes ynwaCloudFloat {
+    0%, 100% { transform: translateX(0px); }
+    50% { transform: translateX(10px); }
+  }
+  @keyframes ynwaFloatUp {
+    0% { opacity: 0; transform: translate(-50%, 6px) scale(0.85); }
+    20% { opacity: 1; transform: translate(-50%, -4px) scale(1); }
+    85% { opacity: 1; transform: translate(-50%, -22px) scale(1); }
+    100% { opacity: 0; transform: translate(-50%, -32px) scale(0.9); }
+  }
+
+  .ynwa-lofi-cloud {
+    animation: ynwaCloudFloat 7s ease-in-out infinite;
+  }
+  .ynwa-lofi-bubble {
+    position: absolute;
+    bottom: 104%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(255, 255, 255, 0.96);
+    border: 1px solid #e6dcc8;
+    color: #4a4238;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 5px 10px;
+    border-radius: 14px;
+    white-space: nowrap;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    pointer-events: none;
+    z-index: 20;
+    animation: ynwaFloatUp 2.8s ease forwards;
+  }
+
+  /* Thẻ bên phải */
+  .ynwa-lofi-card {
+    background: #ffffff;
+    border: 1px solid #ece5d5;
+    border-radius: 20px;
+    padding: 16px;
+    box-shadow: 0 4px 14px rgba(63, 58, 52, 0.03);
+  }
+  .ynwa-lofi-subtabs {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+    border-bottom: 1px solid #f1ece1;
+    padding-bottom: 10px;
+    margin-bottom: 12px;
+  }
+  .ynwa-lofi-subtab {
+    padding: 7px 6px;
+    border-radius: 10px;
+    border: 1px solid #f1ece1;
+    background: #faf7f0;
+    color: #78716c;
+    font-size: 11.5px;
+    font-weight: 800;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    text-align: center;
+    white-space: nowrap;
+  }
+  .ynwa-lofi-subtab.active {
+    background: #88a47c;
+    border-color: #88a47c;
+    color: #ffffff;
+  }
+  .ynwa-lofi-list-scroll {
+    max-height: 315px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding-right: 2px;
+  }
+  .ynwa-lofi-item-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: 14px;
+    background: #faf7f0;
+    border: 1px solid #ede6d6;
+  }
+
+  /* Modal Admin phát Xu Cá */
+  .ynwa-lofi-modal-bg {
+    position: fixed;
+    inset: 0;
+    z-index: 10080;
+    background: rgba(15, 23, 42, 0.55);
+    backdrop-filter: blur(3px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+  }
+  .ynwa-lofi-modal-bg.open { display: flex; }
+  .ynwa-lofi-modal {
+    width: 100%;
+    max-width: 440px;
+    background: #ffffff;
+    border-radius: 24px;
+    padding: 22px;
+    box-shadow: 0 24px 50px rgba(15, 23, 42, 0.25);
+  }
+</style>
+
+<script type="module">
+  import { getApps, getApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+  import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+  import {
+    getFirestore,
+    collection,
+    doc,
+    setDoc,
+    updateDoc,
+    increment,
+    onSnapshot,
+    serverTimestamp
+  } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+  (function () {
+    if (window.__ynwaLofiCatRoomLoaded) return;
+    window.__ynwaLofiCatRoomLoaded = true;
+
+    const appId = typeof __app_id !== "undefined" ? __app_id : "goc-hoc-nho-prod";
+
+    // 1. GIỐNG MÈO / MÀU LÔNG
+    const CAT_STYLES = [
+      { id: "cream",   name: "Mèo Kem Lofi",       price: 0,   body: "#f3e5d0", earInner: "#f5b7b1", stripe: "#d7bfa0", eye: "#2c2520" },
+      { id: "calico",  name: "Mèo Tam Thể",        price: 80,  body: "#fffaf2", earInner: "#f5b7b1", stripe: "#e69d5c", eye: "#2c2520" },
+      { id: "tabby",   name: "Mèo Mướp Vàng",      price: 120, body: "#f6c989", earInner: "#f4a4a4", stripe: "#c47d3b", eye: "#2c2520" },
+      { id: "tuxedo",  name: "Mèo Đen Mũi Trắng",  price: 150, body: "#3b3a40", earInner: "#e89cae", stripe: "#ffffff", eye: "#facc15" },
+      { id: "siamese", name: "Mèo Xiêm Hoàng Gia", price: 200, body: "#efe2ce", earInner: "#d99b9b", stripe: "#6d5647", eye: "#38bdf8" }
+    ];
+
+    // 2. ÁO QUẦN & PHỤ KIỆN CHO MÈO
+    const CAT_OUTFITS = [
+      { id: "none",             icon: "🐾", name: "Không mặc đồ",            desc: "Bộ lông tự nhiên mềm mại",               price: 0 },
+      { id: "scarf_red",        icon: "🧣", name: "Khăn Choàng Len Đỏ",      desc: "Ấm áp cho những buổi tối học khuya",     price: 45 },
+      { id: "sailor_collar",    icon: "⚓", name: "Cổ Áo Thủy Thủ Xanh",     desc: "Cổ áo thủy thủ pastel kèm nơ vàng",     price: 65 },
+      { id: "hoodie_frog",      icon: "🐸", name: "Áo Hoodie Ếch Xanh",      desc: "Áo nỉ xanh lá siêu dễ thương",           price: 95 },
+      { id: "overalls_denim",   icon: "👖", name: "Yếm Bò Học Sinh",         desc: "Quần yếm denim cúc vàng năng động",      price: 110 },
+      { id: "strawberry_dress", icon: "🍓", name: "Váy Dâu Tây Pastel",      desc: "Váy hồng dâu tây kèm kẹp tóc xinh xắn",  price: 130 },
+      { id: "wizard_cape",      icon: "🧙", name: "Mũ & Áo Choàng Phù Thủy", desc: "Trang phục pháp sư lấp lánh ánh sao",    price: 150 },
+      { id: "royal_crown",      icon: "👑", name: "Vương Miện & Áo Hoàng Gia", desc: "Vương miện vàng & áo choàng nhung đỏ", price: 185 }
+    ];
+
+    // 3. THÚ CƯNG NUÔI THÊM TRONG PHÒNG
+    const COMPANION_PETS = [
+      {
+        id: "duckling",
+        icon: "🐥",
+        name: "Vịt Con Chíp Chíp",
+        desc: "Lon ton chạy theo bé mèo quanh phòng",
+        price: 80,
+        defaultX: 52,
+        lines: ["Chíp chíp! Cố lên cậu ơi~ 🌼", "Quạc quạc! Học thêm 1 hiệp nữa nha! 🐥", "Chíp~ Mình cổ vũ cậu nè! ✨"]
+      },
+      {
+        id: "hamster",
+        icon: "🐹",
+        name: "Hamster Hạt Dẻ",
+        desc: "Bé chuột má phính gặm hạt hướng dương",
+        price: 95,
+        defaultX: 22,
+        lines: ["Chít chít~ Gặm hạt tiếp sức học bài! 🌻", "Má phính cổ vũ cậu đạt mục tiêu hôm nay! 🐹", "Chít~ Căn phòng ấm áp quá đi! 💖"]
+      },
+      {
+        id: "bunny",
+        icon: "🐰",
+        name: "Thỏ Trắng Tai Cụp",
+        desc: "Nhảy lon ton nhẹ nhàng trên sàn gỗ",
+        price: 115,
+        defaultX: 66,
+        lines: ["Khịt khịt~ Cậu học chăm chỉ quá! 🥕", "Boing boing~ Nghỉ mắt một chút nhé! 🌸", "Thỏ Bông thích phòng này lắm luôn! 🐰"]
+      },
+      {
+        id: "puppy",
+        icon: "🐕",
+        name: "Cún Shiba Bánh Mì",
+        desc: "Vẫy đuôi tít mù mỗi khi bạn hoàn thành bài",
+        price: 140,
+        defaultX: 76,
+        lines: ["Gâu gâu! Cậu giỏi quá đi mất! 🦴", "Wuff~ Cho Bánh Mì chơi với nào! 🐕", "Gâu! Hôm nay quyết tâm hoàn thành mục tiêu! 🔥"]
+      },
+      {
+        id: "fox",
+        icon: "🦊",
+        name: "Cáo Nhỏ Hồ Ly",
+        desc: "Bé cáo đuôi bông xù thông minh lanh lợi",
+        price: 175,
+        defaultX: 44,
+        lines: ["Kon kon~ Trí tuệ thăng hạng rồi kìa! 📚", "Cáo nhỏ mang may mắn tới cho cậu nè~ 🍁", "Kon~ Nghe nhạc Lofi học bài siêu vào! 🎶"]
+      }
+    ];
+
+    // 4. ĐỒ TRANG TRÍ PHÒNG & THỨC ĂN
+    const SHOP_ITEMS = [
+      { id: "desk_plant",   icon: "🪴", name: "Chậu Sen Đá Mini",        desc: "Đặt trên bàn học thêm xanh mát",          price: 30,  type: "decor" },
+      { id: "desk_lamp",    icon: "🛋️", name: "Đèn Bàn Lofi Ấm Áp",      desc: "Tỏa ánh sáng vàng dịu khi học tối",       price: 50,  type: "decor" },
+      { id: "cozy_rug",     icon: "🧶", name: "Thảm Tròn Dệt Len",       desc: "Thảm mềm êm ái giữa phòng",               price: 65,  type: "decor" },
+      { id: "cat_cushion",  icon: "🛏️", name: "Ổ Nệm Mèo Hình Gấu",      desc: "Chỗ ngủ trưa siêu êm cho bé mèo",         price: 90,  type: "decor" },
+      { id: "lofi_radio",   icon: "📻", name: "Đài Cassette Lofi",       desc: "Phát giai điệu chill trên kệ sách",        price: 120, type: "decor" },
+      { id: "fairy_lights", icon: "✨", name: "Dây Đèn Đom Đóm",         desc: "Treo lung linh trên tường phòng",         price: 140, type: "decor" },
+      { id: "fish_treat",   icon: "🐟", name: "Bánh Cá Hồi Thượng Hạng", desc: "Cho mèo & thú cưng ăn (+niềm vui)",        price: 20,  type: "consumable" }
+    ];
+
+    const PLANT_STAGES = [
+      { min: 0,    max: 60,    icon: "🌱", title: "Hạt mầm nhỏ" },
+      { min: 60,   max: 180,   icon: "🌿", title: "Mầm non xanh" },
+      { min: 180,  max: 400,   icon: "🪴", title: "Bụi xanh" },
+      { min: 400,  max: 800,   icon: "🌳", title: "Cây non tươi tốt" },
+      { min: 800,  max: 1500,  icon: "🌸", title: "Cây nở hoa anh đào" },
+      { min: 1500, max: 99999, icon: "✨🌳✨", title: "Cổ thụ Lofi huyền thoại" }
+    ];
+
+    let db = null;
+    let auth = null;
+    let currentUid = null;
+    let allUsers = [];
+    let unsubCat = null;
+
+    let catState = {
+      fishCoins: 60,
+      convertedMinutes: 0,
+      catName: "Mochi",
+      catStyle: "cream",
+      ownedItems: ["desk_plant"],
+      equippedItems: ["desk_plant"],
+      ownedStyles: ["cream"],
+      ownedOutfits: ["none"],
+      equippedOutfit: "none",
+      ownedPets: [],
+      activePets: [],
+      isNight: false,
+      happiness: 85,
+      claimedTasks: {},
+      petDate: "",
+      decorChanged: false,
+      lastGift: null
+    };
+
+    let activeSubTab = "tasks"; // "tasks" | "shop" | "outfits" | "pets" | "bag" | "styles"
+    let catPosX = 36;
+    let catFacingLeft = false;
+    let catAction = "reading";
+    let catBubbleText = "";
+    let catBubbleKey = 0;
+
+    // Trạng thái chuyển động riêng của từng thú cưng nuôi thêm
+    const petMotionState = new Map(); // petId -> { x, facingLeft, action, bubbleText, bubbleKey }
+    let wanderTimer = null;
+    let lastNotifiedGiftId = "";
+
+    function esc(s) {
+      return String(s ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }
+
+    function notify(msg, icon = "🐾") {
+      if (typeof window.showToast === "function") window.showToast(msg, icon);
+      else console.log(icon, msg);
+    }
+
+    function todayKey() {
+      const d = new Date();
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    }
+
+    function isCurrentUserAdmin() {
+      if (currentUid) {
+        const me = allUsers.find(u => u.uid === currentUid);
+        if (me && (me.role === "admin" || me.isAdmin === true)) return true;
+      }
+      const adminTab = document.getElementById("tab-btn-admin");
+      return Boolean(adminTab && !adminTab.classList.contains("hidden"));
+    }
+
+    function getMyUserObj() {
+      return allUsers.find(u => u.uid === currentUid) || {};
+    }
+
+    function getMyStudyStats() {
+      const u = getMyUserObj();
+      const totalMins = Math.max(0, Math.round(Number(u.totalMinutes) || 0));
+      const tKey = todayKey();
+      const todayMins = u.todayDate === tKey ? Math.max(0, Math.round(Number(u.todayMinutes) || 0)) : 0;
+      const converted = Math.max(0, Math.round(Number(catState.convertedMinutes) || 0));
+      const convertibleMins = Math.max(0, totalMins - converted);
+      return { totalMins, todayMins, converted, convertibleMins };
+    }
+
+    // -----------------------------------------------------------------
+    // 1. LƯU TRỮ FIRESTORE
+    // -----------------------------------------------------------------
+    async function saveCatPatch(patch) {
+      if (!db || !currentUid) return;
+      Object.assign(catState, patch);
+      renderLofiRoom();
+
+      try {
+        await setDoc(
+          doc(db, "artifacts", appId, "users", currentUid, "lofi_cat_room", "main"),
+          { ...patch, updatedAt: serverTimestamp() },
+          { merge: true }
+        );
+        if (patch.fishCoins !== undefined || patch.catName !== undefined || patch.catStyle !== undefined) {
+          const pubPatch = {};
+          if (patch.fishCoins !== undefined) pubPatch.fishCoins = patch.fishCoins;
+          if (patch.catName !== undefined) pubPatch.lofiCatName = patch.catName;
+          if (patch.catStyle !== undefined) pubPatch.lofiCatStyle = patch.catStyle;
+          await updateDoc(doc(db, "artifacts", appId, "public", "data", "users", currentUid), pubPatch).catch(() => {});
+        }
+      } catch (err) {
+        console.warn("Lỗi lưu phòng mèo:", err);
+      }
+    }
+
+    async function convertStudyMinutesToFish() {
+      if (!currentUid) return notify("Vui lòng đăng nhập để đổi giờ học!", "🔒");
+      const { totalMins, convertibleMins } = getMyStudyStats();
+      if (convertibleMins <= 0) {
+        return notify("Bạn đã đổi hết số phút học hiện có! Hãy học thêm để tích lũy nhé.", "⏱️");
+      }
+
+      const nextCoins = (Number(catState.fishCoins) || 0) + convertibleMins;
+      triggerCatBubble(`Meo! Đổi thành công +${convertibleMins} Xu Cá! 🐟`, "happy");
+
+      await saveCatPatch({
+        fishCoins: nextCoins,
+        convertedMinutes: totalMins
+      });
+      notify(`Đã đổi ${convertibleMins} phút học thành +${convertibleMins} Xu Cá!`, "🐟");
+    }
+
+    // -----------------------------------------------------------------
+    // 2. NHIỆM VỤ NHẬN XU CÁ HẰNG NGÀY
+    // -----------------------------------------------------------------
+    function getDailyTasks() {
+      const tKey = todayKey();
+      const { todayMins } = getMyStudyStats();
+      const pettedToday = catState.petDate === tKey;
+      const hasDecor = (catState.equippedItems || []).length >= 2 || catState.decorChanged === true;
+      const hasOutfitOrPet =
+        (catState.equippedOutfit && catState.equippedOutfit !== "none") ||
+        (catState.activePets || []).length >= 1;
+
+      return [
+        {
+          id: `${tKey}_pet`,
+          icon: "🐾",
+          title: "Vuốt ve bé mèo hôm nay",
+          desc: "Chạm vào bé mèo trong phòng để chơi cùng bé",
+          reward: 15,
+          done: pettedToday,
+          progressText: pettedToday ? "1/1" : "0/1"
+        },
+        {
+          id: `${tKey}_study25`,
+          icon: "🍅",
+          title: "Hoàn thành 25 phút học tập",
+          desc: "Tích lũy 25 phút học bằng đồng hồ Pomodoro hôm nay",
+          reward: 25,
+          done: todayMins >= 25,
+          progressText: `${Math.min(25, todayMins)}/25p`
+        },
+        {
+          id: `${tKey}_study60`,
+          icon: "📚",
+          title: "Chăm chỉ 60 phút hôm nay",
+          desc: "Đạt mốc 1 giờ tập trung trong ngày",
+          reward: 60,
+          done: todayMins >= 60,
+          progressText: `${Math.min(60, todayMins)}/60p`
+        },
+        {
+          id: `${tKey}_study120`,
+          icon: "🔥",
+          title: "Chiến thần 120 phút học tập",
+          desc: "Đạt mốc 2 giờ tập trung trong ngày",
+          reward: 120,
+          done: todayMins >= 120,
+          progressText: `${Math.min(120, todayMins)}/120p`
+        },
+        {
+          id: `${tKey}_style_pet`,
+          icon: "👗",
+          title: "Mặc áo đẹp hoặc nuôi thêm thú cưng",
+          desc: "Mặc áo quần cho mèo hoặc thả 1 thú cưng vào phòng",
+          reward: 25,
+          done: hasOutfitOrPet,
+          progressText: hasOutfitOrPet ? "Hoàn thành" : "Chưa đạt"
+        },
+        {
+          id: `${tKey}_decor`,
+          icon: "🏡",
+          title: "Trang trí căn phòng Lofi",
+          desc: "Đặt từ 2 món đồ trở lên trong phòng của bé mèo",
+          reward: 20,
+          done: hasDecor,
+          progressText: hasDecor ? "Hoàn thành" : "Chưa đạt"
+        }
+      ];
+    }
+
+    async function claimTaskReward(taskId, reward) {
+      if (!currentUid) return;
+      if (catState.claimedTasks?.[taskId]) return;
+
+      const nextClaimed = { ...(catState.claimedTasks || {}), [taskId]: true };
+      const nextCoins = (Number(catState.fishCoins) || 0) + reward;
+      triggerCatBubble(`Hoàn thành nhiệm vụ! +${reward} Xu Cá 🎉`, "happy");
+
+      await saveCatPatch({
+        fishCoins: nextCoins,
+        claimedTasks: nextClaimed
+      });
+      notify(`Nhận thưởng nhiệm vụ: +${reward} Xu Cá!`, "🐟");
+    }
+
+    // -----------------------------------------------------------------
+    // 3. VẼ ÁO QUẦN TRÊN NGƯỜI MÈO & VẼ CÁC CON VẬT NUÔI THÊM
+    // -----------------------------------------------------------------
+    function buildCatOutfitSVG(outfitId) {
+      if (!outfitId || outfitId === "none") return "";
+
+      if (outfitId === "scarf_red") {
+        return `
+          <g>
+            <path d="M 32 58 Q 50 66 68 58 Q 69 65 50 69 Q 31 65 32 58 Z" fill="#ef4444" stroke="#b91c1c" stroke-width="1.2" />
+            <path d="M 55 63 L 63 83 L 54 85 L 49 66 Z" fill="#dc2626" stroke="#b91c1c" stroke-width="1.2" stroke-linejoin="round" />
+            <line x1="55" y1="84" x2="55" y2="88" stroke="#fca5a5" stroke-width="1.5" />
+            <line x1="59" y1="84" x2="59" y2="88" stroke="#fca5a5" stroke-width="1.5" />
+          </g>
+        `;
+      }
+
+      if (outfitId === "sailor_collar") {
+        return `
+          <g>
+            <path d="M 30 61 Q 50 72 70 61 L 72 75 Q 50 85 28 75 Z" fill="#60a5fa" stroke="#2563eb" stroke-width="1.2" />
+            <path d="M 32 64 Q 50 74 68 64" fill="none" stroke="#ffffff" stroke-width="1.6" />
+            <polygon points="50,67 43,63 43,72" fill="#facc15" />
+            <polygon points="50,67 57,63 57,72" fill="#facc15" />
+            <circle cx="50" cy="67.5" r="2.2" fill="#eab308" />
+          </g>
+        `;
+      }
+
+      if (outfitId === "hoodie_frog") {
+        return `
+          <g>
+            <!-- Áo hoodie xanh lá -->
+            <path d="M 28 63 Q 50 70 72 63 Q 74 87 50 89 Q 26 87 28 63 Z" fill="#65a30d" stroke="#3f6212" stroke-width="1.3" />
+            <!-- Túi áo trước bụng -->
+            <path d="M 39 76 L 61 76 L 59 85 L 41 85 Z" fill="#84cc16" stroke="#4d7c0f" stroke-width="1" />
+            <!-- Dây rút áo -->
+            <line x1="45" y1="66" x2="45" y2="73" stroke="#fef08a" stroke-width="1.6" stroke-linecap="round" />
+            <line x1="55" y1="66" x2="55" y2="73" stroke="#fef08a" stroke-width="1.6" stroke-linecap="round" />
+            <!-- Mắt ếch xinh trên đỉnh đầu -->
+            <circle cx="38" cy="24" r="5.5" fill="#65a30d" stroke="#3f6212" stroke-width="1.2" />
+            <circle cx="38" cy="24" r="3" fill="#ffffff" />
+            <circle cx="38" cy="24" r="1.5" fill="#1e293b" />
+            <circle cx="62" cy="24" r="5.5" fill="#65a30d" stroke="#3f6212" stroke-width="1.2" />
+            <circle cx="62" cy="24" r="3" fill="#ffffff" />
+            <circle cx="62" cy="24" r="1.5" fill="#1e293b" />
+          </g>
+        `;
+      }
+
+      if (outfitId === "overalls_denim") {
+        return `
+          <g>
+            <!-- Áo thun trắng bên trong -->
+            <path d="M 30 62 Q 50 68 70 62 L 71 76 L 29 76 Z" fill="#ffffff" />
+            <!-- Quần yếm bò -->
+            <path d="M 34 65 L 39 65 L 40 72 L 60 72 L 61 65 L 66 65 L 70 86 Q 50 91 30 86 Z" fill="#3b82f6" stroke="#1d4ed8" stroke-width="1.2" />
+            <!-- Cúc vàng -->
+            <circle cx="39.5" cy="72" r="2" fill="#facc15" />
+            <circle cx="60.5" cy="72" r="2" fill="#facc15" />
+            <!-- Túi trước yếm -->
+            <rect x="44" y="75" width="12" height="8" rx="2" fill="#60a5fa" stroke="#1d4ed8" stroke-width="1" />
+          </g>
+        `;
+      }
+
+      if (outfitId === "strawberry_dress") {
+        return `
+          <g>
+            <!-- Váy xòe hồng dâu tây -->
+            <path d="M 31 62 Q 50 68 69 62 L 75 86 Q 50 92 25 86 Z" fill="#f472b6" stroke="#db2777" stroke-width="1.2" />
+            <!-- Cổ ren trắng -->
+            <path d="M 32 62 Q 41 67 50 63 Q 59 67 68 62" fill="none" stroke="#ffffff" stroke-width="2.4" stroke-linecap="round" />
+            <!-- Hạt dâu trắng trên váy -->
+            <circle cx="40" cy="75" r="1.3" fill="#fff1f2" />
+            <circle cx="50" cy="79" r="1.3" fill="#fff1f2" />
+            <circle cx="60" cy="75" r="1.3" fill="#fff1f2" />
+            <!-- Kẹp tóc quả dâu trên tai -->
+            <circle cx="66" cy="31" r="4" fill="#fb7185" />
+            <polygon points="63,27 69,27 66,24" fill="#4ade80" />
+          </g>
+        `;
+      }
+
+      if (outfitId === "wizard_cape") {
+        return `
+          <g>
+            <!-- Áo choàng tím sao -->
+            <path d="M 30 61 Q 50 68 70 61 L 76 85 Q 50 90 24 85 Z" fill="#6366f1" stroke="#4338ca" stroke-width="1.2" />
+            <circle cx="50" cy="64" r="3" fill="#facc15" />
+            <text x="36" y="80" font-size="8" fill="#fef08a">★</text>
+            <text x="58" y="80" font-size="8" fill="#fef08a">★</text>
+            <!-- Mũ phù thủy chóp nhọn -->
+            <ellipse cx="50" cy="25" rx="22" ry="4.5" fill="#4f46e5" stroke="#312e81" stroke-width="1.2" />
+            <polygon points="36,25 52,4 64,25" fill="#6366f1" stroke="#312e81" stroke-width="1.2" stroke-linejoin="round" />
+            <rect x="41" y="20" width="18" height="3" fill="#facc15" />
+          </g>
+        `;
+      }
+
+      if (outfitId === "royal_crown") {
+        return `
+          <g>
+            <!-- Áo choàng nhung đỏ viền trắng -->
+            <path d="M 29 61 Q 50 68 71 61 L 76 86 Q 50 91 24 86 Z" fill="#dc2626" stroke="#991b1b" stroke-width="1.2" />
+            <path d="M 30 61 Q 50 68 70 61" fill="none" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round" />
+            <circle cx="50" cy="65" r="3" fill="#facc15" />
+            <!-- Vương miện vàng trên đầu -->
+            <polygon points="39,25 41,14 46,20 50,12 54,20 59,14 61,25" fill="#facc15" stroke="#ca8a04" stroke-width="1.2" stroke-linejoin="round" />
+            <circle cx="50" cy="21" r="1.5" fill="#ef4444" />
+          </g>
+        `;
+      }
+
+      return "";
+    }
+
+    function buildCatSVG() {
+      const styleObj = CAT_STYLES.find(s => s.id === catState.catStyle) || CAT_STYLES[0];
+      const isSleeping = catAction === "sleeping";
+      const isHappy = catAction === "happy";
+      const isReading = catAction === "reading";
+      const outfitSVG = buildCatOutfitSVG(catState.equippedOutfit);
+
+      return `
+        <svg class="ynwa-lofi-cat-svg" viewBox="0 0 100 105">
+          <ellipse cx="50" cy="96" rx="24" ry="5.5" fill="rgba(63,58,52,0.14)" />
+
+          <!-- Đuôi vẫy mềm mại -->
+          <path class="ynwa-lofi-cat-tail"
+            d="M 68 78 Q 92 70 86 52 Q 83 45 78 50 Q 81 64 65 72 Z"
+            fill="${styleObj.stripe}" />
+
+          <!-- Thân mèo -->
+          <ellipse cx="50" cy="72" rx="22" ry="23" fill="${styleObj.body}" stroke="#d6c7b2" stroke-width="1.5" />
+          <ellipse cx="50" cy="74" rx="12" ry="14" fill="#ffffff" opacity="0.75" />
+
+          <!-- Tai trái & Tai phải -->
+          <g class="ynwa-lofi-cat-ear-l">
+            <polygon points="27,36 33,15 45,29" fill="${styleObj.body}" stroke="#d6c7b2" stroke-width="1.5" stroke-linejoin="round" />
+            <polygon points="30,33 34,20 42,29" fill="${styleObj.earInner}" />
+          </g>
+          <g>
+            <polygon points="73,36 67,15 55,29" fill="${styleObj.body}" stroke="#d6c7b2" stroke-width="1.5" stroke-linejoin="round" />
+            <polygon points="70,33 66,20 58,29" fill="${styleObj.earInner}" />
+          </g>
+
+          <!-- Đầu mèo -->
+          <ellipse cx="50" cy="45" rx="25" ry="21" fill="${styleObj.body}" stroke="#d6c7b2" stroke-width="1.5" />
+
+          ${styleObj.id === "calico" ? `
+            <path d="M 27 38 Q 37 26 47 35 Q 40 45 27 38 Z" fill="#e69d5c" opacity="0.85" />
+            <path d="M 57 31 Q 69 30 73 41 Q 62 44 57 31 Z" fill="#4a4238" opacity="0.8" />
+          ` : styleObj.id === "siamese" ? `
+            <ellipse cx="50" cy="49" rx="13" ry="10" fill="#6d5647" opacity="0.85" />
+          ` : `
+            <path d="M 45 26 L 45 32 M 50 25 L 50 33 M 55 26 L 55 32" stroke="${styleObj.stripe}" stroke-width="2.2" stroke-linecap="round" />
+          `}
+
+          <!-- Má hồng -->
+          <ellipse cx="34" cy="51" rx="4.2" ry="2.5" fill="#f7a8b8" opacity="0.7" />
+          <ellipse cx="66" cy="51" rx="4.2" ry="2.5" fill="#f7a8b8" opacity="0.7" />
+
+          <!-- Biểu cảm mắt -->
+          <g class="ynwa-lofi-cat-eyes">
+            ${isHappy ? `
+              <path d="M 36 46 Q 40 41 44 46" fill="none" stroke="${styleObj.eye}" stroke-width="2.5" stroke-linecap="round" />
+              <path d="M 56 46 Q 60 41 64 46" fill="none" stroke="${styleObj.eye}" stroke-width="2.5" stroke-linecap="round" />
+            ` : isSleeping ? `
+              <path d="M 36 47 Q 40 50 44 47" fill="none" stroke="${styleObj.eye}" stroke-width="2.2" stroke-linecap="round" />
+              <path d="M 56 47 Q 60 50 64 47" fill="none" stroke="${styleObj.eye}" stroke-width="2.2" stroke-linecap="round" />
+            ` : `
+              <circle cx="40" cy="46" r="3.3" fill="${styleObj.eye}" />
+              <circle cx="60" cy="46" r="3.3" fill="${styleObj.eye}" />
+              <circle cx="39" cy="44.8" r="1.1" fill="#ffffff" />
+              <circle cx="59" cy="44.8" r="1.1" fill="#ffffff" />
+            `}
+          </g>
+
+          <!-- Mũi & Miệng -->
+          <polygon points="48,50 52,50 50,52.5" fill="#f28b9c" />
+          <path d="M 45 54 Q 47.5 56.5 50 53.5 Q 52.5 56.5 55 54" fill="none" stroke="#5c4d3c" stroke-width="1.8" stroke-linecap="round" />
+          <path d="M 22 47 L 30 48 M 22 52 L 30 51 M 78 47 L 70 48 M 78 52 L 70 51" stroke="#b8a894" stroke-width="1.4" stroke-linecap="round" />
+
+          <!-- LỚP ÁO QUẦN / MŨ CỦA MÈO -->
+          ${outfitSVG}
+
+          <!-- Sách nhỏ khi mèo ngồi đọc sách -->
+          ${isReading ? `
+            <g transform="translate(33, 68)">
+              <path d="M 2 4 Q 10 1 17 5 L 17 20 Q 10 16 2 19 Z" fill="#dbeafe" stroke="#93c5fd" stroke-width="1.3" />
+              <path d="M 32 4 Q 24 1 17 5 L 17 20 Q 24 16 32 19 Z" fill="#eff6ff" stroke="#93c5fd" stroke-width="1.3" />
+            </g>
+          ` : ""}
+
+          <!-- Chân trước -->
+          <ellipse cx="38" cy="91" rx="6.5" ry="4.5" fill="${styleObj.body}" stroke="#d6c7b2" stroke-width="1.3" />
+          <ellipse cx="62" cy="91" rx="6.5" ry="4.5" fill="${styleObj.body}" stroke="#d6c7b2" stroke-width="1.3" />
+
+          ${isSleeping ? `
+            <text x="72" y="25" font-size="11" font-weight="800" fill="#7c6f64">z</text>
+            <text x="80" y="17" font-size="14" font-weight="800" fill="#7c6f64">Z</text>
+          ` : ""}
+        </svg>
+      `;
+    }
+
+    // Vẽ SVG cho 5 con vật nuôi thêm
+    function buildPetSVG(petId) {
+      if (petId === "duckling") {
+        return `
+          <svg class="ynwa-lofi-pet-svg" viewBox="0 0 90 90">
+            <ellipse cx="45" cy="82" rx="18" ry="4.5" fill="rgba(63,58,52,0.14)" />
+            <!-- Chân cam -->
+            <ellipse cx="38" cy="79" rx="5" ry="2.5" fill="#f97316" />
+            <ellipse cx="52" cy="79" rx="5" ry="2.5" fill="#f97316" />
+            <!-- Thân vịt vàng tròn -->
+            <ellipse cx="46" cy="62" rx="18" ry="16" fill="#fde047" stroke="#eab308" stroke-width="1.4" />
+            <!-- Cánh nhỏ -->
+            <ellipse class="ynwa-lofi-pet-tail" cx="53" cy="61" rx="8" ry="5" fill="#facc15" stroke="#eab308" stroke-width="1.1" />
+            <!-- Đầu vịt -->
+            <circle cx="42" cy="40" r="15" fill="#fde047" stroke="#eab308" stroke-width="1.4" />
+            <!-- Chỏm lông trên đầu -->
+            <path d="M 41 25 Q 38 19 43 21 Q 46 18 45 25" fill="none" stroke="#eab308" stroke-width="2" stroke-linecap="round" />
+            <!-- Mắt & Má hồng -->
+            <circle cx="36" cy="39" r="2.6" fill="#1e293b" />
+            <circle cx="35.2" cy="38.2" r="0.9" fill="#ffffff" />
+            <ellipse cx="44" cy="43" rx="3.2" ry="2" fill="#fda4af" opacity="0.75" />
+            <!-- Mỏ cam -->
+            <ellipse cx="28" cy="42" rx="6" ry="3.2" fill="#fb923c" stroke="#ea580c" stroke-width="1.1" />
+          </svg>
+        `;
+      }
+
+      if (petId === "hamster") {
+        return `
+          <svg class="ynwa-lofi-pet-svg" viewBox="0 0 90 90">
+            <ellipse cx="45" cy="82" rx="19" ry="4.5" fill="rgba(63,58,52,0.14)" />
+            <!-- Tai tròn -->
+            <circle cx="31" cy="32" r="6.5" fill="#eab676" stroke="#c68b59" stroke-width="1.3" />
+            <circle cx="31" cy="32" r="3.5" fill="#f5b7b1" />
+            <circle cx="59" cy="32" r="6.5" fill="#eab676" stroke="#c68b59" stroke-width="1.3" />
+            <circle cx="59" cy="32" r="3.5" fill="#f5b7b1" />
+            <!-- Thân mũm mĩm -->
+            <ellipse cx="45" cy="56" rx="22" ry="23" fill="#f3c68f" stroke="#c68b59" stroke-width="1.4" />
+            <ellipse cx="45" cy="60" rx="15" ry="17" fill="#fffaf0" />
+            <!-- Mắt đen tròn -->
+            <circle cx="37" cy="45" r="3" fill="#2c2520" />
+            <circle cx="36.2" cy="44.1" r="1" fill="#ffffff" />
+            <circle cx="53" cy="45" r="3" fill="#2c2520" />
+            <circle cx="52.2" cy="44.1" r="1" fill="#ffffff" />
+            <!-- Má phính & Mũi -->
+            <ellipse cx="32" cy="50" rx="4" ry="2.4" fill="#f7a8b8" opacity="0.75" />
+            <ellipse cx="58" cy="50" rx="4" ry="2.4" fill="#f7a8b8" opacity="0.75" />
+            <circle cx="45" cy="49" r="2" fill="#f472b6" />
+            <!-- Hạt hướng dương cầm tay -->
+            <ellipse cx="45" cy="62" rx="4" ry="6" fill="#475569" />
+            <line x1="45" y1="57" x2="45" y2="67" stroke="#e2e8f0" stroke-width="1.2" />
+            <circle cx="39" cy="62" r="3.5" fill="#f3c68f" />
+            <circle cx="51" cy="62" r="3.5" fill="#f3c68f" />
+          </svg>
+        `;
+      }
+
+      if (petId === "bunny") {
+        return `
+          <svg class="ynwa-lofi-pet-svg" viewBox="0 0 90 90">
+            <ellipse cx="45" cy="82" rx="18" ry="4.5" fill="rgba(63,58,52,0.14)" />
+            <!-- Đuôi bông tròn -->
+            <circle class="ynwa-lofi-pet-tail" cx="62" cy="70" r="6" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.3" />
+            <!-- Thân thỏ trắng -->
+            <ellipse cx="45" cy="64" rx="17" ry="17" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.4" />
+            <!-- Hai tai thỏ dài -->
+            <ellipse cx="36" cy="24" rx="5" ry="14" transform="rotate(-12 36 24)" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.4" />
+            <ellipse cx="36" cy="24" rx="2.5" ry="10" transform="rotate(-12 36 24)" fill="#fbcfe8" />
+            <ellipse cx="54" cy="24" rx="5" ry="14" transform="rotate(12 54 24)" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.4" />
+            <ellipse cx="54" cy="24" rx="2.5" ry="10" transform="rotate(12 54 24)" fill="#fbcfe8" />
+            <!-- Đầu thỏ -->
+            <ellipse cx="45" cy="43" rx="18" ry="15" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.4" />
+            <circle cx="38" cy="42" r="2.7" fill="#1e293b" />
+            <circle cx="52" cy="42" r="2.7" fill="#1e293b" />
+            <ellipse cx="33" cy="46" rx="3.2" ry="2" fill="#f9a8d4" opacity="0.7" />
+            <ellipse cx="57" cy="46" rx="3.2" ry="2" fill="#f9a8d4" opacity="0.7" />
+            <polygon points="43,45 47,45 45,47.5" fill="#f472b6" />
+          </svg>
+        `;
+      }
+
+      if (petId === "puppy") {
+        return `
+          <svg class="ynwa-lofi-pet-svg" viewBox="0 0 90 90">
+            <ellipse cx="45" cy="82" rx="20" ry="4.5" fill="rgba(63,58,52,0.14)" />
+            <!-- Đuôi cuộn Shiba -->
+            <path class="ynwa-lofi-pet-tail" d="M 60 66 Q 76 58 70 48 Q 65 44 62 51" fill="none" stroke="#e09f5a" stroke-width="6" stroke-linecap="round" />
+            <!-- Thân Shiba -->
+            <ellipse cx="45" cy="64" rx="18" ry="17" fill="#e09f5a" stroke="#b87a3d" stroke-width="1.4" />
+            <ellipse cx="45" cy="66" rx="11" ry="12" fill="#fffaf0" />
+            <!-- Tai nhọn -->
+            <polygon points="27,36 31,19 41,30" fill="#e09f5a" stroke="#b87a3d" stroke-width="1.3" />
+            <polygon points="63,36 59,19 49,30" fill="#e09f5a" stroke="#b87a3d" stroke-width="1.3" />
+            <!-- Đầu Shiba -->
+            <ellipse cx="45" cy="42" rx="20" ry="17" fill="#e09f5a" stroke="#b87a3d" stroke-width="1.4" />
+            <ellipse cx="45" cy="47" rx="14" ry="10" fill="#fffaf0" />
+            <!-- Lông mày trắng đặc trưng -->
+            <ellipse cx="37" cy="35" rx="2.4" ry="1.3" fill="#fffaf0" />
+            <ellipse cx="53" cy="35" rx="2.4" ry="1.3" fill="#fffaf0" />
+            <!-- Mắt & Mũi -->
+            <circle cx="37" cy="40" r="2.8" fill="#1e293b" />
+            <circle cx="53" cy="40" r="2.8" fill="#1e293b" />
+            <ellipse cx="45" cy="45" rx="3" ry="2.2" fill="#1e293b" />
+            <path d="M 41 49 Q 45 53 49 49" fill="none" stroke="#1e293b" stroke-width="1.6" stroke-linecap="round" />
+            <!-- Khăn cổ xanh -->
+            <path d="M 32 54 Q 45 60 58 54" fill="none" stroke="#38bdf8" stroke-width="4" stroke-linecap="round" />
+          </svg>
+        `;
+      }
+
+      // Mặc định: Cáo nhỏ Hồ Ly ("fox")
+      return `
+        <svg class="ynwa-lofi-pet-svg" viewBox="0 0 90 90">
+          <ellipse cx="45" cy="82" rx="20" ry="4.5" fill="rgba(63,58,52,0.14)" />
+          <!-- Đuôi cáo bông lớn chóp trắng -->
+          <path class="ynwa-lofi-pet-tail" d="M 58 68 Q 84 62 78 44 Q 72 38 62 50 Z" fill="#ea580c" stroke="#c2410c" stroke-width="1.3" />
+          <path class="ynwa-lofi-pet-tail" d="M 73 50 Q 82 46 78 44 Q 74 41 70 46 Z" fill="#ffffff" />
+          <!-- Thân cáo -->
+          <ellipse cx="44" cy="64" rx="17" ry="17" fill="#f97316" stroke="#c2410c" stroke-width="1.4" />
+          <ellipse cx="44" cy="66" rx="10" ry="11" fill="#fffaf0" />
+          <!-- Tai cáo to -->
+          <polygon points="25,36 29,16 40,29" fill="#f97316" stroke="#c2410c" stroke-width="1.3" />
+          <polygon points="63,36 59,16 48,29" fill="#f97316" stroke="#c2410c" stroke-width="1.3" />
+          <!-- Đầu cáo -->
+          <ellipse cx="44" cy="42" rx="20" ry="16" fill="#f97316" stroke="#c2410c" stroke-width="1.4" />
+          <path d="M 26 44 Q 36 42 44 47 Q 52 42 62 44 Q 56 56 44 56 Q 32 56 26 44 Z" fill="#fffaf0" />
+          <circle cx="37" cy="40" r="2.7" fill="#1e293b" />
+          <circle cx="51" cy="40" r="2.7" fill="#1e293b" />
+          <circle cx="44" cy="46" r="2.4" fill="#1e293b" />
+        </svg>
+      `;
+    }
+
+    // -----------------------------------------------------------------
+    // 4. CHUYỂN ĐỘNG & TƯƠNG TÁC CỦA MÈO VÀ CÁC THÚ CƯNG TRONG PHÒNG
+    // -----------------------------------------------------------------
+    function triggerCatBubble(text, mood = "happy") {
+      catBubbleText = text;
+      catBubbleKey += 1;
+      catAction = mood;
+      renderActorsLayerOnly();
+
+      setTimeout(() => {
+        if (catAction === "happy") {
+          catAction = catPosX >= 28 && catPosX <= 46 ? "reading" : "idle";
+          renderActorsLayerOnly();
+        }
+      }, 1500);
+    }
+
+    function triggerPetBubble(petId, text) {
+      const petDef = COMPANION_PETS.find(p => p.id === petId);
+      const cur = petMotionState.get(petId) || { x: petDef?.defaultX || 60, facingLeft: false, action: "idle", bubbleKey: 0 };
+      cur.bubbleText = text;
+      cur.bubbleKey = (cur.bubbleKey || 0) + 1;
+      cur.action = "happy";
+      petMotionState.set(petId, cur);
+      renderActorsLayerOnly();
+
+      setTimeout(() => {
+        const st = petMotionState.get(petId);
+        if (st && st.action === "happy") {
+          st.action = "idle";
+          renderActorsLayerOnly();
+        }
+      }, 1400);
+    }
+
+    function startCatWanderLoop() {
+      if (wanderTimer) clearInterval(wanderTimer);
+      wanderTimer = setInterval(() => {
+        const panel = document.getElementById("tab-lofi-cat");
+        if (!panel || panel.classList.contains("hidden")) return;
+
+        // 1) Di chuyển mèo chính
+        if (catAction !== "happy") {
+          const targets = [24, 36, 48, 62, 74];
+          const nextX = targets[Math.floor(Math.random() * targets.length)];
+          if (Math.abs(nextX - catPosX) >= 4) {
+            catFacingLeft = nextX < catPosX;
+            catPosX = nextX;
+            catAction = "walking";
+            setTimeout(() => {
+              if (catAction === "walking") {
+                if (catPosX >= 32 && catPosX <= 42) catAction = "reading";
+                else if (catPosX >= 70 && (catState.equippedItems || []).includes("cat_cushion")) catAction = "sleeping";
+                else catAction = "idle";
+                renderActorsLayerOnly();
+              }
+            }, 2450);
+          } else {
+            catAction = catAction === "reading" ? "idle" : "reading";
+          }
+        }
+
+        // 2) Di chuyển các con vật nuôi thêm đang hoạt động trong phòng
+        const activePets = catState.activePets || [];
+        activePets.forEach((petId, idx) => {
+          const petDef = COMPANION_PETS.find(p => p.id === petId);
+          const cur = petMotionState.get(petId) || {
+            x: petDef?.defaultX || (20 + idx * 14),
+            facingLeft: false,
+            action: "idle",
+            bubbleText: "",
+            bubbleKey: 0
+          };
+          if (cur.action === "happy") return;
+
+          const spots = [16, 28, 42, 55, 68, 80];
+          const nextPetX = spots[Math.floor(Math.random() * spots.length)];
+          if (Math.abs(nextPetX - cur.x) >= 5) {
+            cur.facingLeft = nextPetX < cur.x;
+            cur.x = nextPetX;
+            cur.action = "walking";
+            petMotionState.set(petId, cur);
+
+            setTimeout(() => {
+              const s = petMotionState.get(petId);
+              if (s && s.action === "walking") {
+                s.action = "idle";
+                renderActorsLayerOnly();
+              }
+            }, 2850);
+          }
+        });
+
+        renderActorsLayerOnly();
+      }, 6200);
+    }
+
+    function renderActorsLayerOnly() {
+      const layer = document.getElementById("ynwa-lofi-actors-layer");
+      if (!layer) return;
+
+      const activePets = (catState.activePets || []).filter(id => COMPANION_PETS.some(p => p.id === id));
+
+      const petsHTML = activePets.map((petId, idx) => {
+        const petDef = COMPANION_PETS.find(p => p.id === petId);
+        const st = petMotionState.get(petId) || {
+          x: petDef.defaultX,
+          facingLeft: false,
+          action: "idle",
+          bubbleText: "",
+          bubbleKey: 0
+        };
+        petMotionState.set(petId, st);
+
+        const bottomOffset = 8 + (idx % 2) * 3;
+        return `
+          <div class="ynwa-lofi-pet-actor ${st.facingLeft ? "is-flipped" : ""} ${st.action === "walking" ? "is-walking" : ""} ${st.action === "happy" ? "is-happy" : ""}"
+            data-pet-actor="${esc(petId)}"
+            style="left:${st.x}%; bottom:${bottomOffset}%;"
+            title="Chạm vào ${esc(petDef.name)} để chơi cùng!">
+            ${st.bubbleText ? `<div class="ynwa-lofi-bubble" data-pkey="${st.bubbleKey}">${esc(st.bubbleText)}</div>` : ""}
+            ${buildPetSVG(petId)}
+          </div>
+        `;
+      }).join("");
+
+      layer.innerHTML = `
+        <div class="ynwa-lofi-cat-actor ${catFacingLeft ? "is-flipped" : ""} ${catAction === "walking" ? "is-walking" : ""} ${catAction === "happy" ? "is-happy" : ""}"
+          id="ynwa-lofi-cat-actor"
+          style="left:${catPosX}%;"
+          title="Chạm vào bé mèo để vuốt ve!">
+          ${catBubbleText ? `<div class="ynwa-lofi-bubble" data-bkey="${catBubbleKey}">${esc(catBubbleText)}</div>` : ""}
+          ${buildCatSVG()}
+        </div>
+        ${petsHTML}
+      `;
+
+      // Sự kiện chạm vào mèo chính
+      document.getElementById("ynwa-lofi-cat-actor")?.addEventListener("click", async () => {
+        const lines = [
+          "Meo~ Cố lên nhé, học thêm chút nữa thôi! 💖",
+          "Purrrr... được vuốt ve thích quá đi~ 🐾",
+          "Cậu học chăm chỉ thật đấy! 🐟",
+          "Áo mới hôm nay xinh quá đúng không nè~ ✨"
+        ];
+        const msg = lines[Math.floor(Math.random() * lines.length)];
+        const nextHappy = Math.min(100, (Number(catState.happiness) || 85) + 3);
+        triggerCatBubble(msg, "happy");
+        await saveCatPatch({ happiness: nextHappy, petDate: todayKey() });
+      });
+
+      // Sự kiện chạm vào từng thú cưng nuôi thêm
+      layer.querySelectorAll("[data-pet-actor]").forEach(el => {
+        el.addEventListener("click", () => {
+          const petId = el.getAttribute("data-pet-actor");
+          const petDef = COMPANION_PETS.find(p => p.id === petId);
+          if (!petDef) return;
+          const line = petDef.lines[Math.floor(Math.random() * petDef.lines.length)];
+          triggerPetBubble(petId, line);
+        });
+      });
+    }
+
+    // -----------------------------------------------------------------
+    // 5. DỰNG CẢNH PHÒNG LOFI SVG
+    // -----------------------------------------------------------------
+    function buildRoomSceneSVG() {
+      const isNight = Boolean(catState.isNight);
+      const eq = catState.equippedItems || [];
+
+      const wallTop = isNight ? "#262b44" : "#f7efe2";
+      const wallBot = isNight ? "#1e2238" : "#efe3d0";
+      const floorColor = isNight ? "#2d2638" : "#dfcbb2";
+      const skyColor = isNight ? "#13172b" : "#cde8f6";
+
+      return `
+        <svg class="ynwa-lofi-room-svg" viewBox="0 0 800 540" preserveAspectRatio="xMidYMid slice">
+          <defs>
+            <linearGradient id="ynwaWallGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="${wallTop}" />
+              <stop offset="100%" stop-color="${wallBot}" />
+            </linearGradient>
+            <radialGradient id="ynwaLampGlow" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stop-color="#fde68a" stop-opacity="0.55" />
+              <stop offset="100%" stop-color="#fde68a" stop-opacity="0" />
+            </radialGradient>
+          </defs>
+
+          <rect x="0" y="0" width="800" height="415" fill="url(#ynwaWallGrad)" />
+          <rect x="0" y="415" width="800" height="125" fill="${floorColor}" />
+          <line x1="0" y1="415" x2="800" y2="415" stroke="${isNight ? "#3c354a" : "#cbb396"}" stroke-width="4" />
+
+          ${eq.includes("fairy_lights") ? `
+            <path d="M 40 32 Q 240 85 450 38 Q 620 80 765 28" fill="none" stroke="#d4a373" stroke-width="2" />
+            ${[95, 175, 260, 350, 445, 535, 625, 710].map((cx, idx) => `
+              <circle cx="${cx}" cy="${idx % 2 === 0 ? 56 : 48}" r="5.5" fill="#fde047" opacity="0.95" />
+            `).join("")}
+          ` : ""}
+
+          <!-- CỬA SỔ TƯƠNG TÁC -->
+          <g id="ynwa-lofi-obj-window" style="cursor:pointer;">
+            <rect x="75" y="75" width="215" height="225" rx="12" fill="${skyColor}" stroke="#ffffff" stroke-width="10" />
+            ${isNight ? `
+              <circle cx="222" cy="128" r="22" fill="#fef08a" />
+              <circle cx="231" cy="122" r="18" fill="${skyColor}" />
+              <circle cx="120" cy="115" r="2.5" fill="#ffffff" />
+              <circle cx="155" cy="142" r="2" fill="#ffffff" />
+              <circle cx="190" cy="105" r="2.5" fill="#ffffff" />
+              <circle cx="135" cy="185" r="2" fill="#ffffff" />
+            ` : `
+              <circle cx="225" cy="132" r="24" fill="#fcd34d" opacity="0.9" />
+              <g class="ynwa-lofi-cloud">
+                <ellipse cx="135" cy="145" rx="28" ry="14" fill="#ffffff" opacity="0.9" />
+                <ellipse cx="155" cy="142" rx="22" ry="12" fill="#ffffff" opacity="0.9" />
+              </g>
+            `}
+            <line x1="182.5" y1="75" x2="182.5" y2="300" stroke="#ffffff" stroke-width="8" />
+            <line x1="75" y1="187.5" x2="290" y2="187.5" stroke="#ffffff" stroke-width="8" />
+            <path d="M 62 68 L 106 68 L 98 312 L 62 312 Z" fill="#f3cbd3" />
+            <path d="M 259 68 L 303 68 L 303 312 L 267 312 Z" fill="#f3cbd3" />
+            <rect x="52" y="62" width="261" height="10" rx="5" fill="#d9b99b" />
+          </g>
+
+          <!-- KỆ SÁCH TREO TƯỜNG -->
+          <g id="ynwa-lofi-obj-shelf" style="cursor:pointer;">
+            <rect x="515" y="130" width="205" height="135" rx="6" fill="none" stroke="#b08d6c" stroke-width="8" />
+            <line x1="515" y1="197" x2="720" y2="197" stroke="#b08d6c" stroke-width="8" />
+            <rect x="532" y="150" width="14" height="43" rx="2" fill="#93c5fd" />
+            <rect x="548" y="144" width="15" height="49" rx="2" fill="#a7f3d0" />
+            <rect x="565" y="154" width="13" height="39" rx="2" fill="#fde68a" />
+            ${eq.includes("lofi_radio") ? `
+              <g transform="translate(632, 155)">
+                <rect x="0" y="6" width="68" height="32" rx="6" fill="#f472b6" />
+                <circle cx="20" cy="22" r="7" fill="#fdf2f8" />
+                <circle cx="48" cy="22" r="7" fill="#fdf2f8" />
+                <line x1="12" y1="6" x2="54" y2="0" stroke="#9d174d" stroke-width="2.5" />
+              </g>
+            ` : ""}
+            <rect x="642" y="216" width="14" height="45" rx="2" fill="#c4b5fd" />
+            <rect x="659" y="212" width="15" height="49" rx="2" fill="#fca5a5" />
+            <rect x="677" y="220" width="14" height="41" rx="2" fill="#93c5fd" />
+          </g>
+
+          ${eq.includes("cozy_rug") ? `
+            <ellipse cx="420" cy="472" rx="185" ry="34" fill="#f3e1c7" stroke="#d8be9a" stroke-width="3" />
+            <ellipse cx="420" cy="472" rx="145" ry="24" fill="none" stroke="#e5cfb0" stroke-width="2" stroke-dasharray="8 6" />
+          ` : ""}
+
+          <!-- BÀN HỌC GỖ -->
+          <g>
+            <rect x="245" y="335" width="38" height="125" rx="4" fill="#a98467" />
+            <rect x="515" y="335" width="20" height="125" rx="4" fill="#a98467" />
+            <rect x="252" y="348" width="24" height="32" rx="3" fill="#937055" />
+            <rect x="225" y="322" width="325" height="16" rx="8" fill="#bc9878" />
+          </g>
+
+          ${eq.includes("desk_plant") ? `
+            <g id="ynwa-lofi-obj-plant" style="cursor:pointer;" transform="translate(262, 274)">
+              <path d="M 18 28 Q 8 10 14 4 Q 22 12 22 28 Z" fill="#7fb069" />
+              <path d="M 24 28 Q 34 8 28 2 Q 20 12 20 28 Z" fill="#90be6d" />
+              <polygon points="10,28 32,28 28,48 14,48" fill="#e07a5f" />
+            </g>
+          ` : ""}
+
+          ${eq.includes("desk_lamp") ? `
+            <g id="ynwa-lofi-obj-lamp" style="cursor:pointer;" transform="translate(475, 245)">
+              ${isNight ? `<circle cx="24" cy="36" r="95" fill="url(#ynwaLampGlow)" />` : ""}
+              <rect x="12" y="70" width="24" height="7" rx="3.5" fill="#d4a373" />
+              <line x1="24" y1="70" x2="24" y2="38" stroke="#b08968" stroke-width="4" />
+              <polygon points="8,38 40,38 33,14 15,14" fill="${isNight ? "#fef08a" : "#fde68a"}" stroke="#e9c46a" stroke-width="2" />
+            </g>
+          ` : ""}
+
+          ${eq.includes("cat_cushion") ? `
+            <g transform="translate(615, 435)">
+              <circle cx="24" cy="14" r="14" fill="#d4a373" />
+              <circle cx="86" cy="14" r="14" fill="#d4a373" />
+              <ellipse cx="55" cy="26" rx="52" ry="20" fill="#e6ccb2" stroke="#b08968" stroke-width="2.5" />
+              <ellipse cx="55" cy="27" rx="38" ry="12" fill="#faedcd" />
+            </g>
+          ` : ""}
+        </svg>
+      `;
+    }
+
+    // -----------------------------------------------------------------
+    // 6. GẮN TAB & BẢNG ADMIN PHÁT XU CÁ
+    // -----------------------------------------------------------------
+    function mountLofiCatTab() {
+      const roomBtn = document.getElementById("tab-btn-room");
+      const focusPanel = document.getElementById("panel-focus");
+      if (!roomBtn || !focusPanel) return;
+
+      const navBar = roomBtn.parentElement;
+      const panelsHost = focusPanel.parentElement;
+
+      if (!document.getElementById("btn-tab-lofi-cat") && navBar) {
+        const btn = document.createElement("button");
+        btn.id = "btn-tab-lofi-cat";
+        btn.type = "button";
+        btn.className = "tab-nav-btn px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap flex items-center gap-1.5 transition";
+        btn.style.backgroundColor = "var(--bg-soft)";
+        btn.style.color = "var(--text-main)";
+        btn.style.border = "none";
+        btn.innerHTML = `<span>🐾</span><span>Phòng Mèo Lofi</span>`;
+
+        const adminBtn = document.getElementById("tab-btn-admin");
+        if (adminBtn && adminBtn.parentElement === navBar) {
+          navBar.insertBefore(btn, adminBtn);
+        } else {
+          navBar.appendChild(btn);
+        }
+
+        btn.addEventListener("click", openLofiCatTab);
+        navBar.addEventListener("click", (e) => {
+          const clicked = e.target.closest("button");
+          if (clicked && clicked.id !== "btn-tab-lofi-cat") {
+            deactivateLofiCatTab();
+          }
+        });
+      }
+
+      if (!document.getElementById("tab-lofi-cat") && panelsHost) {
+        const panel = document.createElement("section");
+        panel.id = "tab-lofi-cat";
+        panel.className = "hidden animate-tab";
+        panelsHost.appendChild(panel);
+        renderLofiRoom();
+      }
+
+      if (typeof window.switchTab === "function" && !window.__ynwaLofiSwitchWrapped) {
+        const orig = window.switchTab;
+        window.switchTab = function () {
+          deactivateLofiCatTab();
+          return orig.apply(this, arguments);
+        };
+        window.__ynwaLofiSwitchWrapped = true;
+      }
+
+      mountAdminFishGrantCard();
+    }
+
+    function deactivateLofiCatTab() {
+      const panel = document.getElementById("tab-lofi-cat");
+      const btn = document.getElementById("btn-tab-lofi-cat");
+      if (panel) panel.classList.add("hidden");
+      if (btn) {
+        btn.classList.remove("btn-primary", "active");
+        btn.style.backgroundColor = "var(--bg-soft)";
+        btn.style.color = "var(--text-main)";
+      }
+    }
+
+    function openLofiCatTab() {
+      const btn = document.getElementById("btn-tab-lofi-cat");
+      const panel = document.getElementById("tab-lofi-cat");
+      if (!btn || !panel) return;
+
+      const navBar = btn.parentElement;
+      if (navBar) {
+        Array.from(navBar.querySelectorAll("button")).forEach(b => {
+          b.classList.remove("btn-primary", "active");
+          b.style.backgroundColor = "var(--bg-soft)";
+          b.style.color = "var(--text-main)";
+        });
+      }
+      btn.style.backgroundColor = "var(--primary)";
+      btn.style.color = "#FFFFFF";
+
+      document.querySelectorAll(".animate-tab, #tab-trophy-hall, #tab-public-tkb, #tab-weekly-stats").forEach(p => {
+        if (p.id !== "tab-lofi-cat") p.classList.add("hidden");
+      });
+
+      panel.classList.remove("hidden");
+      renderLofiRoom();
+    }
+
+    function ensureAdminFishModal() {
+      if (document.getElementById("ynwa-lofi-admin-modal")) return;
+      const bg = document.createElement("div");
+      bg.id = "ynwa-lofi-admin-modal";
+      bg.className = "ynwa-lofi-modal-bg";
+      bg.innerHTML = `
+        <div class="ynwa-lofi-modal">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+            <h3 style="margin:0; font-size:17px; font-weight:800; color:#92400e;">👑 Admin Phát Xu Cá Cho Thành Viên</h3>
+            <button type="button" id="ynwa-lofi-adm-close" style="border:none; background:#f1f5f9; width:30px; height:30px; border-radius:999px; font-weight:800; cursor:pointer;">×</button>
+          </div>
+          <div id="ynwa-lofi-adm-form-slot"></div>
+        </div>
+      `;
+      document.body.appendChild(bg);
+      bg.addEventListener("click", (e) => { if (e.target === bg) bg.classList.remove("open"); });
+      document.getElementById("ynwa-lofi-adm-close").addEventListener("click", () => bg.classList.remove("open"));
+    }
+
+    function buildAdminGrantFormHTML(prefix = "modal") {
+      const members = allUsers
+        .filter(u => !u.isBanned)
+        .sort((a, b) => (a.displayName || "").localeCompare(b.displayName || "", "vi"));
+
+      return `
+        <div style="display:flex; flex-direction:column; gap:10px;">
+          <div>
+            <label style="display:block; font-size:12px; font-weight:700; margin-bottom:4px;">Chọn thành viên nhận Xu Cá</label>
+            <select id="ynwa-fish-target-${prefix}" class="w-full px-3 py-2 rounded-xl border text-xs font-bold bg-white">
+              <option value="__ALL__">🌟 Phát cho TẤT CẢ thành viên (${members.length} người)</option>
+              ${members.map(m => `
+                <option value="${esc(m.uid)}">
+                  👤 ${esc(m.displayName || m.email || m.uid)} (Hiện có: ${Number(m.fishCoins) || 0} 🐟)
+                </option>
+              `).join("")}
+            </select>
+          </div>
+
+          <div>
+            <label style="display:block; font-size:12px; font-weight:700; margin-bottom:4px;">Số lượng Xu Cá phát tặng</label>
+            <div style="display:flex; gap:6px; margin-bottom:6px; flex-wrap:wrap;">
+              ${[50, 100, 200, 500].map(v => `
+                <button type="button" class="ynwa-fish-preset px-2.5 py-1 rounded-lg border text-xs font-extrabold bg-amber-50 text-amber-800 border-amber-200" data-prefix="${prefix}" data-val="${v}">
+                  +${v} 🐟
+                </button>
+              `).join("")}
+            </div>
+            <input type="number" id="ynwa-fish-amount-${prefix}" value="100" min="1"
+              class="w-full px-3 py-2 rounded-xl border text-sm font-extrabold" />
+          </div>
+
+          <div>
+            <label style="display:block; font-size:12px; font-weight:700; margin-bottom:4px;">Lời nhắn kèm theo (không bắt buộc)</label>
+            <input type="text" id="ynwa-fish-reason-${prefix}" placeholder="VD: Thưởng hoàn thành mục tiêu tuần!"
+              class="w-full px-3 py-2 rounded-xl border text-xs font-semibold" />
+          </div>
+
+          <button type="button" id="ynwa-fish-send-${prefix}" class="ynwa-lofi-btn-sage" style="justify-content:center; padding:10px; font-size:13px;">
+            🐟 Xác nhận phát Xu Cá
+          </button>
+        </div>
+      `;
+    }
+
+    function bindAdminGrantEvents(rootEl, prefix) {
+      rootEl.querySelectorAll(`.ynwa-fish-preset[data-prefix="${prefix}"]`).forEach(btn => {
+        btn.addEventListener("click", () => {
+          const inp = document.getElementById(`ynwa-fish-amount-${prefix}`);
+          if (inp) inp.value = btn.getAttribute("data-val");
+        });
+      });
+
+      document.getElementById(`ynwa-fish-send-${prefix}`)?.addEventListener("click", async () => {
+        if (!isCurrentUserAdmin() || !db) return notify("Chỉ Admin mới có quyền phát Xu Cá!", "🔒");
+
+        const target = document.getElementById(`ynwa-fish-target-${prefix}`)?.value;
+        const amount = Math.max(1, Math.round(Number(document.getElementById(`ynwa-fish-amount-${prefix}`)?.value || 0)));
+        const reason = (document.getElementById(`ynwa-fish-reason-${prefix}`)?.value || "").trim() || "Quà thưởng từ Admin";
+
+        if (!Number.isFinite(amount) || amount <= 0) {
+          return notify("Vui lòng nhập số Xu Cá hợp lệ!", "⚠️");
+        }
+
+        const targets = target === "__ALL__"
+          ? allUsers.filter(u => !u.isBanned).map(u => u.uid)
+          : [target];
+
+        if (!targets.length) return;
+
+        const btn = document.getElementById(`ynwa-fish-send-${prefix}`);
+        btn.disabled = true;
+        btn.textContent = "⏳ Đang phát Xu Cá...";
+
+        try {
+          const giftPayload = {
+            id: `${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+            amount,
+            reason,
+            at: Date.now()
+          };
+
+          await Promise.all(targets.map(async (uid) => {
+            await setDoc(
+              doc(db, "artifacts", appId, "users", uid, "lofi_cat_room", "main"),
+              { fishCoins: increment(amount), lastGift: giftPayload, updatedAt: serverTimestamp() },
+              { merge: true }
+            );
+            await updateDoc(
+              doc(db, "artifacts", appId, "public", "data", "users", uid),
+              { fishCoins: increment(amount) }
+            ).catch(() => {});
+          }));
+
+          notify(
+            target === "__ALL__"
+              ? `Đã phát +${amount} Xu Cá cho toàn bộ ${targets.length} thành viên!`
+              : `Đã phát +${amount} Xu Cá thành công!`,
+            "🐟"
+          );
+          document.getElementById("ynwa-lofi-admin-modal")?.classList.remove("open");
+        } catch (err) {
+          notify("Lỗi phát Xu Cá: " + err.message, "⚠️");
+        } finally {
+          btn.disabled = false;
+          btn.textContent = "🐟 Xác nhận phát Xu Cá";
+        }
+      });
+    }
+
+    function openAdminFishModal() {
+      if (!isCurrentUserAdmin()) return;
+      ensureAdminFishModal();
+      const slot = document.getElementById("ynwa-lofi-adm-form-slot");
+      if (slot) {
+        slot.innerHTML = buildAdminGrantFormHTML("modal");
+        bindAdminGrantEvents(slot, "modal");
+      }
+      document.getElementById("ynwa-lofi-admin-modal").classList.add("open");
+    }
+
+    function mountAdminFishGrantCard() {
+      if (!isCurrentUserAdmin()) return;
+      if (document.getElementById("ynwa-adm-fish-grant-box")) return;
+
+      const adminHost =
+        document.getElementById("ynwa-adm-inspector") ||
+        document.getElementById("panel-admin") ||
+        document.getElementById("tab-admin");
+
+      if (!adminHost) return;
+
+      const card = document.createElement("div");
+      card.id = "ynwa-adm-fish-grant-box";
+      card.className = "pastel-card rounded-2xl p-4 bg-white border my-3";
+      card.style.borderColor = "#fde68a";
+      card.innerHTML = `
+        <div style="font-size:15px; font-weight:800; color:#92400e; margin-bottom:10px;">
+          🐟 Quyền Admin: Phát Xu Cá Phòng Mèo Lofi Cho Thành Viên
+        </div>
+        ${buildAdminGrantFormHTML("adminpanel")}
+      `;
+      adminHost.appendChild(card);
+      bindAdminGrantEvents(card, "adminpanel");
+    }
+
+    // -----------------------------------------------------------------
+    // 7. RENDER TOÀN BỘ PHÒNG NUÔI MÈO LOFI
+    // -----------------------------------------------------------------
+    function renderLofiRoom() {
+      const panel = document.getElementById("tab-lofi-cat");
+      if (!panel) return;
+
+      const { totalMins, convertibleMins } = getMyStudyStats();
+      const stage = PLANT_STAGES.find(s => totalMins < s.max) || PLANT_STAGES[PLANT_STAGES.length - 1];
+      const nextTarget = stage.max === 99999 ? totalMins : stage.max;
+      const remainMins = Math.max(0, nextTarget - totalMins);
+      const pct = stage.max === 99999
+        ? 100
+        : Math.min(100, Math.max(4, Math.round(((totalMins - stage.min) / (stage.max - stage.min)) * 100)));
+
+      const tasks = getDailyTasks();
+      const unclaimedCount = tasks.filter(t => t.done && !catState.claimedTasks?.[t.id]).length;
+      const isAdmin = isCurrentUserAdmin();
+      const activePetsCount = (catState.activePets || []).length;
+
+      panel.innerHTML = `
+        <div class="ynwa-lofi-shell space-y-5">
+          <!-- Thanh tiêu đề -->
+          <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+            <div>
+              <h2 class="font-heading text-xl sm:text-2xl font-extrabold flex items-center gap-2" style="color: #3f3a34;">
+                <span>🏡</span>
+                <span>PHÒNG MÈO LOFI CỦA ${esc((catState.catName || "TÔI").toUpperCase())}</span>
+              </h2>
+              <p class="text-xs sm:text-sm mt-0.5" style="color: #78716c;">
+                ${catState.isNight
+                  ? "🌙 Ban đêm · Bật đèn ấm áp và học bài cùng các bé thú cưng nhé."
+                  : `☀️ Ban ngày · Đang có 1 bé mèo${activePetsCount > 0 ? ` và ${activePetsCount} thú cưng` : ""} trong phòng.`}
+              </p>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-2">
+              <div class="ynwa-lofi-pill" title="Số Xu Cá hiện có">
+                <span>🐟</span>
+                <span>${Number(catState.fishCoins) || 0} Xu Cá</span>
+              </div>
+
+              <button type="button" id="ynwa-lofi-convert-btn" class="ynwa-lofi-btn-sage" ${convertibleMins <= 0 ? "disabled" : ""}>
+                <span>⏱️</span>
+                <span>${convertibleMins > 0 ? `Đổi ${convertibleMins}p học (+${convertibleMins} 🐟)` : "Đã đổi hết giờ học"}</span>
+              </button>
+
+              <button type="button" id="ynwa-lofi-rename-btn" class="ynwa-lofi-pill" style="cursor:pointer;">
+                <span>✏️</span>
+                <span>Đổi tên mèo</span>
+              </button>
+
+              ${isAdmin ? `
+                <button type="button" id="ynwa-lofi-open-admin-grant" class="ynwa-lofi-btn-amber">
+                  <span>👑</span>
+                  <span>Phát Xu Cá</span>
+                </button>
+              ` : ""}
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+            <!-- CỘT TRÁI: CĂN PHÒNG LOFI & MÈO + THÚ CƯNG CHUYỂN ĐỘNG -->
+            <div class="lg:col-span-7 space-y-2.5">
+              <div class="ynwa-lofi-room-stage" id="ynwa-lofi-stage">
+                ${buildRoomSceneSVG()}
+                <div id="ynwa-lofi-actors-layer"></div>
+              </div>
+              <div class="text-center text-xs font-semibold" style="color: #78716c;">
+                Chạm vào mèo, thú cưng, cửa sổ, đèn hoặc cây để tương tác 🐾
+              </div>
+            </div>
+
+            <!-- CỘT PHẢI: CÂY TIẾN ĐỘ + 6 TAB CHỨC NĂNG -->
+            <div class="lg:col-span-5 space-y-4">
+              <div class="ynwa-lofi-card">
+                <div class="flex items-center justify-between mb-2">
+                  <span class="text-xs font-extrabold tracking-wide uppercase" style="color: #78716c;">🌱 CÂY TIẾN ĐỘ</span>
+                  <span class="text-xs font-bold" style="color: #88a47c;">Độ vui mèo: ${catState.happiness ?? 85}%</span>
+                </div>
+                <div class="flex items-center gap-3.5">
+                  <div class="text-3xl sm:text-4xl select-none">${stage.icon}</div>
+                  <div class="flex-1 min-w-0">
+                    <div class="text-sm font-extrabold" style="color: #3f3a34;">
+                      ${totalMins} phút học · <span style="color: #6b8e5e;">${stage.title}</span>
+                    </div>
+                    <div class="w-full h-2.5 rounded-full overflow-hidden my-1.5" style="background: #efeae0;">
+                      <div class="h-full rounded-full transition-all duration-300" style="width: ${pct}%; background: #88a47c;"></div>
+                    </div>
+                    <div class="text-xs" style="color: #78716c;">
+                      ${remainMins > 0 ? `Còn ${remainMins} phút để cây lớn thêm` : "Cây đã đạt kích thước tối đa!"}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="ynwa-lofi-card">
+                <div class="ynwa-lofi-subtabs">
+                  <button type="button" class="ynwa-lofi-subtab ${activeSubTab === "tasks" ? "active" : ""}" data-lofi-tab="tasks">
+                    🎯 Nhiệm vụ${unclaimedCount > 0 ? ` (${unclaimedCount})` : ""}
+                  </button>
+                  <button type="button" class="ynwa-lofi-subtab ${activeSubTab === "outfits" ? "active" : ""}" data-lofi-tab="outfits">
+                    👗 Áo quần
+                  </button>
+                  <button type="button" class="ynwa-lofi-subtab ${activeSubTab === "pets" ? "active" : ""}" data-lofi-tab="pets">
+                    🐾 Thú cưng
+                  </button>
+                  <button type="button" class="ynwa-lofi-subtab ${activeSubTab === "shop" ? "active" : ""}" data-lofi-tab="shop">
+                    🛍️ Đồ phòng
+                  </button>
+                  <button type="button" class="ynwa-lofi-subtab ${activeSubTab === "bag" ? "active" : ""}" data-lofi-tab="bag">
+                    🎒 Kho đồ
+                  </button>
+                  <button type="button" class="ynwa-lofi-subtab ${activeSubTab === "styles" ? "active" : ""}" data-lofi-tab="styles">
+                    🎨 Giống mèo
+                  </button>
+                </div>
+
+                <div class="ynwa-lofi-list-scroll" id="ynwa-lofi-subtab-body">
+                  ${renderSubTabContent(tasks)}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+
+      renderActorsLayerOnly();
+      bindRoomInteractions();
+    }
+
+    function renderSubTabContent(tasks) {
+      const coins = Number(catState.fishCoins) || 0;
+      const owned = catState.ownedItems || [];
+      const equipped = catState.equippedItems || [];
+
+      // 1. TAB NHIỆM VỤ CÓ XU CÁ
+      if (activeSubTab === "tasks") {
+        return tasks.map(t => {
+          const claimed = Boolean(catState.claimedTasks?.[t.id]);
+          return `
+            <div class="ynwa-lofi-item-row">
+              <div class="flex items-center gap-2.5 min-w-0">
+                <span class="text-xl shrink-0">${t.icon}</span>
+                <div class="min-w-0">
+                  <div class="text-xs font-extrabold truncate" style="color: #3f3a34;">${esc(t.title)}</div>
+                  <div class="text-[11px]" style="color: #78716c;">${esc(t.desc)} • <strong>${esc(t.progressText)}</strong></div>
+                </div>
+              </div>
+              ${claimed ? `
+                <span class="px-2.5 py-1 rounded-full text-[11px] font-bold bg-stone-200 text-stone-600 shrink-0">Đã nhận</span>
+              ` : t.done ? `
+                <button type="button" class="ynwa-lofi-btn-sage shrink-0" data-claim-task="${esc(t.id)}" data-reward="${t.reward}">
+                  Nhận +${t.reward} 🐟
+                </button>
+              ` : `
+                <span class="px-2.5 py-1 rounded-full text-[11px] font-extrabold bg-amber-50 text-amber-700 border border-amber-200 shrink-0">
+                  +${t.reward} 🐟
+                </span>
+              `}
+            </div>
+          `;
+        }).join("");
+      }
+
+      // 2. TAB ÁO QUẦN CHO MÈO
+      if (activeSubTab === "outfits") {
+        const ownedOutfits = catState.ownedOutfits || ["none"];
+        const curOutfit = catState.equippedOutfit || "none";
+
+        return CAT_OUTFITS.map(outfit => {
+          const isUnlocked = ownedOutfits.includes(outfit.id) || outfit.price === 0;
+          const isWearing = curOutfit === outfit.id;
+
+          return `
+            <div class="ynwa-lofi-item-row">
+              <div class="flex items-center gap-2.5 min-w-0">
+                <span class="text-2xl shrink-0">${outfit.icon}</span>
+                <div class="min-w-0">
+                  <div class="text-xs font-extrabold truncate" style="color: #3f3a34;">${esc(outfit.name)}</div>
+                  <div class="text-[11px]" style="color: #78716c;">${esc(outfit.desc)}</div>
+                </div>
+              </div>
+              ${isWearing ? `
+                <span class="px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 shrink-0">
+                  Đang mặc
+                </span>
+              ` : isUnlocked ? `
+                <button type="button" class="ynwa-lofi-btn-sage shrink-0" data-wear-outfit="${esc(outfit.id)}">
+                  Mặc ngay
+                </button>
+              ` : `
+                <button type="button" class="ynwa-lofi-btn-sage shrink-0" data-buy-outfit="${esc(outfit.id)}" ${coins < outfit.price ? "disabled" : ""}>
+                  Mua ${outfit.price} 🐟
+                </button>
+              `}
+            </div>
+          `;
+        }).join("");
+      }
+
+      // 3. TAB MUA THÊM THÚ CƯNG
+      if (activeSubTab === "pets") {
+        const ownedPets = catState.ownedPets || [];
+        const activePets = catState.activePets || [];
+
+        return COMPANION_PETS.map(pet => {
+          const isOwned = ownedPets.includes(pet.id);
+          const isInRoom = activePets.includes(pet.id);
+
+          return `
+            <div class="ynwa-lofi-item-row">
+              <div class="flex items-center gap-2.5 min-w-0">
+                <span class="text-2xl shrink-0">${pet.icon}</span>
+                <div class="min-w-0">
+                  <div class="text-xs font-extrabold truncate" style="color: #3f3a34;">${esc(pet.name)}</div>
+                  <div class="text-[11px]" style="color: #78716c;">${esc(pet.desc)}</div>
+                </div>
+              </div>
+              ${!isOwned ? `
+                <button type="button" class="ynwa-lofi-btn-sage shrink-0" data-buy-pet="${esc(pet.id)}" ${coins < pet.price ? "disabled" : ""}>
+                  Nhận nuôi ${pet.price} 🐟
+                </button>
+              ` : `
+                <button type="button" class="ynwa-lofi-btn-sage shrink-0"
+                  style="${isInRoom ? "background:#a8a29e;" : ""}"
+                  data-toggle-pet="${esc(pet.id)}">
+                  ${isInRoom ? "Cho nghỉ ngơi" : "Thả vào phòng"}
+                </button>
+              `}
+            </div>
+          `;
+        }).join("");
+      }
+
+      // 4. TAB CỬA HÀNG ĐỒ PHÒNG
+      if (activeSubTab === "shop") {
+        return SHOP_ITEMS.map(item => {
+          const isOwnedDecor = item.type === "decor" && owned.includes(item.id);
+          return `
+            <div class="ynwa-lofi-item-row">
+              <div class="flex items-center gap-2.5 min-w-0">
+                <span class="text-2xl shrink-0">${item.icon}</span>
+                <div class="min-w-0">
+                  <div class="text-xs font-extrabold truncate" style="color: #3f3a34;">${esc(item.name)}</div>
+                  <div class="text-[11px]" style="color: #78716c;">${esc(item.desc)}</div>
+                </div>
+              </div>
+              ${isOwnedDecor ? `
+                <span class="px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 shrink-0">
+                  Đã sở hữu
+                </span>
+              ` : `
+                <button type="button" class="ynwa-lofi-btn-sage shrink-0" data-buy-item="${esc(item.id)}" ${coins < item.price ? "disabled" : ""}>
+                  ${item.price} 🐟
+                </button>
+              `}
+            </div>
+          `;
+        }).join("");
+      }
+
+      // 5. TAB KHO ĐỒ
+      if (activeSubTab === "bag") {
+        const myItems = SHOP_ITEMS.filter(it => it.type === "decor" && owned.includes(it.id));
+        if (myItems.length === 0) {
+          return `
+            <div class="text-center py-8 px-4">
+              <div class="text-3xl mb-2">📦</div>
+              <div class="text-xs font-extrabold" style="color: #3f3a34;">KHO ĐỒ ĐANG TRỐNG</div>
+              <div class="text-[11px] mt-1 mb-3" style="color: #78716c;">Đổi giờ học hoặc làm nhiệm vụ để nhận Xu Cá mua đồ nhé!</div>
+              <button type="button" class="ynwa-lofi-btn-sage" data-lofi-tab="shop">Đi đến Cửa hàng</button>
+            </div>
+          `;
+        }
+
+        return myItems.map(item => {
+          const isPlaced = equipped.includes(item.id);
+          return `
+            <div class="ynwa-lofi-item-row">
+              <div class="flex items-center gap-2.5 min-w-0">
+                <span class="text-2xl shrink-0">${item.icon}</span>
+                <div class="min-w-0">
+                  <div class="text-xs font-extrabold truncate" style="color: #3f3a34;">${esc(item.name)}</div>
+                  <div class="text-[11px]" style="color: #78716c;">${isPlaced ? "Đang đặt trong phòng" : "Đang cất trong kho"}</div>
+                </div>
+              </div>
+              <button type="button" class="ynwa-lofi-btn-sage shrink-0" style="${isPlaced ? "background:#a8a29e;" : ""}" data-toggle-equip="${esc(item.id)}">
+                ${isPlaced ? "Cất đi" : "Đặt vào phòng"}
+              </button>
+            </div>
+          `;
+        }).join("");
+      }
+
+      // 6. TAB GIỐNG MÈO
+      const ownedStyles = catState.ownedStyles || ["cream"];
+      return CAT_STYLES.map(st => {
+        const isUnlocked = ownedStyles.includes(st.id) || st.price === 0;
+        const isSelected = catState.catStyle === st.id;
+        return `
+          <div class="ynwa-lofi-item-row">
+            <div class="flex items-center gap-2.5 min-w-0">
+              <span class="w-7 h-7 rounded-full border shrink-0" style="background:${st.body}; border-color:${st.stripe};"></span>
+              <div class="min-w-0">
+                <div class="text-xs font-extrabold truncate" style="color: #3f3a34;">${esc(st.name)}</div>
+                <div class="text-[11px]" style="color: #78716c;">${isSelected ? "Đang chọn" : isUnlocked ? "Đã mở khóa" : `Giá: ${st.price} Xu Cá`}</div>
+              </div>
+            </div>
+            ${isSelected ? `
+              <span class="px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 shrink-0">Đang dùng</span>
+            ` : isUnlocked ? `
+              <button type="button" class="ynwa-lofi-btn-sage shrink-0" data-select-style="${esc(st.id)}">Chọn bé này</button>
+            ` : `
+              <button type="button" class="ynwa-lofi-btn-sage shrink-0" data-buy-style="${esc(st.id)}" ${coins < st.price ? "disabled" : ""}>
+                Mở ${st.price} 🐟
+              </button>
+            `}
+          </div>
+        `;
+      }).join("");
+    }
+
+    function bindRoomInteractions() {
+      document.getElementById("ynwa-lofi-convert-btn")?.addEventListener("click", convertStudyMinutesToFish);
+
+      document.getElementById("ynwa-lofi-rename-btn")?.addEventListener("click", async () => {
+        if (!currentUid) return;
+        const nextName = prompt("Nhập tên mới cho bé mèo Lofi của bạn:", catState.catName || "Mochi");
+        if (!nextName || !nextName.trim()) return;
+        await saveCatPatch({ catName: nextName.trim().slice(0, 20) });
+        notify(`Đã đổi tên bé mèo thành ${nextName.trim()}!`, "🐾");
+      });
+
+      document.getElementById("ynwa-lofi-open-admin-grant")?.addEventListener("click", openAdminFishModal);
+
+      document.querySelectorAll("[data-lofi-tab]").forEach(btn => {
+        btn.addEventListener("click", () => {
+          activeSubTab = btn.getAttribute("data-lofi-tab");
+          renderLofiRoom();
+        });
+      });
+
+      const toggleDayNight = async () => {
+        const nextNight = !catState.isNight;
+        triggerCatBubble(nextNight ? "Bật đèn Lofi buổi tối ấm áp nhé 🌙" : "Chào buổi sáng nắng đẹp! ☀️", "happy");
+        await saveCatPatch({ isNight: nextNight });
+      };
+      document.getElementById("ynwa-lofi-obj-window")?.addEventListener("click", toggleDayNight);
+      document.getElementById("ynwa-lofi-obj-lamp")?.addEventListener("click", toggleDayNight);
+
+      document.getElementById("ynwa-lofi-obj-plant")?.addEventListener("click", () => {
+        triggerCatBubble("Cây xanh đang lớn lên theo từng phút học của cậu đó 🌱", "happy");
+      });
+
+      document.querySelectorAll("[data-claim-task]").forEach(btn => {
+        btn.addEventListener("click", () => {
+          claimTaskReward(btn.getAttribute("data-claim-task"), Number(btn.getAttribute("data-reward")));
+        });
+      });
+
+      // Mua & mặc áo quần cho mèo
+      document.querySelectorAll("[data-buy-outfit]").forEach(btn => {
+        btn.addEventListener("click", async () => {
+          const outfit = CAT_OUTFITS.find(o => o.id === btn.getAttribute("data-buy-outfit"));
+          if (!outfit || !currentUid) return;
+          const coins = Number(catState.fishCoins) || 0;
+          if (coins < outfit.price) return notify("Chưa đủ Xu Cá!", "🐟");
+
+          const nextOutfits = Array.from(new Set([...(catState.ownedOutfits || ["none"]), outfit.id]));
+          triggerCatBubble(`Meo~ Bộ ${outfit.name} xinh quá đi! 👗✨`, "happy");
+          await saveCatPatch({
+            fishCoins: coins - outfit.price,
+            ownedOutfits: nextOutfits,
+            equippedOutfit: outfit.id
+          });
+          notify(`Đã mua và mặc ${outfit.name} cho ${catState.catName}!`, "👗");
+        });
+      });
+
+      document.querySelectorAll("[data-wear-outfit]").forEach(btn => {
+        btn.addEventListener("click", async () => {
+          const id = btn.getAttribute("data-wear-outfit");
+          const outfit = CAT_OUTFITS.find(o => o.id === id);
+          triggerCatBubble(id === "none" ? "Thoải mái bộ lông tự nhiên nè~ 🐾" : `Meo~ Mặc ${outfit?.name || "đồ mới"} rồi nè! ✨`, "happy");
+          await saveCatPatch({ equippedOutfit: id });
+        });
+      });
+
+      // Nhận nuôi & thả thêm thú cưng vào phòng
+      document.querySelectorAll("[data-buy-pet]").forEach(btn => {
+        btn.addEventListener("click", async () => {
+          const pet = COMPANION_PETS.find(p => p.id === btn.getAttribute("data-buy-pet"));
+          if (!pet || !currentUid) return;
+          const coins = Number(catState.fishCoins) || 0;
+          if (coins < pet.price) return notify("Chưa đủ Xu Cá!", "🐟");
+
+          const nextOwnedPets = Array.from(new Set([...(catState.ownedPets || []), pet.id]));
+          const nextActivePets = Array.from(new Set([...(catState.activePets || []), pet.id]));
+          triggerCatBubble(`Chào mừng bạn mới ${pet.name} tới phòng! 🎉`, "happy");
+          await saveCatPatch({
+            fishCoins: coins - pet.price,
+            ownedPets: nextOwnedPets,
+            activePets: nextActivePets
+          });
+          notify(`Đã nhận nuôi ${pet.name}! Bé đã xuất hiện trong phòng!`, pet.icon);
+        });
+      });
+
+      document.querySelectorAll("[data-toggle-pet]").forEach(btn => {
+        btn.addEventListener("click", async () => {
+          const id = btn.getAttribute("data-toggle-pet");
+          const cur = catState.activePets || [];
+          const nextActive = cur.includes(id) ? cur.filter(x => x !== id) : [...cur, id];
+          await saveCatPatch({ activePets: nextActive });
+        });
+      });
+
+      // Mua đồ phòng & thức ăn
+      document.querySelectorAll("[data-buy-item]").forEach(btn => {
+        btn.addEventListener("click", async () => {
+          const item = SHOP_ITEMS.find(i => i.id === btn.getAttribute("data-buy-item"));
+          if (!item || !currentUid) return;
+          const coins = Number(catState.fishCoins) || 0;
+          if (coins < item.price) return notify("Chưa đủ Xu Cá!", "🐟");
+
+          if (item.type === "consumable") {
+            const nextHappy = Math.min(100, (Number(catState.happiness) || 85) + 12);
+            triggerCatBubble("Ngon tuyệt! Cảm ơn cậu vì bánh cá hồi 🐟💖", "happy");
+            (catState.activePets || []).forEach(pid => {
+              triggerPetBubble(pid, "Ngon quá đi! Cảm ơn cậu~ 🐟✨");
+            });
+            await saveCatPatch({ fishCoins: coins - item.price, happiness: nextHappy });
+            notify(`Đã cho cả phòng thưởng thức ${item.name}!`, "🐟");
+            return;
+          }
+
+          const nextOwned = Array.from(new Set([...(catState.ownedItems || []), item.id]));
+          const nextEquipped = Array.from(new Set([...(catState.equippedItems || []), item.id]));
+          triggerCatBubble(`Wow! Có ${item.name} mới trong phòng rồi! ✨`, "happy");
+          await saveCatPatch({
+            fishCoins: coins - item.price,
+            ownedItems: nextOwned,
+            equippedItems: nextEquipped,
+            decorChanged: true
+          });
+          notify(`Đã mua và đặt ${item.name} vào phòng!`, "🏡");
+        });
+      });
+
+      document.querySelectorAll("[data-toggle-equip]").forEach(btn => {
+        btn.addEventListener("click", async () => {
+          const id = btn.getAttribute("data-toggle-equip");
+          const cur = catState.equippedItems || [];
+          const nextEq = cur.includes(id) ? cur.filter(x => x !== id) : [...cur, id];
+          await saveCatPatch({ equippedItems: nextEq, decorChanged: true });
+        });
+      });
+
+      document.querySelectorAll("[data-buy-style]").forEach(btn => {
+        btn.addEventListener("click", async () => {
+          const st = CAT_STYLES.find(s => s.id === btn.getAttribute("data-buy-style"));
+          if (!st || !currentUid) return;
+          const coins = Number(catState.fishCoins) || 0;
+          if (coins < st.price) return notify("Chưa đủ Xu Cá!", "🐟");
+
+          const nextStyles = Array.from(new Set([...(catState.ownedStyles || ["cream"]), st.id]));
+          triggerCatBubble(`Meo~ Mình là ${st.name} đây! 🐾`, "happy");
+          await saveCatPatch({
+            fishCoins: coins - st.price,
+            ownedStyles: nextStyles,
+            catStyle: st.id
+          });
+          notify(`Đã mở khóa ${st.name}!`, "🎨");
+        });
+      });
+
+      document.querySelectorAll("[data-select-style]").forEach(btn => {
+        btn.addEventListener("click", async () => {
+          const id = btn.getAttribute("data-select-style");
+          triggerCatBubble("Meo~ Diện mạo mới nè! ✨", "happy");
+          await saveCatPatch({ catStyle: id });
+        });
+      });
+    }
+
+    // -----------------------------------------------------------------
+    // 8. KẾT NỐI FIREBASE REALTIME
+    // -----------------------------------------------------------------
+    function attachFirebase() {
+      if (!getApps().length) return false;
+      const app = getApp();
+      auth = getAuth(app);
+      db = getFirestore(app);
+
+      onAuthStateChanged(auth, (user) => {
+        if (unsubCat) { unsubCat(); unsubCat = null; }
+        currentUid = user ? user.uid : null;
+        if (!user) return;
+
+        onSnapshot(collection(db, "artifacts", appId, "public", "data", "users"), (snap) => {
+          allUsers = snap.docs.map(d => ({ id: d.id, uid: d.id, ...d.data() }));
+          mountAdminFishGrantCard();
+          renderLofiRoom();
+        });
+
+        const catDocRef = doc(db, "artifacts", appId, "users", user.uid, "lofi_cat_room", "main");
+        unsubCat = onSnapshot(catDocRef, (snap) => {
+          if (snap.exists()) {
+            const data = snap.data();
+            catState = {
+              ...catState,
+              ...data,
+              ownedOutfits: Array.isArray(data.ownedOutfits) ? data.ownedOutfits : ["none"],
+              equippedOutfit: data.equippedOutfit || "none",
+              ownedPets: Array.isArray(data.ownedPets) ? data.ownedPets : [],
+              activePets: Array.isArray(data.activePets) ? data.activePets : []
+            };
+
+            if (data.lastGift && data.lastGift.id && data.lastGift.id !== lastNotifiedGiftId) {
+              lastNotifiedGiftId = data.lastGift.id;
+              if (Date.now() - (data.lastGift.at || 0) < 120000) {
+                notify(`🎁 Admin vừa tặng bạn +${data.lastGift.amount} Xu Cá: ${data.lastGift.reason}`, "🐟");
+              }
+            }
+          }
+          renderLofiRoom();
+        });
+      });
+
+      return true;
+    }
+
+    const boot = setInterval(() => {
+      mountLofiCatTab();
+      if (!db) attachFirebase();
+      if (document.getElementById("btn-tab-lofi-cat") && db) {
+        clearInterval(boot);
+        startCatWanderLoop();
+      }
+    }, 500);
+  })();
+</script>
 </body></html>
