@@ -12180,7 +12180,6 @@ service cloud.firestore {
       if (bootFirebase()) clearInterval(timer);
     }, 500);
   })();
-</script>
   rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -12204,15 +12203,15 @@ service cloud.firestore {
     }
   }
 }
-  <!-- =====================================================================
-     LỊCH HỌC RIÊNG TƯ CỦA TỪNG THÀNH VIÊN (CHỈ LỊCH CỦA TÔI)
-     Hỗ trợ tải ảnh TKB riêng + thêm ca học cá nhân (Thành viên khác không thấy)
-     (Dán ngay trước thẻ </body> trong file index (2).html)
+      </script>
+<!-- =====================================================================
+     THỜI KHÓA BIỂU RIÊNG DẠNG BẢNG (CHỈ LỊCH CỦA TÔI - THÀNH VIÊN KHÁC KHÔNG THẤY)
+     (Thay thế đoạn lịch riêng trước đó, dán ngay trước thẻ </body>)
      ===================================================================== -->
 <style>
-  .ynwa-priv-tkb {
+  .ynwa-ptbl-wrap {
     width: 100%;
-    margin: 14px 0 20px;
+    margin: 14px 0 22px;
     padding: 18px;
     border-radius: 22px;
     background: #ffffff;
@@ -12221,17 +12220,15 @@ service cloud.firestore {
     font-family: inherit;
     box-sizing: border-box;
   }
-  .ynwa-priv-head {
+  .ynwa-ptbl-head {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     justify-content: space-between;
     gap: 10px;
     margin-bottom: 14px;
-    padding-bottom: 12px;
-    border-bottom: 1px solid #f1f5f9;
   }
-  .ynwa-priv-title {
+  .ynwa-ptbl-title {
     margin: 0;
     font-size: 16px;
     font-weight: 800;
@@ -12240,154 +12237,249 @@ service cloud.firestore {
     align-items: center;
     gap: 8px;
   }
-  .ynwa-priv-badge {
+  .ynwa-ptbl-badge {
     font-size: 11px;
     font-weight: 700;
-    padding: 4px 10px;
+    padding: 3px 10px;
     border-radius: 9999px;
     background: #ecfdf5;
     color: #047857;
     border: 1px solid #a7f3d0;
   }
-  .ynwa-priv-mode-tabs {
+  .ynwa-ptbl-actions {
     display: flex;
-    gap: 8px;
     flex-wrap: wrap;
-    margin-bottom: 14px;
+    gap: 8px;
   }
-  .ynwa-priv-mode-btn {
-    padding: 8px 14px;
-    border-radius: 12px;
+  .ynwa-ptbl-btn {
+    padding: 7px 12px;
+    border-radius: 10px;
     border: 1px solid #cbd5e1;
     background: #f8fafc;
-    color: #475569;
-    font-size: 12.5px;
+    color: #334155;
+    font-size: 12px;
     font-weight: 700;
     cursor: pointer;
     transition: all 0.15s ease;
   }
-  .ynwa-priv-mode-btn.active {
+  .ynwa-ptbl-btn:hover { background: #eef2ff; border-color: #818cf8; color: #3730a3; }
+  .ynwa-ptbl-btn-primary {
     background: #4f46e5;
     border-color: #4f46e5;
     color: #ffffff;
   }
-  .ynwa-priv-form {
-    background: #f8fafc;
-    border: 1px dashed #cbd5e1;
-    border-radius: 16px;
-    padding: 14px;
-    margin-bottom: 16px;
+  .ynwa-ptbl-btn-primary:hover { background: #4338ca; color: #ffffff; }
+  .ynwa-ptbl-btn-danger {
+    background: #fff1f2;
+    border-color: #fecdd3;
+    color: #be123c;
   }
-  .ynwa-priv-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    gap: 10px;
-  }
-  .ynwa-priv-input, .ynwa-priv-select {
+  .ynwa-ptbl-btn-danger:hover { background: #ffe4e6; }
+
+  /* Vùng cuộn ngang của bảng */
+  .ynwa-ptbl-scroll {
     width: 100%;
-    padding: 9px 11px;
-    border-radius: 11px;
+    overflow-x: auto;
     border: 1px solid #cbd5e1;
+    border-radius: 16px;
     background: #ffffff;
-    color: #0f172a;
-    font-size: 13px;
-    outline: none;
+  }
+  .ynwa-ptbl-table {
+    width: 100%;
+    min-width: 780px;
+    border-collapse: collapse;
+    table-layout: fixed;
+    font-size: 12.5px;
+  }
+  .ynwa-ptbl-table th,
+  .ynwa-ptbl-table td {
+    border: 1px solid #e2e8f0;
+    padding: 0;
+    vertical-align: top;
+  }
+  .ynwa-ptbl-table thead th {
+    background: #f1f5f9;
+    color: #1e293b;
+    font-weight: 800;
+    text-align: center;
+    padding: 10px 6px;
+    font-size: 12.5px;
+  }
+  .ynwa-ptbl-table thead th:first-child {
+    width: 128px;
+    position: sticky;
+    left: 0;
+    z-index: 2;
+    background: #e2e8f0;
+  }
+  .ynwa-ptbl-row-head {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    background: #f8fafc;
+    padding: 10px 8px !important;
+    font-weight: 800;
+    color: #334155;
+    vertical-align: middle !important;
+    text-align: center;
+  }
+  .ynwa-ptbl-row-time {
+    display: block;
+    font-size: 11px;
+    font-weight: 600;
+    color: #64748b;
+    margin-top: 2px;
+  }
+  .ynwa-ptbl-row-del {
+    margin-top: 5px;
+    border: none;
+    background: transparent;
+    color: #94a3b8;
+    font-size: 10.5px;
+    cursor: pointer;
+    padding: 2px 5px;
+    border-radius: 6px;
+  }
+  .ynwa-ptbl-row-del:hover { background: #ffe4e6; color: #be123c; }
+
+  .ynwa-ptbl-cell {
+    min-height: 76px;
+    height: 100%;
+    padding: 8px;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 3px;
+    transition: background 0.15s ease;
     box-sizing: border-box;
   }
-  .ynwa-priv-input:focus, .ynwa-priv-select:focus {
-    border-color: #6366f1;
-    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
+  .ynwa-ptbl-cell:hover {
+    background: #f8fafc;
+    outline: 2px inset #818cf8;
+    outline-offset: -2px;
   }
-  .ynwa-priv-btn {
-    padding: 9px 15px;
-    border-radius: 11px;
-    border: none;
-    background: #4f46e5;
-    color: #ffffff;
-    font-size: 13px;
-    font-weight: 700;
-    cursor: pointer;
-    transition: opacity 0.15s ease;
-  }
-  .ynwa-priv-btn:hover { opacity: 0.92; }
-  .ynwa-priv-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-  .ynwa-priv-dropzone {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    padding: 18px 12px;
-    border-radius: 14px;
-    border: 2px dashed #a5b4fc;
-    background: #eef2ff;
-    color: #3730a3;
-    cursor: pointer;
+  .ynwa-ptbl-cell-empty {
+    color: #cbd5e1;
+    font-size: 11.5px;
     text-align: center;
-    font-size: 13px;
-    font-weight: 700;
+    font-weight: 600;
+    user-select: none;
   }
-  .ynwa-priv-dropzone:hover { background: #e0e7ff; }
-  .ynwa-priv-list {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
-    gap: 12px;
+  .ynwa-ptbl-cell:hover .ynwa-ptbl-cell-empty {
+    color: #6366f1;
   }
-  .ynwa-priv-card {
-    background: #ffffff;
-    border: 1px solid #e2e8f0;
-    border-radius: 15px;
-    padding: 12px;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    position: relative;
+  .ynwa-ptbl-subject {
+    font-weight: 800;
+    font-size: 12.5px;
+    line-height: 1.3;
+    word-break: break-word;
   }
-  .ynwa-priv-thumb {
-    width: 100%;
-    height: 155px;
-    object-fit: cover;
-    border-radius: 10px;
-    border: 1px solid #e2e8f0;
-    cursor: zoom-in;
-    background: #f1f5f9;
-  }
-  .ynwa-priv-del {
-    padding: 4px 8px;
-    border-radius: 8px;
-    border: 1px solid #fecdd3;
-    background: #fff1f2;
-    color: #be123c;
+  .ynwa-ptbl-note {
     font-size: 11px;
-    font-weight: 700;
-    cursor: pointer;
+    line-height: 1.25;
+    opacity: 0.85;
+    word-break: break-word;
   }
-  .ynwa-priv-del:hover { background: #ffe4e6; }
-  .ynwa-priv-empty {
-    text-align: center;
-    padding: 24px 12px;
-    color: #64748b;
-    font-size: 13px;
-    border: 1px dashed #cbd5e1;
-    border-radius: 14px;
+
+  /* Màu pastel cho từng ô */
+  .ptbl-c-indigo  { background: #eef2ff !important; color: #312e81; }
+  .ptbl-c-emerald { background: #ecfdf5 !important; color: #065f46; }
+  .ptbl-c-amber   { background: #fffbeb !important; color: #92400e; }
+  .ptbl-c-rose    { background: #fff1f2 !important; color: #9f1239; }
+  .ptbl-c-sky     { background: #f0f9ff !important; color: #075985; }
+  .ptbl-c-violet  { background: #f5f3ff !important; color: #5b21b6; }
+
+  /* Dải ảnh TKB đính kèm (nếu có tải lên) */
+  .ynwa-ptbl-images {
+    margin-top: 14px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+    gap: 10px;
+  }
+  .ynwa-ptbl-img-card {
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 8px;
     background: #f8fafc;
   }
-  .ynwa-priv-lightbox {
+  .ynwa-ptbl-img-card img {
+    width: 100%;
+    height: 120px;
+    object-fit: cover;
+    border-radius: 8px;
+    cursor: zoom-in;
+  }
+
+  /* Modal sửa ô bảng / thêm hàng */
+  .ynwa-ptbl-modal-bg {
     position: fixed;
     inset: 0;
-    z-index: 10050;
+    z-index: 10040;
+    background: rgba(15, 23, 42, 0.5);
+    backdrop-filter: blur(2px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+  }
+  .ynwa-ptbl-modal-bg.open { display: flex; }
+  .ynwa-ptbl-modal {
+    width: 100%;
+    max-width: 420px;
+    background: #ffffff;
+    border-radius: 20px;
+    padding: 20px;
+    box-shadow: 0 20px 45px rgba(15, 23, 42, 0.25);
+  }
+  .ynwa-ptbl-field { margin-bottom: 12px; }
+  .ynwa-ptbl-field label {
+    display: block;
+    font-size: 12px;
+    font-weight: 700;
+    color: #334155;
+    margin-bottom: 4px;
+  }
+  .ynwa-ptbl-input {
+    width: 100%;
+    padding: 9px 11px;
+    border-radius: 10px;
+    border: 1px solid #cbd5e1;
+    font-size: 13px;
+    color: #0f172a;
+    box-sizing: border-box;
+    outline: none;
+  }
+  .ynwa-ptbl-input:focus { border-color: #4f46e5; }
+  .ynwa-ptbl-colors {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+  .ynwa-ptbl-dot {
+    width: 26px;
+    height: 26px;
+    border-radius: 999px;
+    border: 2px solid transparent;
+    cursor: pointer;
+  }
+  .ynwa-ptbl-dot.active { border-color: #0f172a; transform: scale(1.12); }
+
+  .ynwa-ptbl-lightbox {
+    position: fixed;
+    inset: 0;
+    z-index: 10060;
     background: rgba(15, 23, 42, 0.85);
     display: none;
     align-items: center;
     justify-content: center;
-    padding: 18px;
+    padding: 16px;
   }
-  .ynwa-priv-lightbox.open { display: flex; }
-  .ynwa-priv-lightbox img {
+  .ynwa-ptbl-lightbox.open { display: flex; }
+  .ynwa-ptbl-lightbox img {
     max-width: 95vw;
     max-height: 88vh;
-    border-radius: 14px;
-    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+    border-radius: 12px;
   }
 </style>
 
@@ -12397,29 +12489,57 @@ service cloud.firestore {
   import {
     getFirestore,
     collection,
+    doc,
+    setDoc,
     addDoc,
     deleteDoc,
-    doc,
     onSnapshot,
-    query,
-    orderBy,
     serverTimestamp
   } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
   (function () {
-    if (window.__ynwaPrivateScheduleLoaded) return;
-    window.__ynwaPrivateScheduleLoaded = true;
+    if (window.__ynwaPrivateTableLoaded) return;
+    window.__ynwaPrivateTableLoaded = true;
 
     const appId = typeof __app_id !== "undefined" ? __app_id : "goc-hoc-nho-prod";
+
+    const DAYS = [
+      { key: "T2", label: "Thứ 2" },
+      { key: "T3", label: "Thứ 3" },
+      { key: "T4", label: "Thứ 4" },
+      { key: "T5", label: "Thứ 5" },
+      { key: "T6", label: "Thứ 6" },
+      { key: "T7", label: "Thứ 7" },
+      { key: "CN", label: "Chủ nhật" }
+    ];
+
+    const DEFAULT_ROWS = [
+      { id: "r_sang",  label: "Sáng",  time: "07:00 – 11:30" },
+      { id: "r_chieu", label: "Chiều", time: "13:30 – 17:30" },
+      { id: "r_toi",   label: "Tối",   time: "19:00 – 22:00" },
+      { id: "r_khuya", label: "Khuya", time: "22:00 – 24:00" }
+    ];
+
+    const COLORS = [
+      { key: "indigo",  hex: "#818cf8", cls: "ptbl-c-indigo" },
+      { key: "emerald", hex: "#34d399", cls: "ptbl-c-emerald" },
+      { key: "amber",   hex: "#fbbf24", cls: "ptbl-c-amber" },
+      { key: "rose",    hex: "#fb7185", cls: "ptbl-c-rose" },
+      { key: "sky",     hex: "#38bdf8", cls: "ptbl-c-sky" },
+      { key: "violet",  hex: "#a78bfa", cls: "ptbl-c-violet" }
+    ];
 
     let db = null;
     let auth = null;
     let currentUser = null;
-    let unsubSchedules = null;
-    let mySchedules = [];
-    let formMode = "upload"; // "upload" | "manual"
-    let pendingImageData = "";
-    let pendingFileName = "";
+    let unsub = null;
+
+    let rows = [...DEFAULT_ROWS];
+    let cellMap = new Map(); // key: `${rowId}__${dayKey}` -> docData
+    let uploadedImages = [];
+
+    let editingCell = null; // { rowId, rowLabel, rowTime, dayKey, dayLabel }
+    let pickedColor = "indigo";
 
     function esc(v) {
       return String(v ?? "")
@@ -12435,30 +12555,26 @@ service cloud.firestore {
       else console.log(icon, msg);
     }
 
-    // Nén ảnh thời khóa biểu để lưu trực tiếp vào Firestore nhanh & nhẹ (< 350KB)
-    function compressImageToDataURL(file, maxWidth = 1280, quality = 0.78) {
+    function compressImage(file, maxW = 1280, quality = 0.78) {
       return new Promise((resolve, reject) => {
         const reader = new FileReader();
-        reader.onerror = () => reject(new Error("Không đọc được file ảnh."));
+        reader.onerror = () => reject(new Error("Không đọc được file."));
         reader.onload = (ev) => {
           const img = new Image();
-          img.onerror = () => reject(new Error("File không phải định dạng ảnh hợp lệ."));
+          img.onerror = () => reject(new Error("File ảnh không hợp lệ."));
           img.onload = () => {
-            let w = img.width;
-            let h = img.height;
-            if (w > maxWidth) {
-              h = Math.round((h * maxWidth) / w);
-              w = maxWidth;
+            let w = img.width, h = img.height;
+            if (w > maxW) {
+              h = Math.round((h * maxW) / w);
+              w = maxW;
             }
-            const canvas = document.createElement("canvas");
-            canvas.width = w;
-            canvas.height = h;
-            const ctx = canvas.getContext("2d");
+            const c = document.createElement("canvas");
+            c.width = w; c.height = h;
+            const ctx = c.getContext("2d");
             ctx.fillStyle = "#ffffff";
             ctx.fillRect(0, 0, w, h);
             ctx.drawImage(img, 0, 0, w, h);
-            const dataUrl = canvas.toDataURL("image/jpeg", quality);
-            resolve(dataUrl);
+            resolve(c.toDataURL("image/jpeg", quality));
           };
           img.src = ev.target.result;
         };
@@ -12466,407 +12582,448 @@ service cloud.firestore {
       });
     }
 
-    // Tìm đúng vùng "Chỉ lịch của tôi" hoặc mục "Thời khóa biểu" trong giao diện sẵn có
     function findScheduleHost() {
-      const exactIds = [
-        "my-schedule-container",
-        "my-schedule-panel",
-        "only-my-schedule",
-        "tab-schedule",
-        "panel-schedule",
-        "schedule-section",
-        "tkb-section",
-        "timetable-section"
+      const ids = [
+        "my-schedule-container", "my-schedule-panel", "only-my-schedule",
+        "tab-schedule", "panel-schedule", "schedule-section", "tkb-section", "timetable-section"
       ];
-      for (const id of exactIds) {
+      for (const id of ids) {
         const el = document.getElementById(id);
         if (el) return el;
       }
 
-      // Tìm nút hoặc tiêu đề có chữ "Chỉ lịch của tôi"
-      const allNodes = Array.from(document.querySelectorAll("button, a, label, h2, h3, h4, span, div"));
-      const myOnlyEl = allNodes.find(el => {
+      const nodes = Array.from(document.querySelectorAll("button, a, label, h2, h3, h4, span, div"));
+      const myBtn = nodes.find(el => {
         if (el.children.length > 2) return false;
-        const t = (el.textContent || "").trim().toLowerCase();
-        return t === "chỉ lịch của tôi" || t.includes("chỉ lịch của tôi");
+        return (el.textContent || "").trim().toLowerCase().includes("chỉ lịch của tôi");
       });
-      if (myOnlyEl) {
-        const section = myOnlyEl.closest("section, [id^='tab-'], [id^='panel-'], .pastel-card, main");
-        if (section) return section;
+      if (myBtn) {
+        const sec = myBtn.closest("section, [id^='tab-'], [id^='panel-'], .pastel-card, main");
+        if (sec) return sec;
       }
 
-      // Dự phòng: tìm mục có tiêu đề "Thời khóa biểu"
       const headings = Array.from(document.querySelectorAll("h1, h2, h3, h4"));
-      const tkbHeading = headings.find(h => {
-        const t = (h.textContent || "").toLowerCase();
+      const h = headings.find(el => {
+        const t = (el.textContent || "").toLowerCase();
         return t.includes("thời khóa biểu") || t.includes("lịch học");
       });
-      if (tkbHeading) {
-        return tkbHeading.closest("section, [id^='tab-'], [id^='panel-'], .pastel-card") || tkbHeading.parentElement;
-      }
-
+      if (h) return h.closest("section, [id^='tab-'], [id^='panel-'], .pastel-card") || h.parentElement;
       return null;
     }
 
-    // Tự động ẩn/hiện theo nút lọc "Chỉ lịch của tôi" nếu app gốc có chế độ chuyển tab lọc
-    function bindMyScheduleFilterToggle(box) {
-      const buttons = Array.from(document.querySelectorAll("button, [role='tab'], input[type='radio'], input[type='checkbox']"));
-      const myBtn = buttons.find(el => (el.textContent || el.value || "").toLowerCase().includes("chỉ lịch của tôi"));
-      if (!myBtn) return;
-
-      const groupParent = myBtn.parentElement;
-      if (!groupParent) return;
-
-      const siblingBtns = Array.from(groupParent.querySelectorAll("button, [role='tab']"));
-      if (siblingBtns.length > 1) {
-        siblingBtns.forEach(btn => {
+    function bindFilterToggle(box) {
+      const btns = Array.from(document.querySelectorAll("button, [role='tab']"));
+      const myBtn = btns.find(b => (b.textContent || "").toLowerCase().includes("chỉ lịch của tôi"));
+      if (!myBtn || !myBtn.parentElement) return;
+      const group = Array.from(myBtn.parentElement.querySelectorAll("button, [role='tab']"));
+      if (group.length > 1) {
+        group.forEach(btn => {
           btn.addEventListener("click", () => {
-            const isMyOnly = (btn.textContent || "").toLowerCase().includes("chỉ lịch của tôi");
-            box.style.display = isMyOnly ? "block" : "none";
+            const isMine = (btn.textContent || "").toLowerCase().includes("chỉ lịch của tôi");
+            box.style.display = isMine ? "block" : "none";
           });
         });
       }
     }
 
-    function ensureLightbox() {
-      if (document.getElementById("ynwa-priv-lightbox")) return;
-      const lb = document.createElement("div");
-      lb.id = "ynwa-priv-lightbox";
-      lb.className = "ynwa-priv-lightbox";
-      lb.innerHTML = `<img id="ynwa-priv-lightbox-img" src="" alt="Thời khóa biểu riêng tư" />`;
-      lb.addEventListener("click", () => lb.classList.remove("open"));
-      document.body.appendChild(lb);
+    function ensureModals() {
+      if (!document.getElementById("ynwa-ptbl-cell-modal")) {
+        const bg = document.createElement("div");
+        bg.id = "ynwa-ptbl-cell-modal";
+        bg.className = "ynwa-ptbl-modal-bg";
+        bg.innerHTML = `
+          <div class="ynwa-ptbl-modal">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+              <h4 id="ynwa-ptbl-modal-title" style="margin:0; font-size:15px; font-weight:800; color:#1e293b;">Điền lịch riêng</h4>
+              <button type="button" id="ynwa-ptbl-close" style="border:none; background:#f1f5f9; width:28px; height:28px; border-radius:999px; cursor:pointer; font-weight:800;">×</button>
+            </div>
+            <form id="ynwa-ptbl-cell-form">
+              <div class="ynwa-ptbl-field">
+                <label>Môn học / Nội dung *</label>
+                <input id="ynwa-ptbl-subject" class="ynwa-ptbl-input" placeholder="VD: Toán cao cấp, IELTS Listening..." required />
+              </div>
+              <div class="ynwa-ptbl-field">
+                <label>Giờ chi tiết hoặc Ghi chú (không bắt buộc)</label>
+                <input id="ynwa-ptbl-note" class="ynwa-ptbl-input" placeholder="VD: 19:30-21:00 • Phòng B2 / Tự ôn đề" />
+              </div>
+              <div class="ynwa-ptbl-field">
+                <label>Màu ô</label>
+                <div class="ynwa-ptbl-colors" id="ynwa-ptbl-colors">
+                  ${COLORS.map(c => `<button type="button" class="ynwa-ptbl-dot" data-c="${c.key}" style="background:${c.hex};"></button>`).join("")}
+                </div>
+              </div>
+              <div style="display:flex; justify-content:space-between; gap:8px; margin-top:16px;">
+                <button type="button" id="ynwa-ptbl-clear-cell" class="ynwa-ptbl-btn ynwa-ptbl-btn-danger" style="display:none;">🗑️ Xóa ô này</button>
+                <div style="display:flex; gap:8px; margin-left:auto;">
+                  <button type="button" id="ynwa-ptbl-cancel" class="ynwa-ptbl-btn">Hủy</button>
+                  <button type="submit" class="ynwa-ptbl-btn ynwa-ptbl-btn-primary">💾 Lưu riêng tư</button>
+                </div>
+              </div>
+            </form>
+          </div>
+        `;
+        document.body.appendChild(bg);
+
+        bg.addEventListener("click", (e) => { if (e.target === bg) closeCellModal(); });
+        document.getElementById("ynwa-ptbl-close").addEventListener("click", closeCellModal);
+        document.getElementById("ynwa-ptbl-cancel").addEventListener("click", closeCellModal);
+        bg.querySelectorAll(".ynwa-ptbl-dot").forEach(dot => {
+          dot.addEventListener("click", () => {
+            pickedColor = dot.getAttribute("data-c");
+            updateColorDots();
+          });
+        });
+        document.getElementById("ynwa-ptbl-cell-form").addEventListener("submit", saveCell);
+        document.getElementById("ynwa-ptbl-clear-cell").addEventListener("click", clearCell);
+      }
+
+      if (!document.getElementById("ynwa-ptbl-lightbox")) {
+        const lb = document.createElement("div");
+        lb.id = "ynwa-ptbl-lightbox";
+        lb.className = "ynwa-ptbl-lightbox";
+        lb.innerHTML = `<img id="ynwa-ptbl-lightbox-img" src="" alt="Ảnh TKB riêng" />`;
+        lb.addEventListener("click", () => lb.classList.remove("open"));
+        document.body.appendChild(lb);
+      }
     }
 
-    function mountPrivateScheduleBox() {
-      if (document.getElementById("ynwa-priv-tkb-box")) return;
+    function updateColorDots() {
+      document.querySelectorAll("#ynwa-ptbl-colors .ynwa-ptbl-dot").forEach(d => {
+        d.classList.toggle("active", d.getAttribute("data-c") === pickedColor);
+      });
+    }
+
+    function openCellModal(row, day) {
+      if (!currentUser) return notify("Vui lòng đăng nhập để sửa lịch riêng!", "🔒");
+      editingCell = {
+        rowId: row.id,
+        rowLabel: row.label,
+        rowTime: row.time,
+        dayKey: day.key,
+        dayLabel: day.label
+      };
+      const existing = cellMap.get(`${row.id}__${day.key}`);
+
+      document.getElementById("ynwa-ptbl-modal-title").textContent =
+        `📅 ${day.label} — ${row.label}${row.time ? ` (${row.time})` : ""}`;
+      document.getElementById("ynwa-ptbl-subject").value = existing?.subject || "";
+      document.getElementById("ynwa-ptbl-note").value = existing?.note || "";
+      pickedColor = existing?.color || "indigo";
+      updateColorDots();
+
+      document.getElementById("ynwa-ptbl-clear-cell").style.display = existing ? "inline-block" : "none";
+      document.getElementById("ynwa-ptbl-cell-modal").classList.add("open");
+      setTimeout(() => document.getElementById("ynwa-ptbl-subject").focus(), 50);
+    }
+
+    function closeCellModal() {
+      document.getElementById("ynwa-ptbl-cell-modal")?.classList.remove("open");
+      editingCell = null;
+    }
+
+    async function saveCell(e) {
+      e.preventDefault();
+      if (!currentUser || !db || !editingCell) return;
+
+      const subject = document.getElementById("ynwa-ptbl-subject").value.trim();
+      const note = document.getElementById("ynwa-ptbl-note").value.trim();
+      if (!subject) return;
+
+      const docId = `slot_${editingCell.rowId}_${editingCell.dayKey}`;
+      try {
+        await setDoc(doc(db, "artifacts", appId, "users", currentUser.uid, "private_schedules", docId), {
+          type: "table_cell",
+          rowId: editingCell.rowId,
+          rowLabel: editingCell.rowLabel,
+          time: editingCell.rowTime || editingCell.rowLabel,
+          dayKey: editingCell.dayKey,
+          day: editingCell.dayLabel,
+          subject,
+          title: subject,
+          note,
+          color: pickedColor,
+          isPrivate: true,
+          uid: currentUser.uid,
+          updatedAt: serverTimestamp()
+        });
+        closeCellModal();
+        notify("Đã lưu ô lịch học riêng!", "🔒");
+      } catch (err) {
+        notify("Lỗi lưu lịch: " + err.message, "⚠️");
+      }
+    }
+
+    async function clearCell() {
+      if (!currentUser || !db || !editingCell) return;
+      const docId = `slot_${editingCell.rowId}_${editingCell.dayKey}`;
+      try {
+        await deleteDoc(doc(db, "artifacts", appId, "users", currentUser.uid, "private_schedules", docId));
+        closeCellModal();
+        notify("Đã xóa nội dung ô lịch.", "🗑️");
+      } catch (err) {
+        notify("Lỗi khi xóa: " + err.message, "⚠️");
+      }
+    }
+
+    async function persistRowsConfig(nextRows) {
+      if (!currentUser || !db) return;
+      await setDoc(doc(db, "artifacts", appId, "users", currentUser.uid, "private_schedules", "_rows_config"), {
+        type: "rows_config",
+        rows: nextRows,
+        updatedAt: serverTimestamp()
+      });
+    }
+
+    async function addCustomRow() {
+      if (!currentUser) return notify("Vui lòng đăng nhập!", "🔒");
+      const label = prompt("Nhập tên buổi / tiết (VD: Tiết 1, Sáng sớm, Ca tối 2):");
+      if (!label || !label.trim()) return;
+      const time = prompt("Nhập khung giờ (VD: 06:00 – 07:00, có thể bỏ trống):") || "";
+      const nextRows = [...rows, { id: "r_" + Date.now(), label: label.trim(), time: time.trim() }];
+      try {
+        await persistRowsConfig(nextRows);
+        notify("Đã thêm hàng khung giờ mới!", "➕");
+      } catch (err) {
+        notify("Lỗi thêm hàng: " + err.message, "⚠️");
+      }
+    }
+
+    async function removeRow(rowId) {
+      if (!currentUser) return;
+      if (rows.length <= 1) return notify("Cần giữ ít nhất 1 hàng khung giờ!", "⚠️");
+      if (!confirm("Xóa hàng khung giờ này khỏi bảng?")) return;
+      const nextRows = rows.filter(r => r.id !== rowId);
+      try {
+        await persistRowsConfig(nextRows);
+        notify("Đã xóa hàng khung giờ.", "🗑️");
+      } catch (err) {
+        notify("Lỗi xóa hàng: " + err.message, "⚠️");
+      }
+    }
+
+    function mountPrivateTable() {
+      if (document.getElementById("ynwa-ptbl-root")) return;
       const host = findScheduleHost();
       if (!host) return;
 
-      ensureLightbox();
+      ensureModals();
 
       const box = document.createElement("div");
-      box.id = "ynwa-priv-tkb-box";
-      box.className = "ynwa-priv-tkb";
+      box.id = "ynwa-ptbl-root";
+      box.className = "ynwa-ptbl-wrap";
       box.innerHTML = `
-        <div class="ynwa-priv-head">
+        <div class="ynwa-ptbl-head">
           <div>
-            <h3 class="ynwa-priv-title">📅 Lịch học riêng của tôi</h3>
+            <h3 class="ynwa-ptbl-title">
+              <span>📅 Bảng Thời Khóa Biểu Riêng Của Tôi</span>
+              <span class="ynwa-ptbl-badge">🔒 Riêng tư</span>
+            </h3>
             <div style="font-size:12px; color:#64748b; margin-top:3px;">
-              Tải ảnh thời khóa biểu hoặc thêm ca học cá nhân của riêng bạn. Các thành viên khác không thể xem mục này.
+              Bấm trực tiếp vào bất kỳ ô nào trong bảng để điền hoặc sửa lịch học của bạn. Thành viên khác không thể thấy bảng này.
             </div>
           </div>
-          <span class="ynwa-priv-badge">🔒 Riêng tư — Chỉ mình bạn thấy</span>
-        </div>
-
-        <div class="ynwa-priv-mode-tabs">
-          <button type="button" class="ynwa-priv-mode-btn active" data-priv-mode="upload">🖼️ Tải ảnh lịch học lên</button>
-          <button type="button" class="ynwa-priv-mode-btn" data-priv-mode="manual">✍️ Nhập lịch theo buổi</button>
-        </div>
-
-        <!-- Form 1: Tải ảnh thời khóa biểu riêng -->
-        <div id="ynwa-priv-form-upload" class="ynwa-priv-form">
-          <label class="ynwa-priv-dropzone" for="ynwa-priv-file-input">
-            <span style="font-size:22px;">📤</span>
-            <span id="ynwa-priv-file-label">Bấm để chọn ảnh thời khóa biểu từ máy / điện thoại</span>
-            <span style="font-size:11px; font-weight:500; color:#6366f1;">Hỗ trợ JPG, PNG, WebP (tự nén nhẹ khi tải lên)</span>
-          </label>
-          <input id="ynwa-priv-file-input" type="file" accept="image/*" style="display:none;" />
-
-          <div id="ynwa-priv-preview-wrap" style="display:none; margin-top:10px; text-align:center;">
-            <img id="ynwa-priv-preview-img" src="" alt="Xem trước" style="max-height:180px; border-radius:10px; border:1px solid #cbd5e1;" />
-          </div>
-
-          <div class="ynwa-priv-grid" style="margin-top:10px;">
-            <input id="ynwa-priv-img-title" class="ynwa-priv-input" placeholder="Tên lịch (vd: TKB Học kỳ 1, Lịch ôn thi...)" />
-            <input id="ynwa-priv-img-note" class="ynwa-priv-input" placeholder="Ghi chú riêng (không bắt buộc)" />
-          </div>
-          <div style="margin-top:10px; text-align:right;">
-            <button type="button" id="ynwa-priv-upload-btn" class="ynwa-priv-btn">⬆️ Tải lên lịch riêng của tôi</button>
+          <div class="ynwa-ptbl-actions">
+            <button type="button" id="ynwa-ptbl-add-row" class="ynwa-ptbl-btn">➕ Thêm khung giờ</button>
+            <label for="ynwa-ptbl-upload-img" class="ynwa-ptbl-btn ynwa-ptbl-btn-primary" style="display:inline-flex; align-items:center; gap:5px;">
+              🖼️ Tải ảnh TKB lên
+            </label>
+            <input id="ynwa-ptbl-upload-img" type="file" accept="image/*" style="display:none;" />
           </div>
         </div>
 
-        <!-- Form 2: Nhập từng buổi học riêng -->
-        <div id="ynwa-priv-form-manual" class="ynwa-priv-form" style="display:none;">
-          <div class="ynwa-priv-grid">
-            <select id="ynwa-priv-day" class="ynwa-priv-select">
-              <option value="Thứ 2">Thứ 2</option>
-              <option value="Thứ 3">Thứ 3</option>
-              <option value="Thứ 4">Thứ 4</option>
-              <option value="Thứ 5">Thứ 5</option>
-              <option value="Thứ 6">Thứ 6</option>
-              <option value="Thứ 7">Thứ 7</option>
-              <option value="Chủ nhật">Chủ nhật</option>
-            </select>
-            <input id="ynwa-priv-start" type="time" class="ynwa-priv-input" value="19:00" />
-            <input id="ynwa-priv-end" type="time" class="ynwa-priv-input" value="21:00" />
-            <input id="ynwa-priv-subject" class="ynwa-priv-input" placeholder="Môn học / Nội dung *" />
-          </div>
-          <div style="display:flex; gap:10px; margin-top:10px; flex-wrap:wrap;">
-            <input id="ynwa-priv-note" class="ynwa-priv-input" style="flex:1; min-width:200px;" placeholder="Ghi chú riêng (phòng học, link zoom, bài tập...)" />
-            <button type="button" id="ynwa-priv-add-btn" class="ynwa-priv-btn">+ Thêm vào lịch riêng</button>
-          </div>
-        </div>
-
-        <div id="ynwa-priv-list-wrap"></div>
+        <div class="ynwa-ptbl-scroll" id="ynwa-ptbl-table-container"></div>
+        <div id="ynwa-ptbl-img-strip"></div>
       `;
 
       host.appendChild(box);
-      bindMyScheduleFilterToggle(box);
-      bindPrivateScheduleEvents();
-      renderPrivateSchedules();
-    }
+      bindFilterToggle(box);
 
-    function bindPrivateScheduleEvents() {
-      // Chuyển tab Tải ảnh / Nhập tay
-      document.querySelectorAll("[data-priv-mode]").forEach(btn => {
-        btn.addEventListener("click", () => {
-          formMode = btn.getAttribute("data-priv-mode");
-          document.querySelectorAll("[data-priv-mode]").forEach(b => b.classList.toggle("active", b === btn));
-          document.getElementById("ynwa-priv-form-upload").style.display = formMode === "upload" ? "block" : "none";
-          document.getElementById("ynwa-priv-form-manual").style.display = formMode === "manual" ? "block" : "none";
-        });
-      });
+      document.getElementById("ynwa-ptbl-add-row").addEventListener("click", addCustomRow);
 
-      // Chọn file ảnh
-      const fileInput = document.getElementById("ynwa-priv-file-input");
-      fileInput?.addEventListener("change", async (e) => {
+      document.getElementById("ynwa-ptbl-upload-img").addEventListener("change", async (e) => {
         const file = e.target.files?.[0];
         if (!file) return;
-        const label = document.getElementById("ynwa-priv-file-label");
-        label.textContent = "⏳ Đang xử lý ảnh...";
+        if (!currentUser || !db) return notify("Vui lòng đăng nhập để tải ảnh!", "🔒");
+        notify("Đang nén và tải ảnh TKB riêng lên...", "⏳");
         try {
-          pendingImageData = await compressImageToDataURL(file);
-          pendingFileName = file.name;
-          label.textContent = `✅ Đã chọn: ${file.name}`;
-          const prevWrap = document.getElementById("ynwa-priv-preview-wrap");
-          const prevImg = document.getElementById("ynwa-priv-preview-img");
-          prevImg.src = pendingImageData;
-          prevWrap.style.display = "block";
-        } catch (err) {
-          pendingImageData = "";
-          label.textContent = "Bấm để chọn ảnh thời khóa biểu từ máy / điện thoại";
-          notify(err.message, "⚠️");
-        }
-      });
-
-      // Lưu ảnh TKB riêng lên Firestore
-      document.getElementById("ynwa-priv-upload-btn")?.addEventListener("click", async () => {
-        if (!currentUser || !db) return notify("Vui lòng đăng nhập để tải lịch riêng!", "🔒");
-        if (!pendingImageData) return notify("Bạn chưa chọn ảnh thời khóa biểu!", "🖼️");
-
-        const titleInput = document.getElementById("ynwa-priv-img-title");
-        const noteInput = document.getElementById("ynwa-priv-img-note");
-        const btn = document.getElementById("ynwa-priv-upload-btn");
-
-        const title = titleInput.value.trim() || pendingFileName || "Thời khóa biểu cá nhân";
-        const note = noteInput.value.trim();
-
-        btn.disabled = true;
-        btn.textContent = "⏳ Đang tải lên...";
-
-        try {
+          const dataUrl = await compressImage(file);
           await addDoc(collection(db, "artifacts", appId, "users", currentUser.uid, "private_schedules"), {
             type: "image",
             day: "Ảnh TKB",
-            title,
-            subject: title,
-            note,
-            imageData: pendingImageData,
+            title: file.name,
+            subject: file.name,
+            imageData: dataUrl,
             isPrivate: true,
             uid: currentUser.uid,
             createdAt: serverTimestamp()
           });
-
-          // Reset form
-          pendingImageData = "";
-          pendingFileName = "";
-          titleInput.value = "";
-          noteInput.value = "";
-          document.getElementById("ynwa-priv-file-input").value = "";
-          document.getElementById("ynwa-priv-file-label").textContent = "Bấm để chọn ảnh thời khóa biểu từ máy / điện thoại";
-          document.getElementById("ynwa-priv-preview-wrap").style.display = "none";
-          notify("Đã tải lên lịch học riêng của bạn!", "🔒");
+          notify("Đã tải ảnh TKB riêng lên!", "🔒");
         } catch (err) {
-          notify("Không thể tải lên: " + err.message, "⚠️");
+          notify("Lỗi tải ảnh: " + err.message, "⚠️");
         } finally {
-          btn.disabled = false;
-          btn.textContent = "⬆️ Tải lên lịch riêng của tôi";
+          e.target.value = "";
         }
       });
 
-      // Thêm buổi học thủ công
-      document.getElementById("ynwa-priv-add-btn")?.addEventListener("click", async () => {
-        if (!currentUser || !db) return notify("Vui lòng đăng nhập để lưu lịch riêng!", "🔒");
-
-        const day = document.getElementById("ynwa-priv-day").value;
-        const startTime = document.getElementById("ynwa-priv-start").value;
-        const endTime = document.getElementById("ynwa-priv-end").value;
-        const subjectEl = document.getElementById("ynwa-priv-subject");
-        const noteEl = document.getElementById("ynwa-priv-note");
-        const subject = subjectEl.value.trim();
-
-        if (!subject) return notify("Vui lòng nhập tên môn học / nội dung!", "✍️");
-
-        const btn = document.getElementById("ynwa-priv-add-btn");
-        btn.disabled = true;
-
-        try {
-          await addDoc(collection(db, "artifacts", appId, "users", currentUser.uid, "private_schedules"), {
-            type: "entry",
-            day,
-            startTime,
-            endTime,
-            subject,
-            title: subject,
-            note: noteEl.value.trim(),
-            isPrivate: true,
-            uid: currentUser.uid,
-            createdAt: serverTimestamp()
-          });
-          subjectEl.value = "";
-          noteEl.value = "";
-          notify("Đã thêm vào lịch học riêng!", "📅");
-        } catch (err) {
-          notify("Lỗi khi lưu lịch: " + err.message, "⚠️");
-        } finally {
-          btn.disabled = false;
-        }
-      });
+      renderTable();
     }
 
-    function renderPrivateSchedules() {
-      const wrap = document.getElementById("ynwa-priv-list-wrap");
-      if (!wrap) return;
+    function renderTable() {
+      const container = document.getElementById("ynwa-ptbl-table-container");
+      const imgStrip = document.getElementById("ynwa-ptbl-img-strip");
+      if (!container) return;
 
       if (!currentUser) {
-        wrap.innerHTML = `<div class="ynwa-priv-empty">Đăng nhập để tải lên và xem lịch học riêng tư của bạn.</div>`;
+        container.innerHTML = `<div style="padding:26px; text-align:center; color:#64748b; font-size:13px;">Đăng nhập để tạo và xem bảng thời khóa biểu riêng của bạn.</div>`;
+        if (imgStrip) imgStrip.innerHTML = "";
         return;
       }
 
-      if (!mySchedules.length) {
-        wrap.innerHTML = `<div class="ynwa-priv-empty">Bạn chưa tải lên lịch học riêng nào. Chỉ mình bạn nhìn thấy dữ liệu ở đây.</div>`;
-        return;
-      }
-
-      wrap.innerHTML = `
-        <div class="ynwa-priv-list">
-          ${mySchedules.map(item => {
-            if (item.type === "image" || item.imageData) {
-              return `
-                <div class="ynwa-priv-card">
-                  <img class="ynwa-priv-thumb" src="${esc(item.imageData)}" alt="${esc(item.title || "TKB riêng")}" data-zoom-img="1" />
-                  <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:8px;">
-                    <div style="min-width:0;">
-                      <div style="font-weight:800; font-size:13.5px; color:#0f172a;">🖼️ ${esc(item.title || "Ảnh thời khóa biểu")}</div>
-                      ${item.note ? `<div style="font-size:12px; color:#64748b; margin-top:2px;">${esc(item.note)}</div>` : ""}
-                    </div>
-                    <button type="button" class="ynwa-priv-del" data-del-priv="${esc(item.id)}">Xóa</button>
-                  </div>
-                </div>
-              `;
-            }
-
-            const timeStr = item.startTime
-              ? `${item.startTime}${item.endTime ? " – " + item.endTime : ""}`
-              : (item.time || "--:--");
-
-            return `
-              <div class="ynwa-priv-card" style="border-left:4px solid #6366f1;">
-                <div style="display:flex; align-items:center; justify-content:space-between; gap:6px;">
-                  <span style="font-size:12px; font-weight:800; color:#4f46e5;">📆 ${esc(item.day || "Lịch riêng")}</span>
-                  <span style="font-size:11.5px; font-weight:700; color:#64748b;">🕒 ${esc(timeStr)}</span>
-                </div>
-                <div style="font-weight:800; font-size:14px; color:#0f172a;">${esc(item.subject || item.title || "Buổi học")}</div>
-                ${item.note ? `<div style="font-size:12px; color:#475569;">📝 ${esc(item.note)}</div>` : ""}
-                <div style="margin-top:auto; display:flex; justify-content:space-between; align-items:center; padding-top:4px;">
-                  <span style="font-size:11px; color:#059669; font-weight:700;">🔒 Chỉ mình tôi</span>
-                  <button type="button" class="ynwa-priv-del" data-del-priv="${esc(item.id)}">Xóa</button>
-                </div>
-              </div>
-            `;
-          }).join("")}
-        </div>
+      const thead = `
+        <thead>
+          <tr>
+            <th>Khung giờ</th>
+            ${DAYS.map(d => `<th>${d.label}</th>`).join("")}
+          </tr>
+        </thead>
       `;
 
-      // Phóng to ảnh TKB khi bấm vào
-      wrap.querySelectorAll("[data-zoom-img]").forEach(img => {
-        img.addEventListener("click", () => {
-          const lb = document.getElementById("ynwa-priv-lightbox");
-          const lbImg = document.getElementById("ynwa-priv-lightbox-img");
-          if (lb && lbImg) {
-            lbImg.src = img.src;
-            lb.classList.add("open");
-          }
+      const tbody = rows.map(row => `
+        <tr>
+          <td class="ynwa-ptbl-row-head">
+            <div>${esc(row.label)}</div>
+            ${row.time ? `<span class="ynwa-ptbl-row-time">${esc(row.time)}</span>` : ""}
+            <button type="button" class="ynwa-ptbl-row-del" data-del-row="${esc(row.id)}" title="Xóa hàng này">✕ Xóa hàng</button>
+          </td>
+          ${DAYS.map(day => {
+            const cell = cellMap.get(`${row.id}__${day.key}`);
+            if (!cell) {
+              return `
+                <td>
+                  <div class="ynwa-ptbl-cell" data-r="${esc(row.id)}" data-d="${day.key}">
+                    <span class="ynwa-ptbl-cell-empty">+ Điền</span>
+                  </div>
+                </td>
+              `;
+            }
+            const colorObj = COLORS.find(c => c.key === cell.color) || COLORS[0];
+            return `
+              <td>
+                <div class="ynwa-ptbl-cell ${colorObj.cls}" data-r="${esc(row.id)}" data-d="${day.key}">
+                  <div class="ynwa-ptbl-subject">${esc(cell.subject || cell.title)}</div>
+                  ${cell.note ? `<div class="ynwa-ptbl-note">${esc(cell.note)}</div>` : ""}
+                </div>
+              </td>
+            `;
+          }).join("")}
+        </tr>
+      `).join("");
+
+      container.innerHTML = `<table class="ynwa-ptbl-table">${thead}<tbody>${tbody}</tbody></table>`;
+
+      // Sự kiện bấm vào từng ô trong bảng
+      container.querySelectorAll(".ynwa-ptbl-cell").forEach(el => {
+        el.addEventListener("click", () => {
+          const rObj = rows.find(r => r.id === el.getAttribute("data-r"));
+          const dObj = DAYS.find(d => d.key === el.getAttribute("data-d"));
+          if (rObj && dObj) openCellModal(rObj, dObj);
         });
       });
 
-      // Xóa mục lịch riêng
-      wrap.querySelectorAll("[data-del-priv]").forEach(btn => {
-        btn.addEventListener("click", async () => {
-          const id = btn.getAttribute("data-del-priv");
-          if (!currentUser || !id) return;
-          if (!confirm("Xóa mục lịch riêng này?")) return;
-          try {
-            await deleteDoc(doc(db, "artifacts", appId, "users", currentUser.uid, "private_schedules", id));
-            notify("Đã xóa khỏi lịch riêng.", "🗑️");
-          } catch (err) {
-            notify("Lỗi khi xóa: " + err.message, "⚠️");
-          }
+      // Sự kiện xóa hàng khung giờ
+      container.querySelectorAll("[data-del-row]").forEach(btn => {
+        btn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          removeRow(btn.getAttribute("data-del-row"));
         });
       });
+
+      // Hiển thị ảnh TKB riêng đã tải lên (nếu có) ngay bên dưới bảng
+      if (imgStrip) {
+        if (!uploadedImages.length) {
+          imgStrip.innerHTML = "";
+        } else {
+          imgStrip.innerHTML = `
+            <div style="margin-top:14px; font-size:12.5px; font-weight:800; color:#334155;">🖼️ Ảnh thời khóa biểu riêng đã tải lên:</div>
+            <div class="ynwa-ptbl-images">
+              ${uploadedImages.map(img => `
+                <div class="ynwa-ptbl-img-card">
+                  <img src="${esc(img.imageData)}" alt="${esc(img.title || "TKB")}" data-zoom="1" />
+                  <div style="display:flex; justify-content:space-between; align-items:center; gap:6px; margin-top:6px;">
+                    <span style="font-size:11.5px; font-weight:700; color:#334155; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${esc(img.title || "Ảnh TKB")}</span>
+                    <button type="button" class="ynwa-ptbl-btn ynwa-ptbl-btn-danger" style="padding:3px 7px; font-size:11px;" data-del-img="${esc(img.id)}">Xóa</button>
+                  </div>
+                </div>
+              `).join("")}
+            </div>
+          `;
+
+          imgStrip.querySelectorAll("[data-zoom]").forEach(imgEl => {
+            imgEl.addEventListener("click", () => {
+              document.getElementById("ynwa-ptbl-lightbox-img").src = imgEl.src;
+              document.getElementById("ynwa-ptbl-lightbox").classList.add("open");
+            });
+          });
+          imgStrip.querySelectorAll("[data-del-img]").forEach(btn => {
+            btn.addEventListener("click", async () => {
+              if (!confirm("Xóa ảnh TKB riêng này?")) return;
+              await deleteDoc(doc(db, "artifacts", appId, "users", currentUser.uid, "private_schedules", btn.getAttribute("data-del-img")));
+              notify("Đã xóa ảnh TKB riêng.", "🗑️");
+            });
+          });
+        }
+      }
     }
 
-    // Kết nối Firebase — chỉ đăng ký lắng nghe đúng UID của người đang đăng nhập
     function boot() {
       if (!getApps().length) return false;
       const app = getApp();
       auth = getAuth(app);
       db = getFirestore(app);
 
-      mountPrivateScheduleBox();
+      mountPrivateTable();
 
       onAuthStateChanged(auth, (user) => {
-        if (unsubSchedules) {
-          unsubSchedules();
-          unsubSchedules = null;
-        }
+        if (unsub) { unsub(); unsub = null; }
         currentUser = user || null;
-        mySchedules = [];
+        rows = [...DEFAULT_ROWS];
+        cellMap.clear();
+        uploadedImages = [];
 
-        mountPrivateScheduleBox();
+        mountPrivateTable();
+        if (!user) { renderTable(); return; }
 
-        if (!user) {
-          renderPrivateSchedules();
-          return;
-        }
+        const colRef = collection(db, "artifacts", appId, "users", user.uid, "private_schedules");
+        unsub = onSnapshot(colRef, (snap) => {
+          let customRows = null;
+          const nextMap = new Map();
+          const nextImgs = [];
 
-        const q = query(
-          collection(db, "artifacts", appId, "users", user.uid, "private_schedules"),
-          orderBy("createdAt", "desc")
-        );
-
-        unsubSchedules = onSnapshot(q, (snap) => {
-          mySchedules = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-          renderPrivateSchedules();
-        }, () => {
-          // Dự phòng nếu chưa có index cho createdAt
-          unsubSchedules = onSnapshot(
-            collection(db, "artifacts", appId, "users", user.uid, "private_schedules"),
-            (snap) => {
-              mySchedules = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-              renderPrivateSchedules();
+          snap.docs.forEach(d => {
+            const data = { id: d.id, ...d.data() };
+            if (d.id === "_rows_config" && Array.isArray(data.rows) && data.rows.length) {
+              customRows = data.rows;
+            } else if (data.type === "table_cell" && data.rowId && data.dayKey) {
+              nextMap.set(`${data.rowId}__${data.dayKey}`, data);
+            } else if (data.type === "image" || data.imageData) {
+              nextImgs.push(data);
             }
-          );
+          });
+
+          rows = customRows || [...DEFAULT_ROWS];
+          cellMap = nextMap;
+          uploadedImages = nextImgs;
+          renderTable();
         });
       });
 
       return true;
     }
 
-    const timer = setInterval(() => {
-      if (boot()) clearInterval(timer);
+    const t = setInterval(() => {
+      if (boot()) clearInterval(t);
     }, 500);
   })();
 </script>
+  
 </body></html>
