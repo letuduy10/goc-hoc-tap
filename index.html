@@ -9492,12 +9492,12 @@ service cloud.firestore {
     setInterval(mountTrophyHallTab, 1200);
   })();
 </script>
-  <!-- =====================================================================
-     TÍNH & HIỂN THỊ PHÚT TÍCH LŨY TỔNG TOÀN BỘ THỜI GIAN + GIỜ HỌC TUẦN
+<!-- =====================================================================
+     TÁCH BẠCH: BÊN TRÁI ALL-TIME TÍCH LŨY | BÊN PHẢI RESET THEO TỪNG TUẦN
      ===================================================================== -->
 <script>
   (function () {
-    let hasSyncedFirestoreAllTime = false;
+    let hasPulledFirestoreAllTime = false;
 
     function normalizeUserSlug(str) {
       return String(str || '')
@@ -9505,7 +9505,7 @@ service cloud.firestore {
         .toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '') || 'member';
     }
 
-    // Tính mã tuần hiện tại (Thứ 2 -> Chủ Nhật)
+    // Tính tuần hiện tại theo chuẩn ISO (Thứ 2 -> Chủ Nhật)
     function getCurrentIsoWeek() {
       const now = new Date();
       const d = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
@@ -9556,49 +9556,34 @@ service cloud.firestore {
       };
     }
 
-    // Định dạng tổng phút tích lũy toàn bộ thời gian (kèm quy đổi giờ nếu >= 60 phút)
-    function formatAllTimeMinutesText(totalMins) {
-      const mins = Math.max(0, Math.floor(Number(totalMins) || 0));
-      if (mins < 60) {
-        return `Tổng: ${mins} phút tích lũy`;
-      }
-      const h = Math.floor(mins / 60);
-      const m = mins % 60;
-      return `Tổng: ${mins.toLocaleString('vi-VN')} phút tích lũy (${h}g ${m}p)`;
-    }
-
-    // Định dạng giờ học trong tuần
-    function formatWeeklyHoursText(weeklyMins, weekNo) {
-      const mins = Math.max(0, Math.floor(Number(weeklyMins) || 0));
-      const h = Math.floor(mins / 60);
-      const m = mins % 60;
-      return `Tuần này (T${weekNo}): ${h}g ${m}p`;
-    }
-
-    // Đồng bộ tổng phút tích lũy toàn bộ thời gian lên Firestore (nếu đăng nhập)
-    async function syncAllTimeWithFirestore(localKey, currentAllTime) {
+    // Đồng bộ tổng phút All-time với Firestore (nếu đăng nhập)
+    async function syncAllTimeLedgerWithFirestore(ledgerKey, currentAllTime) {
       try {
         if (!window.firebase || !firebase.auth || !firebase.firestore) return;
         const fbUser = firebase.auth().currentUser;
         if (!fbUser) return;
 
         const userRef = firebase.firestore().collection('users').doc(fbUser.uid);
-        if (!hasSyncedFirestoreAllTime) {
-          hasSyncedFirestoreAllTime = true;
+        if (!hasPulledFirestoreAllTime) {
+          hasPulledFirestoreAllTime = true;
           const snap = await userRef.get();
           if (snap.exists) {
             const remoteAllTime = Number(snap.data().allTimePomodoroMinutes || snap.data().totalMinutes || 0);
             if (remoteAllTime > currentAllTime) {
-              localStorage.setItem(localKey, String(remoteAllTime));
+              const raw = localStorage.getItem(ledgerKey);
+              if (raw) {
+                const ledger = JSON.parse(raw);
+                ledger.baseOffset = Number(ledger.baseOffset || 0) + (remoteAllTime - currentAllTime);
+                localStorage.setItem(ledgerKey, JSON.stringify(ledger));
+              }
             }
           }
         }
-        const latestVal = Number(localStorage.getItem(localKey) || currentAllTime);
-        await userRef.set({ allTimePomodoroMinutes: latestVal }, { merge: true });
+        await userRef.set({ allTimePomodoroMinutes: currentAllTime }, { merge: true });
       } catch (e) {}
     }
 
-    function syncAllTimeAndWeeklyHeaderStats() {
+    function updateAllTimeAndWeeklyBadges() {
       const logoutBtn = Array.from(document.querySelectorAll('button')).find(
         b => b.textContent && b.textContent.trim() === 'Thoát'
       );
@@ -9606,7 +9591,7 @@ service cloud.firestore {
 
       const headerPill = logoutBtn.parentElement;
 
-      // Tìm đúng dòng hiển thị dưới tên tài khoản
+      // Tìm dòng chứa "phút tích lũy" ở dưới tên tài khoản
       const badgeRowEl = Array.from(headerPill.querySelectorAll('div, span, p')).find(el => {
         const txt = (el.textContent || '').trim();
         return /phút tích lũy/i.test(txt) && !txt.includes('Thoát') && txt.length < 120;
@@ -9617,32 +9602,32 @@ service cloud.firestore {
       const weekInfo = getCurrentIsoWeek();
 
       const weeklyRankKey = 'ynwa_weekly_rank_v2_' + me.uid;
-      const allTimeKey = 'ynwa_alltime_pomo_mins_' + me.uid;
+      const ledgerKey = 'ynwa_pomo_alltime_ledger_v1_' + me.uid;
       const diligentBoardKey = 'ynwa_diligent_total_mins_' + me.uid;
-      const weekSyncedCursorKey = `ynwa_alltime_cursor_${me.uid}_${weekInfo.weekKey}`;
-      const nativeBaseKey = `ynwa_native_base_${me.uid}`;
 
       // 1. Đọc số phút gốc nếu hệ thống tự cộng thêm khi kết thúc phiên
-      let nativeTotalMins = 0;
+      let nativeMins = 0;
       if (!badgeRowEl.querySelector('#ynwa-header-alltime-pomo')) {
-        const rawTxt = (badgeRowEl.textContent || '').trim();
-        nativeTotalMins = parseInt((rawTxt.match(/(\d+)\s*phút tích lũy/i) || ['0', '0'])[1], 10) || 0;
-      } else {
-        nativeTotalMins = Number(localStorage.getItem(nativeBaseKey) || 0);
+        const clone = badgeRowEl.cloneNode(true);
+        const oldWeekly = clone.querySelector('#ynwa-header-weekly-pomo');
+        if (oldWeekly) oldWeekly.remove();
+        const m = (clone.textContent || '').match(/(\d[\d.,]*)\s*phút tích lũy/i);
+        if (m && m[1]) nativeMins = parseInt(m[1].replace(/[.,]/g, ''), 10) || 0;
       }
 
-      // 2. Đọc dữ liệu tuần hiện tại
-      let rec = null;
+      // 2. Đọc dữ liệu tuần hiện tại (tự động reset về 0 nếu đã bước sang tuần mới)
+      let rankRec = null;
       try {
         const raw = localStorage.getItem(weeklyRankKey);
-        if (raw) rec = JSON.parse(raw);
+        if (raw) rankRec = JSON.parse(raw);
       } catch (e) {}
 
       let weeklyMins = 0;
-      if (rec && rec.weekKey === weekInfo.weekKey) {
-        weeklyMins = Math.max(0, Number(rec.pomodoroMinutes || 0));
+      if (rankRec && rankRec.weekKey === weekInfo.weekKey) {
+        weeklyMins = Math.max(0, Number(rankRec.pomodoroMinutes || 0));
       } else {
-        rec = {
+        // Qua tuần mới -> reset số phút tuần này về 0
+        rankRec = {
           uid: me.uid,
           name: me.name,
           weekKey: weekInfo.weekKey,
@@ -9651,83 +9636,96 @@ service cloud.firestore {
           completedQuests: [],
           claimedQuests: [],
           adminBonusPoints: 0,
-          trophiesCount: rec ? Number(rec.trophiesCount || 0) : 0,
-          trophyWeeks: rec && Array.isArray(rec.trophyWeeks) ? rec.trophyWeeks : [],
+          trophiesCount: rankRec ? Number(rankRec.trophiesCount || 0) : 0,
+          trophyWeeks: rankRec && Array.isArray(rankRec.trophyWeeks) ? rankRec.trophyWeeks : [],
           lastAdminNote: '',
           updatedAt: Date.now()
         };
-        localStorage.setItem(weeklyRankKey, JSON.stringify(rec));
+        localStorage.setItem(weeklyRankKey, JSON.stringify(rankRec));
       }
 
-      // 3. Tính Tổng Phút Tích Lũy Toàn Bộ Thời Gian (cộng dồn mọi phút học, không reset khi sang tuần mới)
-      const existingDiligent = Number(localStorage.getItem(diligentBoardKey) || 0);
-      let allTimeMins = localStorage.getItem(allTimeKey) !== null
-        ? Math.max(0, Number(localStorage.getItem(allTimeKey) || 0))
-        : Math.max(nativeTotalMins, weeklyMins, existingDiligent);
+      // 3. Sổ cái All-Time lưu trữ vĩnh viễn từng tuần (không bao giờ mất khi sang tuần mới)
+      let ledger = null;
+      try {
+        const rawLedger = localStorage.getItem(ledgerKey);
+        if (rawLedger) ledger = JSON.parse(rawLedger);
+      } catch (e) {}
 
-      const savedCursor = localStorage.getItem(weekSyncedCursorKey);
-      if (savedCursor === null) {
-        // Khởi tạo mốc đối chiếu cho tuần hiện tại
-        localStorage.setItem(weekSyncedCursorKey, String(weeklyMins));
-        allTimeMins = Math.max(allTimeMins, weeklyMins, nativeTotalMins, existingDiligent);
-      } else {
-        const prevWeeklyMins = Number(savedCursor) || 0;
-        if (weeklyMins !== prevWeeklyMins) {
-          const delta = weeklyMins - prevWeeklyMins;
-          allTimeMins = Math.max(0, allTimeMins + delta);
-          localStorage.setItem(weekSyncedCursorKey, String(weeklyMins));
-        }
+      if (!ledger || typeof ledger !== 'object') {
+        const legacyAllTime = Math.max(
+          nativeMins,
+          weeklyMins,
+          Number(localStorage.getItem('ynwa_alltime_pomo_mins_' + me.uid) || 0),
+          Number(localStorage.getItem(diligentBoardKey) || 0)
+        );
+        ledger = {
+          baseOffset: Math.max(0, legacyAllTime - weeklyMins),
+          weeks: {}
+        };
+      }
+      if (!ledger.weeks || typeof ledger.weeks !== 'object') ledger.weeks = {};
+
+      // Cập nhật số phút của riêng tuần hiện tại vào sổ cái
+      ledger.weeks[weekInfo.weekKey] = weeklyMins;
+
+      // Tổng All-Time = phần tích lũy nền + tổng phút của TẤT CẢ các tuần đã lưu
+      const sumAllWeeks = Object.values(ledger.weeks).reduce((acc, val) => acc + Math.max(0, Number(val || 0)), 0);
+      let allTimeMins = Math.max(0, Number(ledger.baseOffset || 0)) + sumAllWeeks;
+
+      // Nếu hệ thống gốc vừa cộng thêm phút mới trực tiếp ngoài đồng hồ -> bù vào baseOffset
+      if (nativeMins > allTimeMins) {
+        ledger.baseOffset = Number(ledger.baseOffset || 0) + (nativeMins - allTimeMins);
+        allTimeMins = nativeMins;
       }
 
-      // Đảm bảo tổng toàn bộ thời gian không bao giờ nhỏ hơn số phút của riêng tuần này
-      if (allTimeMins < weeklyMins) {
-        allTimeMins = weeklyMins;
-      }
-
-      localStorage.setItem(allTimeKey, String(allTimeMins));
+      localStorage.setItem(ledgerKey, JSON.stringify(ledger));
       localStorage.setItem(diligentBoardKey, String(allTimeMins));
-      localStorage.setItem(nativeBaseKey, String(nativeTotalMins));
 
-      // 4. Hiển thị song song dưới tên tài khoản: Tổng tích lũy toàn bộ thời gian + Giờ học tuần này
+      // 4. Hiển thị đúng bố cục: Bên trái All-Time | Bên phải Tuần này (reset mỗi tuần)
       badgeRowEl.style.display = 'flex';
       badgeRowEl.style.flexWrap = 'wrap';
       badgeRowEl.style.alignItems = 'center';
       badgeRowEl.style.gap = '2px 8px';
 
-      let allTimeSpan = badgeRowEl.querySelector('#ynwa-header-alltime-pomo');
-      let weeklySpan = badgeRowEl.querySelector('#ynwa-header-weekly-pomo');
+      let leftAllTimeEl = badgeRowEl.querySelector('#ynwa-header-alltime-pomo');
+      let rightWeeklyEl = badgeRowEl.querySelector('#ynwa-header-weekly-pomo');
 
-      if (!allTimeSpan || !weeklySpan) {
+      if (!leftAllTimeEl || !rightWeeklyEl) {
         badgeRowEl.innerHTML = '';
 
-        allTimeSpan = document.createElement('span');
-        allTimeSpan.id = 'ynwa-header-alltime-pomo';
-        allTimeSpan.className = 'inline-flex items-center gap-1 font-bold';
-        allTimeSpan.style.color = 'var(--primary)';
+        leftAllTimeEl = document.createElement('span');
+        leftAllTimeEl.id = 'ynwa-header-alltime-pomo';
+        leftAllTimeEl.className = 'inline-flex items-center gap-1 font-bold';
+        leftAllTimeEl.style.color = '#2563EB';
 
-        weeklySpan = document.createElement('span');
-        weeklySpan.id = 'ynwa-header-weekly-pomo';
-        weeklySpan.className = 'inline-flex items-center gap-1 pl-2 border-l font-extrabold text-amber-700';
-        weeklySpan.style.borderColor = 'var(--border-soft)';
+        rightWeeklyEl = document.createElement('span');
+        rightWeeklyEl.id = 'ynwa-header-weekly-pomo';
+        rightWeeklyEl.className = 'inline-flex items-center gap-1 pl-2 border-l font-extrabold';
+        rightWeeklyEl.style.borderColor = 'var(--border-soft)';
+        rightWeeklyEl.style.color = '#B45309';
 
-        badgeRowEl.appendChild(allTimeSpan);
-        badgeRowEl.appendChild(weeklySpan);
+        badgeRowEl.appendChild(leftAllTimeEl);
+        badgeRowEl.appendChild(rightWeeklyEl);
       }
 
-      const allTimeText = `⏱️ ${formatAllTimeMinutesText(allTimeMins)}`;
-      const weeklyText = `📅 ${formatWeeklyHoursText(weeklyMins, weekInfo.weekNo)}`;
+      const wHours = Math.floor(weeklyMins / 60);
+      const wMins = weeklyMins % 60;
+      const allHours = Math.floor(allTimeMins / 60);
+      const allRemMins = allTimeMins % 60;
 
-      allTimeSpan.title = `Tổng thời gian bấm giờ Pomodoro tích lũy từ trước đến nay (${allTimeMins} phút)`;
-      weeklySpan.title = `Thời gian học Pomodoro trong ${weekInfo.label} (${weeklyMins} phút) • Tự động đặt lại vào Thứ 2`;
+      const leftLabel = `⏱️ ${allTimeMins.toLocaleString('vi-VN')} phút tích lũy`;
+      const rightLabel = `📅 ${wHours}g ${wMins}p tuần này (T${weekInfo.weekNo})`;
 
-      if (allTimeSpan.textContent !== allTimeText) allTimeSpan.textContent = allTimeText;
-      if (weeklySpan.textContent !== weeklyText) weeklySpan.textContent = weeklyText;
+      leftAllTimeEl.title = `Tổng thời gian học toàn bộ thời gian (All-time): ${allTimeMins.toLocaleString('vi-VN')} phút (${allHours} giờ ${allRemMins} phút) • Không reset khi sang tuần mới`;
+      rightWeeklyEl.title = `Thời gian học riêng trong ${weekInfo.label}: ${weeklyMins} phút • Tự động đặt lại về 0g 0p vào Thứ 2 tuần sau`;
 
-      syncAllTimeWithFirestore(allTimeKey, allTimeMins);
+      if (leftAllTimeEl.textContent !== leftLabel) leftAllTimeEl.textContent = leftLabel;
+      if (rightWeeklyEl.textContent !== rightLabel) rightWeeklyEl.textContent = rightLabel;
+
+      syncAllTimeLedgerWithFirestore(ledgerKey, allTimeMins);
     }
 
-    setInterval(syncAllTimeAndWeeklyHeaderStats, 1000);
+    setInterval(updateAllTimeAndWeeklyBadges, 1000);
   })();
 </script>
-  
 </body></html>
