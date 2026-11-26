@@ -13458,4 +13458,72 @@ service cloud.firestore {
     setTimeout(unifyMenuColors, 1000);
   })();
 </script>
+  <!-- =====================================================================
+     PHÓNG TO VÒNG TRÒN ĐỒNG HỒ POMODORO
+     (Dán ngay trước thẻ </body> trong file index (2).html)
+     ===================================================================== -->
+<style>
+  .ynwa-pomo-circle-big {
+    width: 305px !important;
+    height: 305px !important;
+    max-width: 82vw !important;
+    max-height: 82vw !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+  }
+  .ynwa-pomo-circle-big > svg,
+  .ynwa-pomo-circle-big svg {
+    width: 100% !important;
+    height: 100% !important;
+  }
+</style>
+
+<script>
+  (function () {
+    function enlargePomodoroCircle() {
+      const focusRoot = document.getElementById("panel-focus") || document.body;
+
+      // Tìm phần tử hiển thị đồng hồ đếm ngược (VD: 25:00)
+      const candidates = Array.from(focusRoot.querySelectorAll("div, span, p, h1, h2"));
+      const timeEl = candidates.find((el) => {
+        if (el.children.length > 0) return false;
+        return /^\d{1,2}:\d{2}$/.test((el.textContent || "").trim());
+      });
+
+      if (!timeEl) return;
+
+      // Leo ngược lên tìm khung tròn (chứa SVG hoặc có class rounded-full) bao quanh đồng hồ
+      let cur = timeEl.parentElement;
+      let circleBox = null;
+      for (let i = 0; i < 5 && cur && cur !== focusRoot; i++) {
+        const hasSvg = cur.querySelector("svg");
+        const isRound =
+          cur.classList.contains("rounded-full") ||
+          getComputedStyle(cur).borderRadius === "9999px";
+
+        if (hasSvg || isRound) {
+          circleBox = cur;
+          break;
+        }
+        cur = cur.parentElement;
+      }
+
+      if (!circleBox) return;
+
+      // Đảm bảo SVG giữ đúng tâm khi phóng to nếu chưa có thuộc tính viewBox
+      const svg = circleBox.querySelector("svg");
+      if (svg && !svg.getAttribute("viewBox")) {
+        const w = parseFloat(svg.getAttribute("width")) || svg.clientWidth || 220;
+        const h = parseFloat(svg.getAttribute("height")) || svg.clientHeight || 220;
+        svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
+      }
+
+      circleBox.classList.add("ynwa-pomo-circle-big");
+    }
+
+    enlargePomodoroCircle();
+    setTimeout(enlargePomodoroCircle, 300);
+    setTimeout(enlargePomodoroCircle, 1000);
+  })();
+</script>
 </body></html>
