@@ -6661,4 +6661,478 @@ service cloud.firestore {
     }, 1200);
   })();
 </script>
+  <!-- =====================================================================
+     TÍNH NĂNG BẤM GIỜ POMODORO TỰ ĐỘNG TÍNH ĐIỂM VÀO BẢNG XẾP HẠNG
+     ===================================================================== -->
+<style>
+  @keyframes ynwaPomoPulse {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.25); opacity: 0.65; }
+  }
+  .ynwa-pomo-dot-active {
+    animation: ynwaPomoPulse 1.2s ease-in-out infinite;
+  }
+  @keyframes ynwaToastSlide {
+    0% { opacity: 0; transform: translateY(14px); }
+    12% { opacity: 1; transform: translateY(0); }
+    88% { opacity: 1; transform: translateY(0); }
+    100% { opacity: 0; transform: translateY(-8px); }
+  }
+  .ynwa-pomo-toast {
+    animation: ynwaToastSlide 3.4s ease forwards;
+  }
+</style>
+
+<script>
+  (function () {
+    const PTS_PER_POMO_MIN = 2;       // 1 phút bấm giờ Pomodoro = 2 Điểm BXH
+    const COINS_PER_POMO_MIN = 10;    // 1 phút bấm giờ Pomodoro = 10 Xu Cá
+    const SESSION_FINISH_BONUS = 10;  // Thưởng thêm +10 điểm khi hoàn thành trọn phiên (chạm 00:00)
+
+    const QUEST_THRESHOLDS = [
+      { id: 'wq_pomo_60', type: 'minutes', target: 60 },
+      { id: 'wq_pomo_180', type: 'minutes', target: 180 },
+      { id: 'wq_pomo_420', type: 'minutes', target: 420 },
+      { id: 'wq_pomo_900', type: 'minutes', target: 900 },
+      { id: 'wq_days_3', type: 'days', target: 3 },
+      { id: 'wq_days_5', type: 'days', target: 5 }
+    ];
+
+    // Trạng thái theo dõi bộ đếm đồng hồ Pomodoro theo thời gian thực
+    let prevTimerSeconds = null;
+    let prevCheckTimestamp = Date.now();
+    let isPomoRunning = false;
+    let unbankedSeconds = 0;       // Số giây lẻ đang tích lũy (đủ 60s -> +1 phút & +2 điểm)
+    let currentSessionMinutes = 0; // Số phút đã học trong phiên hiện tại
+    let sessionLogs = [];          // Lịch sử các phiên bấm giờ Pomodoro
+
+    function getCurrentWeekKey() {
+      const now = new Date();
+      const d = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
+      const dayNum = d.getUTCDay() || 7;
+      d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+      const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+      const weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+      return `${d.getUTCFullYear()}-W${String(weekNo).padStart(2, '0')}`;
+    }
+
+    function getTodayKey() {
+      const now = new Date();
+      return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    }
+
+    function getUserInfo() {
+      try {
+        if (window.firebase && firebase.auth && firebase.auth().currentUser) {
+          const u = firebase.auth().currentUser;
+          return {
+            uid: u.uid,
+            name: u.displayName || (u.email ? u.email.split('@')[0] : 'Thành viên'),
+            email: u.email || '',
+            isFirebase: true
+          };
+        }
+      } catch (e) {}
+      const guest = localStorage.getItem('study_guest_name') || localStorage.getItem('guestName') || 'Bạn';
+      return {
+        uid: 'guest_' + guest.trim().toLowerCase(),
+        name: guest.trim() || 'Bạn',
+        email: '',
+        isFirebase: false
+      };
+    }
+
+    function loadSessionLogs(uid) {
+      try {
+        const raw = localStorage.getItem('ynwa_pomo_logs_' + uid);
+        const parsed = raw ? JSON.parse(raw) : [];
+        const wk = getCurrentWeekKey();
+        sessionLogs = Array.isArray(parsed) ? parsed.filter(item => item.weekKey === wk) : [];
+      } catch (e) {
+        sessionLogs = [];
+      }
+    }
+
+    function saveSessionLogEntry(uid, minutesAdded, pointsAdded, isBonus) {
+      const now = new Date();
+      const timeLabel = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')} (${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')})`;
+      const wk = getCurrentWeekKey();
+
+      // Gộp vào phiên gần nhất nếu cùng phiên đang chạy (không phải bonus kết thúc phiên)
+      if (!isBonus && sessionLogs.length > 0 && sessionLogs[0].active) {
+        sessionLogs[0].minutes += minutesAdded;
+        sessionLogs[0].points += pointsAdded;
+        sessionLogs[0].timeLabel = timeLabel;
+      } else {
+        sessionLogs.unshift({
+          id: Date.now(),
+          weekKey: wk,
+          timeLabel: timeLabel,
+          minutes: minutesAdded,
+          points: pointsAdded,
+          isBonus: Boolean(isBonus),
+          active: !isBonus
+        });
+      }
+      sessionLogs = sessionLogs.slice(0, 20);
+      localStorage.setItem('ynwa_pomo_logs_' + uid, JSON.stringify(sessionLogs));
+    }
+
+    function markCurrentSessionClosed(uid) {
+      if (sessionLogs.length > 0 && sessionLogs[0].active) {
+        sessionLogs[0].active = false;
+        localStorage.setItem('ynwa_pomo_logs_' + uid, JSON.stringify(sessionLogs));
+      }
+    }
+
+    function showPomoPointToast(message) {
+      let container = document.getElementById('ynwa-pomo-toast-box');
+      if (!container) {
+        container = document.createElement('div');
+        container.id = 'ynwa-pomo-toast-box';
+        container.className = 'fixed bottom-4 right-4 z-50 flex flex-col gap-2 pointer-events-none';
+        document.body.appendChild(container);
+      }
+      const toast = document.createElement('div');
+      toast.className = 'ynwa-pomo-toast px-4 py-2.5 rounded-2xl bg-white border shadow-md text-xs font-extrabold flex items-center gap-2';
+      toast.style.borderColor = 'var(--primary-light)';
+      toast.style.color = 'var(--primary)';
+      toast.innerHTML = `<span>⏱️</span><span>${message}</span>`;
+      container.appendChild(toast);
+      setTimeout(() => toast.remove(), 3500);
+    }
+
+    // Cộng phút học & điểm Pomodoro trực tiếp vào Bảng Xếp Hạng Tuần + Ví Xu Cá
+    async function awardPomodoroLeaderboardPoints(minutesToAdd, bonusPointsToAdd, reasonText) {
+      if (minutesToAdd <= 0 && bonusPointsToAdd <= 0) return;
+      const user = getUserInfo();
+      const wk = getCurrentWeekKey();
+      const today = getTodayKey();
+      const storageKey = 'ynwa_weekly_rank_v1_' + user.uid;
+
+      let rec = null;
+      try {
+        const saved = localStorage.getItem(storageKey);
+        if (saved) rec = JSON.parse(saved);
+      } catch (e) {}
+
+      if (!rec || rec.weekKey !== wk) {
+        rec = {
+          uid: user.uid,
+          name: user.name,
+          email: user.email,
+          weekKey: wk,
+          pomodoroMinutes: 0,
+          activeDays: [],
+          completedQuests: [],
+          claimedQuests: [],
+          adminBonusPoints: 0,
+          trophiesCount: rec ? Number(rec.trophiesCount || 0) : 0,
+          trophyWeeks: rec && Array.isArray(rec.trophyWeeks) ? rec.trophyWeeks : [],
+          lastAdminNote: '',
+          updatedAt: Date.now()
+        };
+      }
+
+      rec.name = user.name;
+      rec.pomodoroMinutes = Number(rec.pomodoroMinutes || 0) + minutesToAdd;
+      rec.adminBonusPoints = Number(rec.adminBonusPoints || 0) + bonusPointsToAdd;
+
+      if (!Array.isArray(rec.activeDays)) rec.activeDays = [];
+      if (minutesToAdd > 0 && !rec.activeDays.includes(today)) {
+        rec.activeDays.push(today);
+      }
+
+      // Tự động kiểm tra hoàn thành các Nhiệm Vụ Hàng Tuần
+      if (!Array.isArray(rec.completedQuests)) rec.completedQuests = [];
+      QUEST_THRESHOLDS.forEach(q => {
+        if (rec.completedQuests.includes(q.id)) return;
+        const curVal = q.type === 'minutes' ? rec.pomodoroMinutes : rec.activeDays.length;
+        if (curVal >= q.target) {
+          rec.completedQuests.push(q.id);
+        }
+      });
+
+      rec.updatedAt = Date.now();
+      localStorage.setItem(storageKey, JSON.stringify(rec));
+
+      // Đồng bộ lên Firestore để toàn bộ thành viên thấy điểm tăng ngay trên BXH
+      try {
+        if (window.firebase && firebase.firestore && user.isFirebase) {
+          const lbRef = firebase.firestore().collection('weekly_leaderboard').doc(user.uid);
+          const snap = await lbRef.get();
+          if (snap.exists && snap.data().weekKey === wk) {
+            const remote = snap.data();
+            const mergedMinutes = Math.max(rec.pomodoroMinutes, Number(remote.pomodoroMinutes || 0) + minutesToAdd);
+            const mergedBonus = Math.max(rec.adminBonusPoints, Number(remote.adminBonusPoints || 0) + bonusPointsToAdd);
+            const mergedDays = Array.from(new Set([...(remote.activeDays || []), ...rec.activeDays]));
+            const mergedQuests = Array.from(new Set([...(remote.completedQuests || []), ...rec.completedQuests]));
+
+            rec.pomodoroMinutes = mergedMinutes;
+            rec.adminBonusPoints = mergedBonus;
+            rec.activeDays = mergedDays;
+            rec.completedQuests = mergedQuests;
+            localStorage.setItem(storageKey, JSON.stringify(rec));
+          }
+          await lbRef.set(rec, { merge: true });
+        }
+      } catch (e) {}
+
+      // Thưởng kèm Xu Cá cho mèo nếu có
+      if (minutesToAdd > 0) {
+        const coinsEarned = minutesToAdd * COINS_PER_POMO_MIN;
+        try {
+          const catKey = 'ynwa_talking_cat_v2_' + (user.uid.startsWith('guest_') ? user.uid : 'uid_' + user.uid);
+          const rawCat = localStorage.getItem(catKey);
+          if (rawCat) {
+            const catObj = JSON.parse(rawCat);
+            catObj.bonusCoins = Number(catObj.bonusCoins || 0) + coinsEarned;
+            localStorage.setItem(catKey, JSON.stringify(catObj));
+          }
+          if (window.firebase && firebase.firestore && user.isFirebase) {
+            const catRef = firebase.firestore().collection('cat_pets_v2').doc(user.uid);
+            const catSnap = await catRef.get();
+            const curBonus = catSnap.exists ? Number(catSnap.data().bonusCoins || 0) : 0;
+            await catRef.set({ bonusCoins: curBonus + coinsEarned }, { merge: true });
+          }
+        } catch (e) {}
+      }
+
+      const totalNewPts = minutesToAdd * PTS_PER_POMO_MIN + bonusPointsToAdd;
+      saveSessionLogEntry(user.uid, minutesToAdd, totalNewPts, bonusPointsToAdd > 0);
+      showPomoPointToast(reasonText || `+${minutesToAdd} phút Pomodoro → +${totalNewPts} điểm BXH!`);
+      renderPomoTrackerBanner();
+    }
+
+    // Tìm bộ đếm đồng hồ Pomodoro MM:SS đang hiển thị trên giao diện
+    function detectPomodoroClockSeconds() {
+      const candidates = Array.from(document.querySelectorAll('div, span, p, h1, h2, h3'));
+      let bestSeconds = null;
+      let bestScore = -1;
+
+      for (let i = 0; i < candidates.length; i++) {
+        const el = candidates[i];
+        if (el.children.length > 0) continue;
+        const txt = (el.textContent || '').trim();
+        // Khớp định dạng MM:SS (ví dụ 25:00, 24:59, 04:30)
+        const m = txt.match(/^(\d{1,3}):([0-5]\d)$/);
+        if (!m) continue;
+
+        const mins = parseInt(m[1], 10);
+        const secs = parseInt(m[2], 10);
+        if (mins > 180) continue; // Loại bỏ đồng hồ giờ trong ngày nếu có
+
+        const totalSec = mins * 60 + secs;
+        // Ưu tiên thẻ có chữ to (đồng hồ chính của Pomodoro)
+        const fontSize = parseFloat(window.getComputedStyle(el).fontSize || '14');
+        if (fontSize > bestScore) {
+          bestScore = fontSize;
+          bestSeconds = totalSec;
+        }
+      }
+      return bestSeconds;
+    }
+
+    // Vòng lặp kiểm tra đồng hồ Pomodoro mỗi 1 giây
+    function tickPomodoroWatcher() {
+      const now = Date.now();
+      const elapsedWallSec = Math.max(1, Math.round((now - prevCheckTimestamp) / 1000));
+      prevCheckTimestamp = now;
+
+      const curSec = detectPomodoroClockSeconds();
+      if (curSec === null) {
+        isPomoRunning = false;
+        renderPomoTrackerBanner();
+        return;
+      }
+
+      if (prevTimerSeconds !== null) {
+        const diff = prevTimerSeconds - curSec; // Dương nếu đang đếm ngược (25:00 -> 24:59)
+
+        // 1. Đồng hồ Pomodoro đang chạy đếm ngược từng giây
+        if (diff > 0 && diff <= elapsedWallSec + 2) {
+          isPomoRunning = true;
+          unbankedSeconds += diff;
+
+          // Đủ mỗi 60 giây học thực tế -> cộng +1 phút & +2 điểm vào BXH
+          if (unbankedSeconds >= 60) {
+            const wholeMinutes = Math.floor(unbankedSeconds / 60);
+            unbankedSeconds = unbankedSeconds % 60;
+            currentSessionMinutes += wholeMinutes;
+            const pts = wholeMinutes * PTS_PER_POMO_MIN;
+            awardPomodoroLeaderboardPoints(
+              wholeMinutes,
+              0,
+              `+${wholeMinutes}p Pomodoro → +${pts} điểm Bảng Xếp Hạng!`
+            );
+          }
+
+          // Nếu đồng hồ đếm ngược vừa chạm 00:00 -> hoàn thành trọn phiên Pomodoro!
+          if (curSec === 0 && prevTimerSeconds > 0) {
+            const user = getUserInfo();
+            markCurrentSessionClosed(user.uid);
+            awardPomodoroLeaderboardPoints(
+              0,
+              SESSION_FINISH_BONUS,
+              `🎉 Hoàn thành phiên Pomodoro! Thưởng +${SESSION_FINISH_BONUS} điểm BXH!`
+            );
+            currentSessionMinutes = 0;
+            unbankedSeconds = 0;
+            isPomoRunning = false;
+          }
+        }
+        // 2. Đồng hồ đếm xuôi (Stopwatch) nếu người dùng dùng chế độ đếm tăng
+        else if (diff < 0 && Math.abs(diff) <= elapsedWallSec + 2 && curSec < 10800) {
+          isPomoRunning = true;
+          unbankedSeconds += Math.abs(diff);
+          if (unbankedSeconds >= 60) {
+            const wholeMinutes = Math.floor(unbankedSeconds / 60);
+            unbankedSeconds = unbankedSeconds % 60;
+            currentSessionMinutes += wholeMinutes;
+            const pts = wholeMinutes * PTS_PER_POMO_MIN;
+            awardPomodoroLeaderboardPoints(
+              wholeMinutes,
+              0,
+              `+${wholeMinutes}p Bấm giờ → +${pts} điểm Bảng Xếp Hạng!`
+            );
+          }
+        }
+        // 3. Người dùng bấm Tạm dừng (Pause) hoặc Reset đồng hồ
+        else {
+          if (diff < -10) {
+            // Đã bấm Reset đồng hồ
+            const user = getUserInfo();
+            markCurrentSessionClosed(user.uid);
+            currentSessionMinutes = 0;
+            unbankedSeconds = 0;
+          }
+          isPomoRunning = false;
+        }
+      }
+
+      prevTimerSeconds = curSec;
+      renderPomoTrackerBanner();
+    }
+
+    // Khung hiển thị trạng thái Bấm Giờ Pomodoro -> Điểm BXH ngay trong tab Xếp Hạng
+    function renderPomoTrackerBanner() {
+      const rankPanel = document.getElementById('tab-weekly-rank');
+      if (!rankPanel) return;
+
+      let banner = document.getElementById('ynwa-pomo-live-rank-card');
+      if (!banner) {
+        banner = document.createElement('div');
+        banner.id = 'ynwa-pomo-live-rank-card';
+        banner.className = 'pastel-card rounded-3xl p-4 sm:p-5 bg-white border mb-5';
+        banner.style.borderColor = 'var(--border-soft)';
+        rankPanel.insertAdjacentElement('afterbegin', banner);
+      }
+
+      const user = getUserInfo();
+      if (sessionLogs.length === 0) loadSessionLogs(user.uid);
+
+      const totalWeekPomoPts = sessionLogs.reduce((s, item) => s + Number(item.points || 0), 0);
+
+      banner.innerHTML = `
+        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <div class="flex items-start gap-3">
+            <div class="w-11 h-11 rounded-2xl flex items-center justify-center text-xl shrink-0 border bg-white"
+              style="border-color: var(--border-soft);">
+              ⏱️
+            </div>
+            <div>
+              <div class="flex flex-wrap items-center gap-2">
+                <h3 class="text-sm sm:text-base font-extrabold" style="color: var(--primary);">
+                  Tích Điểm Bảng Xếp Hạng Từ Đồng Hồ Pomodoro
+                </h3>
+                ${isPomoRunning ? `
+                  <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-emerald-100 text-emerald-800">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500 ynwa-pomo-dot-active"></span>
+                    Đang bấm giờ (${unbankedSeconds}/60s)
+                  </span>
+                ` : `
+                  <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-gray-100 text-gray-600">
+                    ⏸️ Chờ bấm giờ Pomodoro
+                  </span>
+                `}
+              </div>
+              <p class="text-xs mt-1" style="color: var(--text-muted);">
+                Quy tắc tính điểm tự động: <strong style="color: var(--primary);">1 phút bấm giờ = +${PTS_PER_POMO_MIN} điểm BXH</strong> (+${COINS_PER_POMO_MIN} Xu Cá) • Hoàn thành trọn phiên (chạm 00:00) = <strong class="text-amber-700">+${SESSION_FINISH_BONUS} điểm thưởng</strong>.
+              </p>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-2.5 shrink-0">
+            <div class="px-3.5 py-2 rounded-2xl border text-xs font-bold"
+              style="background-color: var(--bg-soft); border-color: var(--border-soft);">
+              <span style="color: var(--text-muted);">Phiên hiện tại:</span>
+              <strong class="ml-1" style="color: var(--primary);">${currentSessionMinutes} phút (${unbankedSeconds}s)</strong>
+            </div>
+            <div class="px-3.5 py-2 rounded-2xl border text-xs font-bold"
+              style="background-color: var(--bg-soft); border-color: var(--border-soft);">
+              <span style="color: var(--text-muted);">Điểm ghi nhận:</span>
+              <strong class="ml-1 text-emerald-700">+${totalWeekPomoPts} đ</strong>
+            </div>
+          </div>
+        </div>
+
+        ${sessionLogs.length > 0 ? `
+          <div class="mt-3 pt-3 border-t flex flex-wrap items-center gap-2" style="border-color: var(--border-soft);">
+            <span class="text-[11px] font-extrabold" style="color: var(--text-muted);">🕒 Phiên Pomodoro gần đây:</span>
+            ${sessionLogs.slice(0, 5).map(log => `
+              <span class="px-2.5 py-1 rounded-xl text-[11px] font-bold border"
+                style="background-color: var(--bg-soft); border-color: var(--border-soft); color: var(--text-main);">
+                ${log.isBonus
+                  ? `🎉 Hoàn thành phiên (${log.timeLabel}): <strong class="text-amber-700">+${log.points}đ</strong>`
+                  : `⏱️ ${log.minutes} phút (${log.timeLabel}): <strong style="color: var(--primary);">+${log.points}đ</strong>`
+                }
+              </span>
+            `).join('')}
+          </div>
+        ` : ''}
+      `;
+    }
+
+    // Lắng nghe thêm dữ liệu phút học từ Firebase users/{uid} (nếu hệ thống gốc lưu sau khi kết thúc phiên)
+    function bindFirebaseUserMinutesWatcher() {
+      try {
+        if (!window.firebase || !firebase.auth || !firebase.firestore) return;
+        firebase.auth().onAuthStateChanged(user => {
+          if (!user) return;
+          loadSessionLogs(user.uid);
+          const baseKey = 'ynwa_fb_pomo_synced_' + user.uid;
+          firebase.firestore().collection('users').doc(user.uid).onSnapshot(doc => {
+            if (!doc.exists) return;
+            const d = doc.data() || {};
+            const fbTotalMins = Number(d.totalMinutes || d.studyMinutes || d.pomodoroMinutes || d.minutes || 0);
+            if (fbTotalMins <= 0) return;
+
+            const prevSynced = localStorage.getItem(baseKey);
+            if (prevSynced === null) {
+              localStorage.setItem(baseKey, String(fbTotalMins));
+              return;
+            }
+            const prevVal = parseInt(prevSynced, 10);
+            if (!isNaN(prevVal) && fbTotalMins > prevVal) {
+              const deltaMins = fbTotalMins - prevVal;
+              localStorage.setItem(baseKey, String(fbTotalMins));
+              // Chỉ bù phần chênh lệch nếu phiên vừa kết thúc chưa được cộng đủ từ đồng hồ trực tiếp
+              if (deltaMins > currentSessionMinutes) {
+                const extraMins = deltaMins - currentSessionMinutes;
+                awardPomodoroLeaderboardPoints(
+                  extraMins,
+                  0,
+                  `+${extraMins}p Pomodoro đã đồng bộ → +${extraMins * PTS_PER_POMO_MIN} điểm BXH!`
+                );
+              }
+            }
+          });
+        });
+      } catch (e) {}
+    }
+
+    bindFirebaseUserMinutesWatcher();
+    setInterval(tickPomodoroWatcher, 1000);
+  })();
+</script>
 </body></html>
