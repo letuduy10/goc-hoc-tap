@@ -8643,18 +8643,18 @@ service cloud.firestore {
     }
 
   <!-- =====================================================================
-     PHÒNG TRƯNG BÀY CÚP CÁC TUẦN & QUYỀN TRAO CÚP CHO ADMIN
+     PHÒNG TRƯNG BÀY CÚP HỌC TẬP — TRAO CÚP & CẬP NHẬT TUẦN / NGÀY (ADMIN)
      ===================================================================== -->
 <style>
-  @keyframes ynwaTrophyShine {
+  @keyframes ynwaTrophyFloat {
     0%, 100% { filter: drop-shadow(0 4px 10px rgba(245, 158, 11, 0.25)); transform: translateY(0px); }
-    50% { filter: drop-shadow(0 8px 16px rgba(245, 158, 11, 0.45)); transform: translateY(-3px); }
+    50% { filter: drop-shadow(0 8px 16px rgba(245, 158, 11, 0.48)); transform: translateY(-3px); }
   }
   .ynwa-trophy-float {
-    animation: ynwaTrophyShine 3.4s ease-in-out infinite;
+    animation: ynwaTrophyFloat 3.4s ease-in-out infinite;
   }
   .ynwa-glass-shelf {
-    background: linear-gradient(180deg, rgba(255,255,255,0.65) 0%, rgba(241,245,249,0.92) 100%);
+    background: linear-gradient(180deg, rgba(255,255,255,0.7) 0%, rgba(241,245,249,0.95) 100%);
     border-bottom: 5px solid #CBD5E1;
     box-shadow: 0 8px 16px -6px rgba(15, 23, 42, 0.08);
   }
@@ -8671,10 +8671,10 @@ service cloud.firestore {
 <script>
   (function () {
     let trophyFilterMember = 'ALL'; // 'ALL' hoặc tên thành viên
-    let trophySortOrder = 'DESC';   // 'DESC' (mới nhất) | 'ASC' (cũ nhất)
+    let trophySortOrder = 'DESC';   // 'DESC' (tuần mới nhất) | 'ASC' (tuần cũ nhất)
     let selectedPlaqueId = '';
-    let adminSelectedRecipient = '';
-    let adminAwardMode = 'current_week'; // 'current_week' | 'past_week' | 'special_cup'
+    let editingTrophyId = '';       // Lưu ID cúp đang chỉnh sửa (nếu có)
+    let hasPulledRemoteCups = false;
 
     function escapeHtmlHall(str) {
       return String(str || '')
@@ -8699,30 +8699,54 @@ service cloud.firestore {
       return `${h}g ${m}p`;
     }
 
-    function getCurrentWeekMeta() {
-      const now = new Date();
-      const d = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
+    // Chuyển YYYY-MM-DD sang DD/MM/YYYY
+    function formatIsoToVnDate(isoStr) {
+      if (!isoStr || !/^\d{4}-\d{2}-\d{2}$/.test(isoStr)) return '';
+      const [y, m, d] = isoStr.split('-');
+      return `${d}/${m}/${y}`;
+    }
+
+    // Tính thông tin Thứ 2 -> Chủ Nhật & số tuần từ một ngày bất kỳ
+    function getWeekMetaFromDate(dateObj) {
+      const base = dateObj ? new Date(dateObj) : new Date();
+      const d = new Date(Date.UTC(base.getFullYear(), base.getMonth(), base.getDate()));
       const dayNum = d.getUTCDay() || 7;
       d.setUTCDate(d.getUTCDate() + 4 - dayNum);
       const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
       const weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
-      const weekKey = `${d.getUTCFullYear()}-W${String(weekNo).padStart(2, '0')}`;
+      const year = d.getUTCFullYear();
 
-      const local = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const local = new Date(base.getFullYear(), base.getMonth(), base.getDate());
       const localDay = local.getDay() || 7;
       const monday = new Date(local);
       monday.setDate(local.getDate() - localDay + 1);
       const sunday = new Date(monday);
       sunday.setDate(monday.getDate() + 6);
-      const fmt = (dt) => `${String(dt.getDate()).padStart(2, '0')}/${String(dt.getMonth() + 1).padStart(2, '0')}`;
 
+      const toIso = (dt) => `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
       return {
-        year: d.getUTCFullYear(),
+        year,
         weekNo,
-        weekKey,
-        dateRange: `${fmt(monday)} - ${fmt(sunday)}/${sunday.getFullYear()}`,
-        weekLabel: `Tuần ${weekNo} (${fmt(monday)} – ${fmt(sunday)}/${sunday.getFullYear()})`
+        weekKey: `${year}-W${String(weekNo).padStart(2, '0')}`,
+        startDateIso: toIso(monday),
+        endDateIso: toIso(sunday)
       };
+    }
+
+    function buildFormattedWeekLabel(weekNo, year, startIso, endIso, customDateText) {
+      const wPart = `Tuần ${weekNo}`;
+      const vnStart = formatIsoToVnDate(startIso);
+      const vnEnd = formatIsoToVnDate(endIso);
+      if (vnStart && vnEnd) {
+        return `${wPart} (${vnStart} – ${vnEnd})`;
+      }
+      if (vnStart) {
+        return `${wPart} (Từ ${vnStart})`;
+      }
+      if (customDateText) {
+        return `${wPart} (${customDateText})`;
+      }
+      return `${wPart} (Năm ${year})`;
     }
 
     function getAdminDisplayName() {
@@ -8760,11 +8784,19 @@ service cloud.firestore {
         const raw = localStorage.getItem('ynwa_weekly_champions_v2');
         const arr = raw ? JSON.parse(raw) : [];
         if (!Array.isArray(arr)) return [];
-        return arr.map((item, idx) => Object.assign({
-          id: item.id || (item.weekKey + '_' + idx),
-          trophyTitle: item.trophyTitle || 'Quán Quân Tuần',
-          note: item.note || ''
-        }, item));
+        return arr.map((item, idx) => {
+          const parsedWeekNo = Number(item.weekNo) || parseInt((String(item.weekKey || '').match(/W(\d+)/) || ['0', '1'])[1], 10) || 1;
+          const parsedYear = Number(item.year) || parseInt((String(item.weekKey || '').match(/^(\d{4})/) || ['0', String(new Date().getFullYear())])[1], 10) || new Date().getFullYear();
+          return Object.assign({
+            id: item.id || ('cup_' + parsedYear + '_W' + parsedWeekNo + '_' + idx),
+            weekNo: parsedWeekNo,
+            year: parsedYear,
+            startDate: item.startDate || '',
+            endDate: item.endDate || '',
+            trophyTitle: item.trophyTitle || 'Nhất Tuần Học Tập',
+            note: item.note || ''
+          }, item);
+        });
       } catch (e) {
         return [];
       }
@@ -8782,7 +8814,26 @@ service cloud.firestore {
       } catch (e) {}
     }
 
-    // Quét toàn bộ danh sách thành viên trong phòng học để Admin chọn trao cúp
+    // Tải dữ liệu cúp đã lưu trên Firestore để toàn bộ thành viên đều thấy cúp lịch sử
+    async function pullChampionsFromFirestoreOnce() {
+      if (hasPulledRemoteCups) return;
+      try {
+        if (!window.firebase || !firebase.firestore) return;
+        hasPulledRemoteCups = true;
+        const snap = await firebase.firestore().collection('app_hall_of_fame').doc('weekly_champions').get();
+        if (snap.exists && Array.isArray(snap.data().items)) {
+          const remoteItems = snap.data().items;
+          const localItems = getChampionsList();
+          if (remoteItems.length > 0 && localItems.length === 0) {
+            localStorage.setItem('ynwa_weekly_champions_v2', JSON.stringify(remoteItems));
+            syncCupCountsToWeeklyLeaderboard(remoteItems);
+            renderTrophyHallTab();
+          }
+        }
+      } catch (e) {}
+    }
+
+    // Quét toàn bộ danh sách thành viên trong phòng học
     function collectAllRoomMembers(championsList) {
       const map = {};
 
@@ -8810,7 +8861,6 @@ service cloud.firestore {
         }
       }
 
-      // 1. Từ dữ liệu Bảng Xếp Hạng Tuần
       Object.keys(localStorage).forEach(k => {
         if (k.startsWith('ynwa_weekly_rank_v2_')) {
           try {
@@ -8824,7 +8874,6 @@ service cloud.firestore {
         }
       });
 
-      // 2. Từ giao diện "Bảng Xếp Hạng Chăm Chỉ"
       const diligentHeading = Array.from(document.querySelectorAll('h1, h2, h3, h4, div, span')).find(
         el => el.children.length === 0 && el.textContent && el.textContent.trim() === 'Bảng Xếp Hạng Chăm Chỉ'
       );
@@ -8848,14 +8897,13 @@ service cloud.firestore {
         }
       }
 
-      // 3. Từ lịch sử những người đã nhận cúp
       championsList.forEach(item => {
         const wName = (item.winnerName || '').trim();
         if (!wName) return;
         upsertMember(wName, 0, 0);
         const slug = slugifyHallName(wName);
         map[slug].count += 1;
-        map[slug].weeks.push(item.weekLabel || item.weekKey);
+        map[slug].weeks.push(`Tuần ${item.weekNo}`);
       });
 
       return Object.values(map).sort((a, b) => {
@@ -8864,7 +8912,6 @@ service cloud.firestore {
       });
     }
 
-    // Đồng bộ lại tổng số cúp sang Bảng Xếp Hạng Tuần cho tất cả thành viên
     function syncCupCountsToWeeklyLeaderboard(championsList) {
       Object.keys(localStorage).forEach(k => {
         if (!k.startsWith('ynwa_weekly_rank_v2_')) return;
@@ -8909,11 +8956,11 @@ service cloud.firestore {
     function getRankTitleBadge(cupCount) {
       if (cupCount >= 5) return { label: '👑 Huyền Thoại Bất Bại', cls: 'bg-amber-100 text-amber-800 border-amber-300' };
       if (cupCount >= 3) return { label: '🔥 Kỷ Lục Gia Tuần', cls: 'bg-orange-100 text-orange-800 border-orange-200' };
-      if (cupCount >= 1) return { label: '🏆 Nhà Vô Địch Tuần', cls: 'bg-blue-100 text-blue-800 border-blue-200' };
+      if (cupCount >= 1) return { label: '🏆 Quán Quân Tuần', cls: 'bg-blue-100 text-blue-800 border-blue-200' };
       return { label: '🌱 Đang Chinh Phục', cls: 'bg-gray-100 text-gray-600 border-gray-200' };
     }
 
-    // ================= HÀNH ĐỘNG CỦA ADMIN & NGƯỜI DÙNG =================
+    // ================= TƯƠNG TÁC ADMIN & NGƯỜI DÙNG =================
     window.ynwaSetTrophyFilter = function (memberName) {
       trophyFilterMember = memberName;
       renderTrophyHallTab();
@@ -8929,26 +8976,120 @@ service cloud.firestore {
       renderTrophyHallTab();
     };
 
-    window.ynwaSelectAwardRecipient = function (memberName) {
-      adminSelectedRecipient = memberName;
-      renderTrophyHallTab();
+    window.ynwaOnWinnerSelectChange = function (val) {
+      const customWrap = document.getElementById('ynwa-award-custom-name-wrap');
+      if (customWrap) {
+        if (val === '__OTHER__') customWrap.classList.remove('hidden');
+        else customWrap.classList.add('hidden');
+      }
     };
 
-    window.ynwaSelectAwardMode = function (mode) {
-      adminAwardMode = mode;
-      renderTrophyHallTab();
+    // Khi Admin chọn "Từ ngày", tự động điền "Đến ngày" (+6 ngày) và tự tính Tuần số bao nhiêu
+    window.ynwaOnAwardStartDateChange = function (startIso) {
+      if (!startIso) return;
+      const parts = startIso.split('-').map(Number);
+      if (parts.length !== 3) return;
+      const dt = new Date(parts[0], parts[1] - 1, parts[2]);
+      const meta = getWeekMetaFromDate(dt);
+
+      const endInp = document.getElementById('ynwa-award-end-date');
+      const weekNoInp = document.getElementById('ynwa-award-week-no');
+      const yearInp = document.getElementById('ynwa-award-year');
+
+      const sunday = new Date(dt);
+      sunday.setDate(dt.getDate() + 6);
+      const endIso = `${sunday.getFullYear()}-${String(sunday.getMonth() + 1).padStart(2, '0')}-${String(sunday.getDate()).padStart(2, '0')}`;
+
+      if (endInp) endInp.value = endIso;
+      if (weekNoInp) weekNoInp.value = meta.weekNo;
+      if (yearInp) yearInp.value = meta.year;
+      ynwaUpdateAwardPreviewLabel();
     };
 
-    // Bấm nút "Trao cúp cho bạn này" ngay trên thẻ thành viên
+    window.ynwaUpdateAwardPreviewLabel = function () {
+      const previewEl = document.getElementById('ynwa-award-preview-badge');
+      if (!previewEl) return;
+      const weekNo = parseInt(document.getElementById('ynwa-award-week-no')?.value || '1', 10) || 1;
+      const year = parseInt(document.getElementById('ynwa-award-year')?.value || String(new Date().getFullYear()), 10);
+      const startIso = document.getElementById('ynwa-award-start-date')?.value || '';
+      const endIso = document.getElementById('ynwa-award-end-date')?.value || '';
+      const lbl = buildFormattedWeekLabel(weekNo, year, startIso, endIso, '');
+      previewEl.textContent = `🏆 Nhãn khắc lên cúp: ${lbl}`;
+    };
+
+    // Bấm nút "+ Trao cúp" trên thẻ thành viên
     window.ynwaQuickPickMemberForCup = function (memberName) {
-      adminSelectedRecipient = memberName;
+      editingTrophyId = '';
       renderTrophyHallTab();
-      const panel = document.getElementById('ynwa-admin-award-cup-box');
-      if (panel) panel.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      const sel = document.getElementById('ynwa-award-member-select');
+      if (sel) {
+        const optExists = Array.from(sel.options).some(o => o.value === memberName);
+        if (optExists) {
+          sel.value = memberName;
+          ynwaOnWinnerSelectChange(memberName);
+        } else {
+          sel.value = '__OTHER__';
+          ynwaOnWinnerSelectChange('__OTHER__');
+          const customInp = document.getElementById('ynwa-award-custom-name');
+          if (customInp) customInp.value = memberName;
+        }
+      }
+      const box = document.getElementById('ynwa-admin-award-cup-box');
+      if (box) box.scrollIntoView({ behavior: 'smooth', block: 'center' });
     };
 
-    // Admin xác nhận trao cúp cho thành viên được chọn
-    window.ynwaAdminGrantCupNow = function () {
+    // Bấm nút Sửa (✏️) trên chiếc cúp đã trưng bày để cập nhật lại tuần / ngày / tên
+    window.ynwaAdminEditTrophy = function (trophyId) {
+      if (!isHallAdmin()) return;
+      const list = getChampionsList();
+      const target = list.find(x => x.id === trophyId);
+      if (!target) return;
+
+      editingTrophyId = trophyId;
+      renderTrophyHallTab();
+
+      const sel = document.getElementById('ynwa-award-member-select');
+      if (sel) {
+        const optExists = Array.from(sel.options).some(o => o.value === target.winnerName);
+        if (optExists) {
+          sel.value = target.winnerName;
+          ynwaOnWinnerSelectChange(target.winnerName);
+        } else {
+          sel.value = '__OTHER__';
+          ynwaOnWinnerSelectChange('__OTHER__');
+          const customInp = document.getElementById('ynwa-award-custom-name');
+          if (customInp) customInp.value = target.winnerName;
+        }
+      }
+
+      const weekNoInp = document.getElementById('ynwa-award-week-no');
+      const yearInp = document.getElementById('ynwa-award-year');
+      const startInp = document.getElementById('ynwa-award-start-date');
+      const endInp = document.getElementById('ynwa-award-end-date');
+      const minsInp = document.getElementById('ynwa-award-mins');
+      const scoreInp = document.getElementById('ynwa-award-score');
+      const noteInp = document.getElementById('ynwa-award-note');
+
+      if (weekNoInp) weekNoInp.value = target.weekNo || 1;
+      if (yearInp) yearInp.value = target.year || new Date().getFullYear();
+      if (startInp) startInp.value = target.startDate || '';
+      if (endInp) endInp.value = target.endDate || '';
+      if (minsInp) minsInp.value = target.pomodoroMinutes || 0;
+      if (scoreInp) scoreInp.value = target.totalScore || 0;
+      if (noteInp) noteInp.value = target.note || '';
+      ynwaUpdateAwardPreviewLabel();
+
+      const box = document.getElementById('ynwa-admin-award-cup-box');
+      if (box) box.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    };
+
+    window.ynwaCancelEditTrophy = function () {
+      editingTrophyId = '';
+      renderTrophyHallTab();
+    };
+
+    // Admin lưu / trao cúp vào Phòng Trưng Bày
+    window.ynwaAdminSaveTrophy = function () {
       if (!isHallAdmin()) return;
 
       const selectVal = document.getElementById('ynwa-award-member-select')?.value || '';
@@ -8956,84 +9097,83 @@ service cloud.firestore {
       const winnerName = selectVal === '__OTHER__' ? customNameVal : selectVal;
 
       if (!winnerName) {
-        if (typeof showToast === 'function') showToast('⚠️ Vui lòng chọn hoặc nhập tên bạn muốn trao cúp!');
+        if (typeof showToast === 'function') showToast('⚠️ Vui lòng chọn hoặc nhập tên bạn nhận cúp!');
         return;
       }
 
-      const curWeek = getCurrentWeekMeta();
+      const weekNo = parseInt(document.getElementById('ynwa-award-week-no')?.value || '0', 10);
+      if (!weekNo || weekNo < 1 || weekNo > 53) {
+        if (typeof showToast === 'function') showToast('⚠️ Vui lòng nhập số Tuần hợp lệ (từ 1 đến 53)!');
+        return;
+      }
+
+      const year = parseInt(document.getElementById('ynwa-award-year')?.value || String(new Date().getFullYear()), 10) || new Date().getFullYear();
+      const startDate = (document.getElementById('ynwa-award-start-date')?.value || '').trim();
+      const endDate = (document.getElementById('ynwa-award-end-date')?.value || '').trim();
       const mins = Math.max(0, parseInt(document.getElementById('ynwa-award-mins')?.value || '0', 10) || 0);
-      const score = Math.max(0, parseInt(document.getElementById('ynwa-award-score')?.value || '0', 10) || (mins * 2));
+      const scoreInputRaw = document.getElementById('ynwa-award-score')?.value;
+      const score = scoreInputRaw !== '' ? Math.max(0, parseInt(scoreInputRaw, 10) || 0) : (mins * 2);
       const note = (document.getElementById('ynwa-award-note')?.value || '').trim();
+
+      const weekKey = `${year}-W${String(weekNo).padStart(2, '0')}`;
+      const weekLabel = buildFormattedWeekLabel(weekNo, year, startDate, endDate, '');
+      const trophyId = editingTrophyId || ('cup_' + weekKey + '_' + Date.now());
       const adminName = getAdminDisplayName();
       const winnerUid = 'member_' + slugifyHallName(winnerName);
 
-      let weekKey = curWeek.weekKey;
-      let weekLabel = curWeek.weekLabel;
-      let trophyTitle = 'Quán Quân Tuần';
-      let isSpecial = false;
-
-      if (adminAwardMode === 'past_week') {
-        const wNo = parseInt(document.getElementById('ynwa-award-week-no')?.value || '0', 10);
-        const wRange = (document.getElementById('ynwa-award-week-range')?.value || '').trim();
-        if (!wNo || wNo < 1 || wNo > 53) {
-          if (typeof showToast === 'function') showToast('⚠️ Vui lòng nhập số Tuần hợp lệ (từ 1 đến 53)!');
-          return;
-        }
-        weekKey = `${curWeek.year}-W${String(wNo).padStart(2, '0')}`;
-        weekLabel = wRange ? `Tuần ${wNo} (${wRange})` : `Tuần ${wNo} (${curWeek.year})`;
-      } else if (adminAwardMode === 'special_cup') {
-        const customTitle = (document.getElementById('ynwa-award-special-title')?.value || '').trim();
-        trophyTitle = customTitle || 'Cúp Vinh Danh Đặc Biệt';
-        weekKey = `${curWeek.weekKey}_SPECIAL_${Date.now()}`;
-        weekLabel = `${trophyTitle} • ${curWeek.weekLabel}`;
-        isSpecial = true;
-      }
-
-      const trophyId = isSpecial ? weekKey : ('cup_' + weekKey);
       const list = getChampionsList();
-
-      const newCup = {
+      const cupObj = {
         id: trophyId,
+        weekNo,
+        year,
         weekKey,
+        startDate,
+        endDate,
         weekLabel,
-        trophyTitle,
+        trophyTitle: `Nhất Tuần ${weekNo}`,
         winnerUid,
         winnerName,
         pomodoroMinutes: mins,
         totalScore: score,
         note,
         awardedBy: adminName,
-        awardedAt: Date.now()
+        updatedAt: Date.now()
       };
 
-      if (!isSpecial) {
-        const idx = list.findIndex(x => x.weekKey === weekKey);
-        if (idx >= 0) list[idx] = newCup;
-        else list.unshift(newCup);
+      if (editingTrophyId) {
+        const idx = list.findIndex(x => x.id === editingTrophyId);
+        if (idx >= 0) list[idx] = cupObj;
+        else list.unshift(cupObj);
       } else {
-        list.unshift(newCup);
+        list.unshift(cupObj);
       }
 
       saveChampionsList(list);
       syncCupCountsToWeeklyLeaderboard(list);
 
+      const wasEditing = Boolean(editingTrophyId);
+      editingTrophyId = '';
       selectedPlaqueId = trophyId;
       trophyFilterMember = 'ALL';
       renderTrophyHallTab();
 
       if (typeof showToast === 'function') {
-        showToast(`🏆 Admin đã trao cúp "${weekLabel}" cho ${winnerName}!`);
+        showToast(wasEditing
+          ? `✅ Đã cập nhật thông tin Cúp ${weekLabel} của ${winnerName}!`
+          : `🏆 Admin đã trao Cúp ${weekLabel} cho ${winnerName}!`
+        );
       }
     };
 
     window.ynwaAdminRemoveTrophy = function (trophyId) {
       if (!isHallAdmin()) return;
-      const list = getChampionsList().filter(x => (x.id || x.weekKey) !== trophyId && x.weekKey !== trophyId);
+      const list = getChampionsList().filter(x => x.id !== trophyId && x.weekKey !== trophyId);
       saveChampionsList(list);
       syncCupCountsToWeeklyLeaderboard(list);
       if (selectedPlaqueId === trophyId) selectedPlaqueId = '';
+      if (editingTrophyId === trophyId) editingTrophyId = '';
       renderTrophyHallTab();
-      if (typeof showToast === 'function') showToast('🗑️ Đã thu hồi chiếc cúp này khỏi phòng trưng bày!');
+      if (typeof showToast === 'function') showToast('🗑️ Đã xóa chiếc cúp này khỏi phòng trưng bày!');
     };
 
     function renderTrophyHallTab() {
@@ -9041,21 +9181,28 @@ service cloud.firestore {
       if (!panel) return;
 
       const adminMode = isHallAdmin();
-      const curWeek = getCurrentWeekMeta();
+      const curMeta = getWeekMetaFromDate(new Date());
       const rawList = getChampionsList();
       const memberSummary = collectAllRoomMembers(rawList);
 
-      if (!adminSelectedRecipient && memberSummary.length > 0) {
-        adminSelectedRecipient = memberSummary[0].name;
-      }
-      const selectedMemberObj = memberSummary.find(m => m.name === adminSelectedRecipient) || memberSummary[0] || null;
-
+      // Sắp xếp theo Năm * 100 + Tuần số để cúp các tuần cũ/mới xếp đúng thứ tự thời gian
       const sortedAll = [...rawList].sort((a, b) => {
-        const cmp = String(b.weekKey || '').localeCompare(String(a.weekKey || ''));
-        return trophySortOrder === 'DESC' ? cmp : -cmp;
+        const orderA = (Number(a.year || 2026) * 100) + Number(a.weekNo || 0);
+        const orderB = (Number(b.year || 2026) * 100) + Number(b.weekNo || 0);
+        if (orderB !== orderA) {
+          return trophySortOrder === 'DESC' ? (orderB - orderA) : (orderA - orderB);
+        }
+        return trophySortOrder === 'DESC'
+          ? Number(b.updatedAt || 0) - Number(a.updatedAt || 0)
+          : Number(a.updatedAt || 0) - Number(b.updatedAt || 0);
       });
 
-      const latestCupId = sortedAll[0]?.id || '';
+      const newestCup = [...rawList].sort((a, b) => {
+        const orderA = (Number(a.year || 2026) * 100) + Number(a.weekNo || 0);
+        const orderB = (Number(b.year || 2026) * 100) + Number(b.weekNo || 0);
+        return orderB - orderA;
+      })[0] || null;
+
       const filteredTrophies = trophyFilterMember === 'ALL'
         ? sortedAll
         : sortedAll.filter(t => slugifyHallName(t.winnerName) === slugifyHallName(trophyFilterMember));
@@ -9065,22 +9212,23 @@ service cloud.firestore {
       }
       const inspectedTrophy = filteredTrophies.find(t => t.id === selectedPlaqueId) || filteredTrophies[0] || null;
       const topCollector = memberSummary.length > 0 && memberSummary[0].count > 0 ? memberSummary[0] : null;
+      const defaultWeekLabel = buildFormattedWeekLabel(curMeta.weekNo, curMeta.year, curMeta.startDateIso, curMeta.endDateIso, '');
 
       panel.innerHTML = `
-        <!-- BANNER PHÒNG TRƯNG BÀY CÚP -->
+        <!-- BANNER PHÒNG TRƯNG BÀY CÚP HỌC TẬP -->
         <div class="pastel-card rounded-3xl p-5 sm:p-6 bg-white mb-6">
           <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
             <div>
               <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-extrabold mb-2 bg-amber-50 text-amber-800 border border-amber-200">
-                <span>🏛️ Bảo Tàng Thành Tích Học Tập</span>
+                <span>🏛️ Phòng Trưng Bày Thành Tích Học Tập</span>
                 <span>•</span>
-                <span>Vinh danh quán quân mỗi tuần</span>
+                <span>Lưu giữ lịch sử Nhất Tuần qua các tuần</span>
               </div>
               <h2 class="text-xl sm:text-2xl font-extrabold" style="color: var(--primary);">
-                🏆 Phòng Trưng Bày Cúp Các Tuần
+                🏆 Phòng Trưng Bày Cúp Học Tập
               </h2>
               <p class="text-xs sm:text-sm mt-1" style="color: var(--text-muted);">
-                Nơi lưu giữ toàn bộ Cúp Nhất Tuần và Cúp Vinh Danh của các thành viên trong nhóm học tập.
+                Vinh danh những bạn đạt thành tích học tập xuất sắc nhất qua từng tuần học của nhóm.
               </p>
             </div>
 
@@ -9091,7 +9239,7 @@ service cloud.firestore {
                 <p class="text-lg sm:text-xl font-extrabold mt-0.5 text-amber-600">🏆 ${rawList.length}</p>
               </div>
               <div class="text-center px-2 border-x" style="border-color: var(--border-soft);">
-                <p class="text-[11px] font-bold" style="color: var(--text-muted);">Người có cúp</p>
+                <p class="text-[11px] font-bold" style="color: var(--text-muted);">Bạn có cúp</p>
                 <p class="text-lg sm:text-xl font-extrabold mt-0.5" style="color: var(--primary);">
                   ${memberSummary.filter(m => m.count > 0).length}
                 </p>
@@ -9106,142 +9254,139 @@ service cloud.firestore {
           </div>
         </div>
 
-        <!-- QUYỀN ADMIN: TRAO CÚP CHO THÀNH VIÊN TRONG PHÒNG TRƯNG BÀY -->
+        <!-- QUYỀN ADMIN: TRAO CÚP NHẤT TUẦN & CHỌN TUẦN BAO NHIÊU / NGÀY BAO NHIÊU -->
         ${adminMode ? `
           <div id="ynwa-admin-award-cup-box" class="pastel-card rounded-3xl p-5 sm:p-6 bg-white border-2 mb-6"
-            style="border-color: #FCD34D;">
+            style="border-color: ${editingTrophyId ? '#38BDF8' : '#FCD34D'};">
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
               <div>
-                <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-amber-100 text-amber-800 mb-1">
-                  👑 Đặc Quyền Quản Trị Viên (Admin)
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold ${editingTrophyId ? 'bg-sky-100 text-sky-800' : 'bg-amber-100 text-amber-800'} mb-1">
+                  👑 Quyền Quản Trị Viên (Admin)
                 </span>
                 <h3 class="text-base sm:text-lg font-extrabold" style="color: var(--primary);">
-                  🏆 Trao Cúp Vinh Danh Cho Thành Viên
+                  ${editingTrophyId ? '✏️ Chỉnh Sửa Cúp Nhất Tuần Đã Lưu' : '🏆 Trao Cúp Nhất Tuần & Cập Nhật Cúp Các Tuần Cũ'}
                 </h3>
                 <p class="text-xs" style="color: var(--text-muted);">
-                  Chọn bạn muốn trao cúp và hình thức cúp để đặt lên tủ kính trưng bày & cộng cúp vào Bảng Xếp Hạng
+                  Chọn bạn nhất tuần, chọn <strong>Từ ngày – Đến ngày</strong> (tự tính số tuần) hoặc nhập trực tiếp <strong>Tuần số bao nhiêu</strong> để bổ sung dữ liệu cũ
                 </p>
               </div>
-
-              <!-- Chọn nhanh hình thức trao cúp -->
-              <div class="flex flex-wrap gap-1.5">
-                <button type="button" onclick="ynwaSelectAwardMode('current_week')"
-                  class="px-3 py-1.5 rounded-xl text-xs font-extrabold transition ${adminAwardMode === 'current_week' ? 'btn-primary' : 'btn-soft'}">
-                  📅 Cúp Tuần Này (T${curWeek.weekNo})
+              ${editingTrophyId ? `
+                <button type="button" onclick="ynwaCancelEditTrophy()" class="btn-soft px-3 py-1.5 rounded-xl text-xs font-extrabold self-start">
+                  ↩️ Hủy chỉnh sửa
                 </button>
-                <button type="button" onclick="ynwaSelectAwardMode('past_week')"
-                  class="px-3 py-1.5 rounded-xl text-xs font-extrabold transition ${adminAwardMode === 'past_week' ? 'btn-primary' : 'btn-soft'}">
-                  ⏪ Cúp Tuần Khác
-                </button>
-                <button type="button" onclick="ynwaSelectAwardMode('special_cup')"
-                  class="px-3 py-1.5 rounded-xl text-xs font-extrabold transition ${adminAwardMode === 'special_cup' ? 'btn-primary' : 'btn-soft'}">
-                  🌟 Cúp Vinh Danh Riêng
-                </button>
-              </div>
+              ` : ''}
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-12 gap-3 p-4 rounded-2xl border"
+            <div class="grid grid-cols-1 sm:grid-cols-12 gap-3 p-4 rounded-2xl border"
               style="background-color: var(--bg-soft); border-color: var(--border-soft);">
-              <!-- Bước 1: Chọn bạn nhận cúp -->
-              <div class="md:col-span-4">
+              <!-- 1. Chọn bạn nhận cúp -->
+              <div class="sm:col-span-4">
                 <label class="block text-xs font-extrabold mb-1" style="color: var(--text-main);">
-                  1. Chọn bạn nhận cúp *
+                  1. Chọn bạn Nhất Tuần *
                 </label>
-                <select id="ynwa-award-member-select" onchange="ynwaSelectAwardRecipient(this.value)"
+                <select id="ynwa-award-member-select" onchange="ynwaOnWinnerSelectChange(this.value)"
                   class="w-full px-3 py-2 rounded-xl border text-xs font-extrabold bg-white focus:outline-none"
                   style="border-color: var(--border-soft); color: var(--primary);">
                   ${memberSummary.map(m => `
-                    <option value="${escapeHtmlHall(m.name)}" ${adminSelectedRecipient === m.name ? 'selected' : ''}>
-                      👤 ${escapeHtmlHall(m.name)} (${m.pomodoroMinutes}p • 🏆 ${m.count} cúp)
+                    <option value="${escapeHtmlHall(m.name)}">
+                      👤 ${escapeHtmlHall(m.name)} (🏆 ${m.count} cúp)
                     </option>
                   `).join('')}
-                  <option value="__OTHER__" ${adminSelectedRecipient === '__OTHER__' ? 'selected' : ''}>
-                    ➕ Nhập tên bạn khác...
-                  </option>
+                  <option value="__OTHER__">➕ Nhập tên bạn khác...</option>
                 </select>
-                ${adminSelectedRecipient === '__OTHER__' ? `
+                <div id="ynwa-award-custom-name-wrap" class="hidden mt-2">
                   <input type="text" id="ynwa-award-custom-name" placeholder="Nhập họ tên bạn nhận cúp..."
-                    class="mt-2 w-full px-3 py-2 rounded-xl border text-xs font-bold bg-white focus:outline-none"
-                    style="border-color: var(--border-soft);">
-                ` : ''}
-              </div>
-
-              <!-- Bước 2: Thông tin tuần / tên cúp -->
-              ${adminAwardMode === 'current_week' ? `
-                <div class="md:col-span-4">
-                  <label class="block text-xs font-extrabold mb-1" style="color: var(--text-main);">
-                    2. Danh hiệu trao tặng
-                  </label>
-                  <div class="px-3 py-2 rounded-xl border bg-white text-xs font-extrabold text-amber-800"
-                    style="border-color: #FDE68A;">
-                    🏆 Quán Quân ${escapeHtmlHall(curWeek.weekLabel)}
-                  </div>
-                </div>
-              ` : ''}
-
-              ${adminAwardMode === 'past_week' ? `
-                <div class="md:col-span-2">
-                  <label class="block text-xs font-extrabold mb-1" style="color: var(--text-main);">
-                    2. Số Tuần *
-                  </label>
-                  <input type="number" id="ynwa-award-week-no" min="1" max="53" value="${Math.max(1, curWeek.weekNo - 1)}"
-                    class="w-full px-3 py-2 rounded-xl border text-xs font-extrabold bg-white focus:outline-none"
-                    style="border-color: var(--border-soft);">
-                </div>
-                <div class="md:col-span-2">
-                  <label class="block text-xs font-extrabold mb-1" style="color: var(--text-main);">
-                    Ngày của tuần
-                  </label>
-                  <input type="text" id="ynwa-award-week-range" placeholder="VD: 16/11 - 22/11"
-                    class="w-full px-3 py-2 rounded-xl border text-xs bg-white focus:outline-none"
-                    style="border-color: var(--border-soft);">
-                </div>
-              ` : ''}
-
-              ${adminAwardMode === 'special_cup' ? `
-                <div class="md:col-span-4">
-                  <label class="block text-xs font-extrabold mb-1" style="color: var(--text-main);">
-                    2. Tên Cúp Vinh Danh *
-                  </label>
-                  <input type="text" id="ynwa-award-special-title" placeholder="VD: Cúp Bứt Tốc Thần Tốc, Cúp Chăm Chỉ..."
                     class="w-full px-3 py-2 rounded-xl border text-xs font-bold bg-white focus:outline-none"
                     style="border-color: var(--border-soft);">
                 </div>
-              ` : ''}
+              </div>
 
-              <!-- Bước 3: Thành tích & Lời chúc -->
-              <div class="md:col-span-2">
+              <!-- 2. Chọn Từ ngày -->
+              <div class="sm:col-span-3">
                 <label class="block text-xs font-extrabold mb-1" style="color: var(--text-main);">
-                  3. Phút Pomo
+                  2. Từ ngày (Thứ 2)
                 </label>
-                <input type="number" id="ynwa-award-mins" value="${selectedMemberObj ? selectedMemberObj.pomodoroMinutes : 0}" min="0"
+                <input type="date" id="ynwa-award-start-date" value="${curMeta.startDateIso}"
+                  onchange="ynwaOnAwardStartDateChange(this.value)"
                   class="w-full px-3 py-2 rounded-xl border text-xs font-bold bg-white focus:outline-none"
                   style="border-color: var(--border-soft);">
               </div>
 
-              <div class="md:col-span-2">
+              <!-- 3. Chọn Đến ngày -->
+              <div class="sm:col-span-3">
                 <label class="block text-xs font-extrabold mb-1" style="color: var(--text-main);">
-                  4. Điểm tuần
+                  3. Đến ngày (Chủ Nhật)
                 </label>
-                <input type="number" id="ynwa-award-score" value="${selectedMemberObj ? selectedMemberObj.totalScore : 0}" min="0"
+                <input type="date" id="ynwa-award-end-date" value="${curMeta.endDateIso}"
+                  onchange="ynwaUpdateAwardPreviewLabel()"
                   class="w-full px-3 py-2 rounded-xl border text-xs font-bold bg-white focus:outline-none"
                   style="border-color: var(--border-soft);">
               </div>
 
-              <div class="md:col-span-8">
+              <!-- 4. Tuần số bao nhiêu -->
+              <div class="sm:col-span-2">
                 <label class="block text-xs font-extrabold mb-1" style="color: var(--text-main);">
-                  Lời chúc / Lý do vinh danh khắc lên bảng vàng
+                  4. Tuần số *
                 </label>
-                <input type="text" id="ynwa-award-note" placeholder="VD: Chúc mừng bạn đã giữ vững phong độ học tập xuất sắc nhất tuần!"
-                  onkeydown="if(event.key==='Enter'){event.preventDefault();ynwaAdminGrantCupNow();}"
+                <input type="number" id="ynwa-award-week-no" min="1" max="53" value="${curMeta.weekNo}"
+                  oninput="ynwaUpdateAwardPreviewLabel()"
+                  class="w-full px-3 py-2 rounded-xl border text-xs font-extrabold bg-white focus:outline-none"
+                  style="border-color: var(--border-soft); color: #B45309;">
+              </div>
+
+              <!-- 5. Năm -->
+              <div class="sm:col-span-2">
+                <label class="block text-xs font-extrabold mb-1" style="color: var(--text-main);">
+                  5. Năm
+                </label>
+                <input type="number" id="ynwa-award-year" min="2020" max="2099" value="${curMeta.year}"
+                  oninput="ynwaUpdateAwardPreviewLabel()"
+                  class="w-full px-3 py-2 rounded-xl border text-xs font-bold bg-white focus:outline-none"
+                  style="border-color: var(--border-soft);">
+              </div>
+
+              <!-- 6. Số phút Pomodoro tuần đó -->
+              <div class="sm:col-span-2">
+                <label class="block text-xs font-extrabold mb-1" style="color: var(--text-main);">
+                  6. Phút Pomo
+                </label>
+                <input type="number" id="ynwa-award-mins" value="0" min="0"
+                  class="w-full px-3 py-2 rounded-xl border text-xs font-bold bg-white focus:outline-none"
+                  style="border-color: var(--border-soft);">
+              </div>
+
+              <!-- 7. Điểm tuần đó -->
+              <div class="sm:col-span-2">
+                <label class="block text-xs font-extrabold mb-1" style="color: var(--text-main);">
+                  7. Điểm tuần
+                </label>
+                <input type="number" id="ynwa-award-score" placeholder="Tự tính" min="0"
+                  class="w-full px-3 py-2 rounded-xl border text-xs font-bold bg-white focus:outline-none"
+                  style="border-color: var(--border-soft);">
+              </div>
+
+              <!-- 8. Ghi chú / Lời vinh danh -->
+              <div class="sm:col-span-6">
+                <label class="block text-xs font-extrabold mb-1" style="color: var(--text-main);">
+                  8. Ghi chú / Thành tích nổi bật tuần đó
+                </label>
+                <input type="text" id="ynwa-award-note" placeholder="VD: Dẫn đầu giờ học tuần 42, hoàn thành xuất sắc mục tiêu..."
+                  onkeydown="if(event.key==='Enter'){event.preventDefault();ynwaAdminSaveTrophy();}"
                   class="w-full px-3 py-2 rounded-xl border text-xs bg-white focus:outline-none"
                   style="border-color: var(--border-soft);">
               </div>
 
-              <div class="md:col-span-4 flex items-end">
-                <button type="button" onclick="ynwaAdminGrantCupNow()"
-                  class="btn-primary w-full py-2.5 px-4 rounded-xl text-xs sm:text-sm font-extrabold shadow-xs">
-                  🏆 Xác Nhận Trao Cúp Ngay
+              <!-- Thanh xem trước nhãn cúp & nút xác nhận -->
+              <div class="sm:col-span-12 pt-2 border-t flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                style="border-color: var(--border-soft);">
+                <span id="ynwa-award-preview-badge"
+                  class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-50 border border-amber-200 text-xs font-extrabold text-amber-800">
+                  🏆 Nhãn khắc lên cúp: ${escapeHtmlHall(defaultWeekLabel)}
+                </span>
+
+                <button type="button" onclick="ynwaAdminSaveTrophy()"
+                  class="btn-primary py-2.5 px-5 rounded-xl text-xs sm:text-sm font-extrabold shadow-xs shrink-0">
+                  ${editingTrophyId ? '💾 Lưu Cập Nhật Cúp' : '🏆 Trao Cúp & Đặt Lên Kệ'}
                 </button>
               </div>
             </div>
@@ -9253,10 +9398,10 @@ service cloud.firestore {
           <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
             <div>
               <h3 class="text-lg font-extrabold" style="color: var(--primary);">
-                ✨ Tủ Kính Trưng Bày Cúp Vô Địch Từng Tuần
+                ✨ Tủ Kính Trưng Bày Cúp Nhất Tuần
               </h3>
               <p class="text-xs" style="color: var(--text-muted);">
-                Bấm vào từng chiếc cúp trên kệ để xem bảng vàng chứng nhận chi tiết
+                Bấm vào từng chiếc cúp để xem chi tiết tuần học, ngày tháng và bảng vàng chứng nhận
               </p>
             </div>
 
@@ -9274,7 +9419,7 @@ service cloud.firestore {
               <button type="button" onclick="ynwaToggleTrophySort()"
                 class="px-3 py-1.5 rounded-xl text-xs font-bold border bg-white hover:bg-gray-50"
                 style="border-color: var(--border-soft); color: var(--text-main);">
-                ${trophySortOrder === 'DESC' ? '⬇️ Mới nhất trước' : '⬆️ Cũ nhất trước'}
+                ${trophySortOrder === 'DESC' ? '⬇️ Tuần mới nhất' : '⬆️ Tuần cũ nhất'}
               </button>
             </div>
           </div>
@@ -9283,19 +9428,23 @@ service cloud.firestore {
             <div class="rounded-3xl border-2 border-dashed p-8 text-center" style="background-color: var(--bg-soft); border-color: var(--border-soft);">
               <div class="opacity-65 mb-2">${renderTrophyCupSVG(true, 0)}</div>
               <h4 class="text-base font-extrabold" style="color: var(--text-main);">
-                Tủ Kính Trưng Bày Đang Chờ Chủ Nhân Đầu Tiên
+                Tủ Kính Trưng Bày Đang Chờ Chiếc Cúp Đầu Tiên
               </h4>
               <p class="text-xs max-w-md mx-auto mt-1" style="color: var(--text-muted);">
                 ${adminMode
-                  ? 'Admin có thể chọn tên thành viên ở khung "🏆 Trao Cúp Vinh Danh Cho Thành Viên" phía trên để trao chiếc cúp đầu tiên!'
-                  : 'Mỗi cuối tuần, Admin sẽ vinh danh và đặt Cúp Nhất Tuần trang trọng tại tủ kính này!'}
+                  ? 'Admin hãy chọn tên bạn nhất tuần, chọn ngày & số tuần ở khung phía trên để cập nhật các cúp đã đạt được vào tủ trưng bày!'
+                  : 'Admin sẽ cập nhật và trao Cúp Nhất Tuần cho các bạn xuất sắc tại tủ kính này!'}
               </p>
             </div>
           ` : `
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
               ${filteredTrophies.map((trophy, idx) => {
-                const isLatest = trophy.id === latestCupId;
+                const isLatest = newestCup && trophy.id === newestCup.id;
                 const isSelected = inspectedTrophy && inspectedTrophy.id === trophy.id;
+                const dateSub = (trophy.startDate || trophy.endDate)
+                  ? `${formatIsoToVnDate(trophy.startDate)} – ${formatIsoToVnDate(trophy.endDate)}`
+                  : `Năm ${trophy.year}`;
+
                 return `
                   <div onclick="ynwaInspectTrophyPlaque('${escapeHtmlHall(trophy.id)}')"
                     class="rounded-3xl border overflow-hidden cursor-pointer transition hover:shadow-md flex flex-col justify-between ${isSelected ? 'ring-2 ring-amber-400' : ''}"
@@ -9303,26 +9452,39 @@ service cloud.firestore {
                     <div class="p-4 pt-5 text-center ynwa-glass-shelf relative">
                       <div class="flex items-center justify-between gap-1 mb-2">
                         <span class="px-2.5 py-0.5 rounded-full text-[11px] font-extrabold ${isLatest ? 'bg-amber-100 text-amber-800' : 'bg-blue-50 text-blue-700'}">
-                          ${isLatest ? '👑 Cúp Mới Nhất' : `🏅 ${escapeHtmlHall(trophy.trophyTitle || 'Cúp Vinh Danh')}`}
+                          ${isLatest ? '👑 Tuần Mới Nhất' : `🏅 Tuần ${trophy.weekNo}`}
                         </span>
+
                         ${adminMode ? `
-                          <button type="button" onclick="event.stopPropagation(); ynwaAdminRemoveTrophy('${escapeHtmlHall(trophy.id)}')"
-                            title="Thu hồi cúp này" class="w-6 h-6 rounded-lg bg-white/90 text-rose-500 hover:text-rose-700 text-xs font-extrabold border"
-                            style="border-color: var(--border-soft);">×</button>
+                          <div class="flex items-center gap-1">
+                            <button type="button" onclick="event.stopPropagation(); ynwaAdminEditTrophy('${escapeHtmlHall(trophy.id)}')"
+                              title="Sửa tuần / ngày / người nhận"
+                              class="w-6 h-6 rounded-lg bg-white/95 text-blue-600 hover:bg-blue-50 text-xs font-extrabold border"
+                              style="border-color: var(--border-soft);">✏️</button>
+                            <button type="button" onclick="event.stopPropagation(); ynwaAdminRemoveTrophy('${escapeHtmlHall(trophy.id)}')"
+                              title="Xóa cúp này"
+                              class="w-6 h-6 rounded-lg bg-white/95 text-rose-500 hover:bg-rose-50 text-xs font-extrabold border"
+                              style="border-color: var(--border-soft);">×</button>
+                          </div>
                         ` : ''}
                       </div>
 
                       ${renderTrophyCupSVG(isLatest, idx + 1)}
 
-                      <div class="mt-2 inline-block px-3 py-1 rounded-xl bg-white/90 border text-xs font-extrabold shadow-2xs"
-                        style="border-color: var(--border-soft); color: var(--primary);">
-                        ${escapeHtmlHall(trophy.weekLabel || trophy.weekKey)}
+                      <div class="mt-2 px-3 py-1.5 rounded-xl bg-white/95 border inline-block shadow-2xs"
+                        style="border-color: var(--border-soft);">
+                        <p class="text-xs font-extrabold" style="color: var(--primary);">
+                          📅 Tuần ${trophy.weekNo} (${trophy.year})
+                        </p>
+                        <p class="text-[11px] font-semibold" style="color: var(--text-muted);">
+                          ${escapeHtmlHall(dateSub)}
+                        </p>
                       </div>
                     </div>
 
                     <div class="p-3.5 text-center ${isLatest ? 'ynwa-pedestal-gold' : 'ynwa-pedestal-classic'}">
                       <p class="text-[10px] font-extrabold uppercase tracking-wider opacity-75" style="color: var(--text-main);">
-                        ${escapeHtmlHall(trophy.trophyTitle || 'Quán Quân Tuần')}
+                        Nhất Tuần Học Tập
                       </p>
                       <h4 class="text-base font-extrabold truncate mt-0.5" style="color: var(--text-main);">
                         ${escapeHtmlHall(trophy.winnerName)}
@@ -9345,13 +9507,13 @@ service cloud.firestore {
                   </div>
                   <div>
                     <span class="text-[11px] font-extrabold uppercase tracking-wider text-amber-800">
-                      📜 Bảng Vàng Chứng Nhận Thành Tích
+                      📜 Bảng Vàng Chứng Nhận Nhất Tuần
                     </span>
                     <h4 class="text-base sm:text-lg font-extrabold mt-0.5" style="color: var(--text-main);">
-                      Vinh danh <span style="color: var(--primary);">${escapeHtmlHall(inspectedTrophy.winnerName)}</span> — ${escapeHtmlHall(inspectedTrophy.weekLabel || inspectedTrophy.weekKey)}
+                      Vinh danh <span style="color: var(--primary);">${escapeHtmlHall(inspectedTrophy.winnerName)}</span> — ${escapeHtmlHall(inspectedTrophy.weekLabel || `Tuần ${inspectedTrophy.weekNo}`)}
                     </h4>
                     <p class="text-xs mt-1" style="color: var(--text-muted);">
-                      Thời gian tập trung Pomodoro: <strong>${formatMinsToHours(inspectedTrophy.pomodoroMinutes)}</strong> • Tổng điểm đạt được: <strong>${Number(inspectedTrophy.totalScore || 0).toLocaleString('vi-VN')} điểm</strong>
+                      Thời gian học Pomodoro: <strong>${formatMinsToHours(inspectedTrophy.pomodoroMinutes)}</strong> (${inspectedTrophy.pomodoroMinutes || 0} phút) • Điểm tuần: <strong>${Number(inspectedTrophy.totalScore || 0).toLocaleString('vi-VN')} điểm</strong>
                     </p>
                     ${inspectedTrophy.note ? `
                       <p class="text-xs font-bold text-amber-800 mt-1">
@@ -9375,7 +9537,7 @@ service cloud.firestore {
             🎖️ Bộ Sưu Tập Cúp Theo Từng Thành Viên
           </h3>
           <p class="text-xs mb-4" style="color: var(--text-muted);">
-            Tổng hợp số lượng cúp và danh hiệu tích lũy của mỗi bạn trong nhóm học
+            Tổng hợp số lượng cúp và các tuần đạt hạng Nhất của mỗi thành viên
           </p>
 
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -9486,6 +9648,7 @@ service cloud.firestore {
         }
       });
 
+      pullChampionsFromFirestoreOnce();
       renderTrophyHallTab();
     }
 
