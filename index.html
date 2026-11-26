@@ -8804,4 +8804,1065 @@ service cloud.firestore {
     setInterval(renderAdditionalWeeklyHoursUnderName, 1000);
   })();
 </script>
+  <!-- =====================================================================
+     PHÒNG TRƯNG BÀY CÚP (NHẤT / NHÌ TUẦN) + GIỜ HỌC ALL-TIME & ADMIN CHỈNH GIỜ
+     (Dán đoạn này ngay trước thẻ </body> trong file index (2).html)
+     ===================================================================== -->
+<style>
+  @keyframes trophyShine {
+    0%, 100% { transform: translateY(0) scale(1); }
+    50% { transform: translateY(-2px) scale(1.04); }
+  }
+  .ynwa-trophy-float {
+    animation: trophyShine 3s ease-in-out infinite;
+  }
+  .ynwa-cup-card-gold {
+    background: linear-gradient(135deg, #FFFBEB 0%, #FEF3C7 100%);
+    border-color: #FCD34D !important;
+  }
+  .ynwa-cup-card-silver {
+    background: linear-gradient(135deg, #F8FAFC 0%, #E2E8F0 100%);
+    border-color: #CBD5E1 !important;
+  }
+</style>
+
+<script type="module">
+  import { getApps, getApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+  import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+  import {
+    getFirestore,
+    collection,
+    doc,
+    addDoc,
+    updateDoc,
+    deleteDoc,
+    onSnapshot
+  } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+  (function () {
+    const appId = typeof __app_id !== "undefined" ? __app_id : "goc-hoc-nho-prod";
+    const LOCAL_TROPHY_KEY = "ynwa_trophy_hall_records_v1";
+
+    let db = null;
+    let auth = null;
+    let currentUid = null;
+    let allUsers = [];          // Danh sách thành viên đồng bộ từ Firestore
+    let trophyRecords = [];     // Danh sách ghi danh Cúp Nhất & Nhì các tuần
+    let editingTrophyId = null; // ID bản ghi tuần đang sửa (nếu có)
+    let isUpdatingLbDom = false;
+    let lbObserver = null;
+
+    // -----------------------------------------------------------------
+    // 1. HÀM TIỆN ÍCH CHUNG
+    // -----------------------------------------------------------------
+    function esc(str) {
+      return String(str ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }
+
+    function normalizeSlug(str) {
+      return String(str || "")
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+        .toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "") || "member";
+    }
+
+    function notify(msg, icon = "🏆") {
+      if (typeof window.showToast === "function") {
+        window.showToast(msg, icon);
+      } else {
+        console.log(icon, msg);
+      }
+    }
+
+    function isCurrentUserAdmin() {
+      if (currentUid) {
+        const me = allUsers.find(u => u.uid === currentUid || u.id === currentUid);
+        if (me) return me.role === "admin";
+      }
+      const adminTabBtn = document.getElementById("tab-btn-admin");
+      if (adminTabBtn && !adminTabBtn.classList.contains("hidden")) return true;
+      return false;
+    }
+
+    function getDefaultWeekLabel() {
+      const now = new Date();
+      const d = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
+      const dayNum = d.getUTCDay() || 7;
+      d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+      const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+      const weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+
+      const local = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const localDay = local.getDay() || 7;
+      const monday = new Date(local);
+      monday.setDate(local.getDate() - localDay + 1);
+      const sunday = new Date(monday);
+      sunday.setDate(monday.getDate() + 6);
+      const fmt = dt => `${String(dt.getDate()).padStart(2, "0")}/${String(dt.getMonth() + 1).padStart(2, "0")}`;
+      return `Tuần ${weekNo} (${fmt(monday)} – ${fmt(sunday)}/${sunday.getFullYear()})`;
+    }
+
+    function formatAllTimeHours(totalMinutes) {
+      const mins = Math.max(0, Math.round(Number(totalMinutes) || 0));
+      const decimalHours = (mins / 60).toFixed(1).replace(/\.0$/, "");
+      const h = Math.floor(mins / 60);
+      const m = mins % 60;
+      const detail = h > 0 ? `${h}g ${m}p` : `${m}p`;
+      return { mins, decimalHours, h, m, detail };
+    }
+
+    // Tổng hợp bảng vàng số cúp Nhất / Nhì của từng thành viên
+    function buildTrophySummary() {
+      const map = new Map();
+
+      function addCup(uid, name, type, weekLabel) {
+        const cleanName = (name || "").trim();
+        if (!cleanName) return;
+        const key = uid ? `uid:${uid}` : `name:${cleanName.toLowerCase()}`;
+        if (!map.has(key)) {
+          map.set(key, {
+            key,
+            uid: uid || "",
+            name: cleanName,
+            gold: 0,
+            silver: 0,
+            weeks: []
+          });
+        }
+        const entry = map.get(key);
+        entry.name = cleanName;
+        if (type === "gold") {
+          entry.gold += 1;
+          entry.weeks.push(`🥇 ${weekLabel}`);
+        } else {
+          entry.silver += 1;
+          entry.weeks.push(`🥈 ${weekLabel}`);
+        }
+      }
+
+      trophyRecords.forEach(rec => {
+        if (rec.firstName) addCup(rec.firstUid, rec.firstName, "gold", rec.weekLabel);
+        if (rec.secondName) addCup(rec.secondUid, rec.secondName, "silver", rec.weekLabel);
+      });
+
+      return Array.from(map.values()).sort((a, b) => {
+        if (b.gold !== a.gold) return b.gold - a.gold;
+        if (b.silver !== a.silver) return b.silver - a.silver;
+        return a.name.localeCompare(b.name, "vi");
+      });
+    }
+
+    function getMemberCupBadge(user) {
+      const summary = buildTrophySummary();
+      const found = summary.find(
+        s => (s.uid && s.uid === user.uid) || s.name.toLowerCase() === (user.displayName || "").trim().toLowerCase()
+      );
+      if (!found || (found.gold === 0 && found.silver === 0)) return "";
+      const parts = [];
+      if (found.gold > 0) parts.push(`🥇${found.gold}`);
+      if (found.silver > 0) parts.push(`🥈${found.silver}`);
+      return `<span class="px-1.5 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-100 text-amber-800 shrink-0">${parts.join(" ")}</span>`;
+    }
+
+    // -----------------------------------------------------------------
+    // 2. KẾT NỐI FIREBASE CHUNG VỚI ỨNG DỤNG CHÍNH
+    // -----------------------------------------------------------------
+    function loadLocalTrophies() {
+      try {
+        const raw = localStorage.getItem(LOCAL_TROPHY_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed)) trophyRecords = parsed;
+        }
+      } catch (_) {}
+    }
+
+    function saveLocalTrophies() {
+      try {
+        localStorage.setItem(LOCAL_TROPHY_KEY, JSON.stringify(trophyRecords));
+      } catch (_) {}
+    }
+
+    function attachFirebaseListeners() {
+      if (!getApps().length) return false;
+      const app = getApp();
+      auth = getAuth(app);
+      db = getFirestore(app);
+
+      onAuthStateChanged(auth, (user) => {
+        currentUid = user ? user.uid : null;
+        if (!user) return;
+
+        // Lắng nghe danh sách thành viên (users)
+        const usersCol = collection(db, "artifacts", appId, "public", "data", "users");
+        onSnapshot(usersCol, (snap) => {
+          allUsers = snap.docs.map(d => ({ id: d.id, uid: d.id, ...d.data() }));
+          renderTrophyHallPanel();
+          renderDiligentAllTimeLeaderboard();
+        });
+
+        // Lắng nghe Phòng Trưng Bày Cúp (trophy_hall)
+        const trophyCol = collection(db, "artifacts", appId, "public", "data", "trophy_hall");
+        onSnapshot(trophyCol, (snap) => {
+          trophyRecords = snap.docs
+            .map(d => ({ id: d.id, ...d.data() }))
+            .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+          saveLocalTrophies();
+          renderTrophyHallPanel();
+          renderDiligentAllTimeLeaderboard();
+        });
+      });
+
+      return true;
+    }
+
+    // -----------------------------------------------------------------
+    // 3. GẮN MỤC "PHÒNG TRƯNG BÀY CÚP" VÀO THANH BÊN TRÁI
+    // -----------------------------------------------------------------
+    function mountTrophyHallTab() {
+      const roomBtn = document.getElementById("tab-btn-room");
+      const focusPanel = document.getElementById("panel-focus");
+      if (!roomBtn || !focusPanel) return;
+
+      const navBar = roomBtn.parentElement;
+      const panelsHost = focusPanel.parentElement;
+
+      // 1. Tạo nút tab trong danh mục bên trái
+      if (!document.getElementById("btn-tab-trophy-hall") && navBar) {
+        const trophyBtn = document.createElement("button");
+        trophyBtn.id = "btn-tab-trophy-hall";
+        trophyBtn.type = "button";
+        trophyBtn.className = "tab-nav-btn px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap flex items-center gap-1.5 transition";
+        trophyBtn.style.backgroundColor = "var(--bg-soft)";
+        trophyBtn.style.color = "var(--text-main)";
+        trophyBtn.innerHTML = `<span>🏆</span><span>Phòng Trưng Bày Cúp</span>`;
+
+        // Chèn ngay sau nút Phòng Học Chung & Xếp Hạng (hoặc cuối danh mục trước nút Admin)
+        const adminBtn = document.getElementById("tab-btn-admin");
+        if (adminBtn && adminBtn.parentElement === navBar) {
+          navBar.insertBefore(trophyBtn, adminBtn);
+        } else {
+          navBar.appendChild(trophyBtn);
+        }
+
+        trophyBtn.addEventListener("click", openTrophyHallTab);
+
+        // Khi nhấn vào các nút tab khác -> ẩn Phòng Trưng Bày Cúp
+        navBar.addEventListener("click", (e) => {
+          const clickedBtn = e.target.closest("button");
+          if (clickedBtn && clickedBtn.id !== "btn-tab-trophy-hall") {
+            deactivateTrophyHallTab();
+          }
+        });
+      }
+
+      // 2. Tạo panel nội dung Phòng Trưng Bày Cúp
+      if (!document.getElementById("tab-trophy-hall") && panelsHost) {
+        const panel = document.createElement("section");
+        panel.id = "tab-trophy-hall";
+        panel.className = "hidden animate-tab space-y-6";
+        panelsHost.appendChild(panel);
+        renderTrophyHallPanel();
+      }
+
+      // 3. Bọc hàm switchTab gốc để đồng bộ đóng mở tab
+      if (typeof window.switchTab === "function" && !window.__ynwaSwitchTabWrapped) {
+        const origSwitchTab = window.switchTab;
+        window.switchTab = function (tabKey) {
+          deactivateTrophyHallTab();
+          return origSwitchTab.apply(this, arguments);
+        };
+        window.__ynwaSwitchTabWrapped = true;
+      }
+    }
+
+    function deactivateTrophyHallTab() {
+      const panel = document.getElementById("tab-trophy-hall");
+      const btn = document.getElementById("btn-tab-trophy-hall");
+      if (panel) panel.classList.add("hidden");
+      if (btn) {
+        btn.classList.remove("btn-primary");
+        btn.style.backgroundColor = "var(--bg-soft)";
+        btn.style.color = "var(--text-main)";
+      }
+    }
+
+    function openTrophyHallTab() {
+      const btn = document.getElementById("btn-tab-trophy-hall");
+      const panel = document.getElementById("tab-trophy-hall");
+      if (!btn || !panel) return;
+
+      // Reset tất cả các nút trong nav
+      const navBar = btn.parentElement;
+      if (navBar) {
+        Array.from(navBar.querySelectorAll("button")).forEach(b => {
+          b.classList.remove("btn-primary");
+          b.style.backgroundColor = "var(--bg-soft)";
+          b.style.color = "var(--text-main)";
+        });
+      }
+      btn.style.backgroundColor = "var(--primary)";
+      btn.style.color = "#FFFFFF";
+
+      // Ẩn tất cả các panel tab khác
+      document.querySelectorAll(".animate-tab").forEach(p => {
+        if (p.id !== "tab-trophy-hall") p.classList.add("hidden");
+      });
+      panel.classList.remove("hidden");
+      renderTrophyHallPanel();
+    }
+
+    // -----------------------------------------------------------------
+    // 4. GIAO DIỆN PHÒNG TRƯNG BÀY CÚP & FORM ADMIN GHI DANH NHẤT/NHÌ TUẦN
+    // -----------------------------------------------------------------
+    function buildMemberSelectOptions(selectedUid, selectedName) {
+      const visibleUsers = allUsers
+        .filter(u => !u.isBanned)
+        .sort((a, b) => (b.totalMinutes || 0) - (a.totalMinutes || 0));
+
+      let options = `<option value="">-- Không ghi danh / Bỏ trống --</option>`;
+      let matched = false;
+
+      visibleUsers.forEach(u => {
+        const isSel = (selectedUid && u.uid === selectedUid) ||
+          (!selectedUid && selectedName && (u.displayName || "").trim() === selectedName.trim());
+        if (isSel) matched = true;
+        const hrs = formatAllTimeHours(u.totalMinutes || 0);
+        options += `<option value="${esc(u.uid)}" ${isSel ? "selected" : ""}>${esc(u.displayName || "Học viên")} (${hrs.decimalHours}h All-Time)</option>`;
+      });
+
+      const isManual = !matched && Boolean(selectedName);
+      options += `<option value="__MANUAL__" ${isManual ? "selected" : ""}>✏️ Nhập tên thủ công...</option>`;
+      return { options, isManual };
+    }
+
+    window.__ynwaToggleManualName = function (rankPrefix) {
+      const sel = document.getElementById(`ynwa-cup-${rankPrefix}-select`);
+      const manualInp = document.getElementById(`ynwa-cup-${rankPrefix}-manual`);
+      if (!sel || !manualInp) return;
+      if (sel.value === "__MANUAL__") {
+        manualInp.classList.remove("hidden");
+        manualInp.focus();
+      } else {
+        manualInp.classList.add("hidden");
+        manualInp.value = "";
+      }
+    };
+
+    window.__ynwaSaveTrophyRecord = async function (e) {
+      e.preventDefault();
+      if (!isCurrentUserAdmin()) {
+        notify("Chỉ Admin mới có quyền ghi danh Cúp tuần!", "🔒");
+        return;
+      }
+
+      const weekLabel = (document.getElementById("ynwa-cup-week")?.value || "").trim();
+      const firstSel = document.getElementById("ynwa-cup-first-select")?.value || "";
+      const firstManual = (document.getElementById("ynwa-cup-first-manual")?.value || "").trim();
+      const firstAchievement = (document.getElementById("ynwa-cup-first-note")?.value || "").trim();
+
+      const secondSel = document.getElementById("ynwa-cup-second-select")?.value || "";
+      const secondManual = (document.getElementById("ynwa-cup-second-manual")?.value || "").trim();
+      const secondAchievement = (document.getElementById("ynwa-cup-second-note")?.value || "").trim();
+
+      const generalNote = (document.getElementById("ynwa-cup-general-note")?.value || "").trim();
+
+      if (!weekLabel) {
+        notify("Vui lòng nhập tên tuần vinh danh!", "⚠️");
+        return;
+      }
+
+      let firstUid = "", firstName = "";
+      if (firstSel === "__MANUAL__") {
+        firstName = firstManual;
+      } else if (firstSel) {
+        const u = allUsers.find(m => m.uid === firstSel);
+        firstUid = firstSel;
+        firstName = u ? (u.displayName || "Học viên") : "";
+      }
+
+      let secondUid = "", secondName = "";
+      if (secondSel === "__MANUAL__") {
+        secondName = secondManual;
+      } else if (secondSel) {
+        const u = allUsers.find(m => m.uid === secondSel);
+        secondUid = secondSel;
+        secondName = u ? (u.displayName || "Học viên") : "";
+      }
+
+      if (!firstName && !secondName) {
+        notify("Hãy chọn ít nhất 1 bạn đạt Cúp Nhất hoặc Cúp Nhì tuần!", "⚠️");
+        return;
+      }
+
+      const payload = {
+        weekLabel,
+        firstUid,
+        firstName,
+        firstAchievement,
+        secondUid,
+        secondName,
+        secondAchievement,
+        generalNote,
+        updatedAt: Date.now()
+      };
+
+      try {
+        if (db) {
+          if (editingTrophyId) {
+            await updateDoc(doc(db, "artifacts", appId, "public", "data", "trophy_hall", editingTrophyId), payload);
+            notify(`Đã cập nhật bảng vinh danh ${weekLabel}!`, "✅");
+          } else {
+            await addDoc(collection(db, "artifacts", appId, "public", "data", "trophy_hall"), {
+              ...payload,
+              createdAt: Date.now()
+            });
+            notify(`Đã ghi danh Cúp Nhất / Nhì cho ${weekLabel}!`, "🏆");
+          }
+        } else {
+          // Dự phòng lưu cục bộ khi chưa có kết nối Firebase
+          if (editingTrophyId) {
+            const idx = trophyRecords.findIndex(r => r.id === editingTrophyId);
+            if (idx >= 0) trophyRecords[idx] = { ...trophyRecords[idx], ...payload };
+          } else {
+            trophyRecords.unshift({ id: "local_" + Date.now(), ...payload, createdAt: Date.now() });
+          }
+          saveLocalTrophies();
+          renderTrophyHallPanel();
+          notify(`Đã lưu bảng vinh danh ${weekLabel}!`, "🏆");
+        }
+        editingTrophyId = null;
+        renderTrophyHallPanel();
+      } catch (err) {
+        notify("Lỗi lưu Cúp tuần: " + (err.message || "Không xác định"), "⚠️");
+      }
+    };
+
+    window.__ynwaEditTrophyRecord = function (recId) {
+      if (!isCurrentUserAdmin()) return;
+      editingTrophyId = recId;
+      renderTrophyHallPanel();
+      const formEl = document.getElementById("ynwa-admin-trophy-form");
+      if (formEl) formEl.scrollIntoView({ behavior: "smooth", block: "center" });
+    };
+
+    window.__ynwaCancelEditTrophy = function () {
+      editingTrophyId = null;
+      renderTrophyHallPanel();
+    };
+
+    window.__ynwaDeleteTrophyRecord = async function (recId) {
+      if (!isCurrentUserAdmin()) return;
+      if (!confirm("Bạn có chắc muốn xóa bản ghi Cúp tuần này khỏi Phòng Trưng Bày?")) return;
+      try {
+        if (db && !String(recId).startsWith("local_")) {
+          await deleteDoc(doc(db, "artifacts", appId, "public", "data", "trophy_hall", recId));
+        } else {
+          trophyRecords = trophyRecords.filter(r => r.id !== recId);
+          saveLocalTrophies();
+          renderTrophyHallPanel();
+        }
+        if (editingTrophyId === recId) editingTrophyId = null;
+        notify("Đã xóa bản ghi khỏi Phòng Trưng Bày Cúp", "🗑️");
+      } catch (err) {
+        notify("Không thể xóa: " + err.message, "⚠️");
+      }
+    };
+
+    function renderTrophyHallPanel() {
+      const panel = document.getElementById("tab-trophy-hall");
+      if (!panel) return;
+
+      const isAdmin = isCurrentUserAdmin();
+      const summary = buildTrophySummary();
+      const totalGold = trophyRecords.filter(r => r.firstName).length;
+      const totalSilver = trophyRecords.filter(r => r.secondName).length;
+
+      const editingRec = editingTrophyId ? trophyRecords.find(r => r.id === editingTrophyId) : null;
+      const firstOpts = buildMemberSelectOptions(editingRec?.firstUid || "", editingRec?.firstName || "");
+      const secondOpts = buildMemberSelectOptions(editingRec?.secondUid || "", editingRec?.secondName || "");
+
+      panel.innerHTML = `
+        <!-- Banner Giới Thiệu Phòng Trưng Bày Cúp -->
+        <div class="pastel-card rounded-3xl p-6" style="background: linear-gradient(135deg, var(--bg-card) 0%, var(--bg-soft) 100%);">
+          <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div class="flex items-start sm:items-center gap-3.5">
+              <div class="w-14 h-14 rounded-2xl bg-amber-100 border border-amber-300 flex items-center justify-center text-3xl shrink-0 ynwa-trophy-float">
+                🏆
+              </div>
+              <div>
+                <span class="px-3 py-0.5 rounded-full text-[11px] font-extrabold bg-white border inline-block mb-1"
+                  style="color: var(--primary); border-color: var(--border-soft);">
+                  ✨ Hall of Fame • Vinh Danh Nỗ Lực
+                </span>
+                <h2 class="font-heading text-xl sm:text-2xl font-bold" style="color: var(--primary);">
+                  Phòng Trưng Bày Cúp Tuần
+                </h2>
+                <p class="text-xs sm:text-sm mt-0.5" style="color: var(--text-muted);">
+                  Nơi lưu giữ những chiếc 🥇 Cúp Nhất Tuần và 🥈 Cúp Nhì Tuần danh giá của cả phòng học
+                </p>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-3 gap-2.5 p-3 rounded-2xl bg-white border shrink-0" style="border-color: var(--border-soft);">
+              <div class="text-center px-2">
+                <div class="text-[11px] font-bold" style="color: var(--text-muted);">Số tuần</div>
+                <div class="text-lg font-extrabold" style="color: var(--primary);">${trophyRecords.length}</div>
+              </div>
+              <div class="text-center px-2 border-x" style="border-color: var(--border-soft);">
+                <div class="text-[11px] font-bold" style="color: var(--text-muted);">Cúp Nhất</div>
+                <div class="text-lg font-extrabold text-amber-600">🥇 ${totalGold}</div>
+              </div>
+              <div class="text-center px-2">
+                <div class="text-[11px] font-bold" style="color: var(--text-muted);">Cúp Nhì</div>
+                <div class="text-lg font-extrabold text-slate-600">🥈 ${totalSilver}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Khu Vực Admin Ghi Danh Cúp Nhất & Nhì Tuần -->
+        ${isAdmin ? `
+          <div id="ynwa-admin-trophy-form" class="pastel-card rounded-3xl p-6 bg-white">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+              <div>
+                <h3 class="text-base sm:text-lg font-bold flex items-center gap-2" style="color: var(--primary);">
+                  <span>👑</span>
+                  <span>${editingRec ? "Chỉnh Sửa Ghi Danh Cúp Tuần" : "Admin Ghi Danh Cúp Nhất & Cúp Nhì Tuần"}</span>
+                </h3>
+                <p class="text-xs mt-0.5" style="color: var(--text-muted);">
+                  Chọn thành viên đạt giải Nhất & Nhì tuần để vinh danh và lưu vĩnh viễn vào Phòng Trưng Bày
+                </p>
+              </div>
+              ${editingRec ? `
+                <button type="button" onclick="__ynwaCancelEditTrophy()" class="btn-soft px-3 py-1.5 rounded-xl text-xs font-bold self-start sm:self-auto">
+                  ✕ Hủy sửa
+                </button>
+              ` : ""}
+            </div>
+
+            <form onsubmit="__ynwaSaveTrophyRecord(event)" class="space-y-4">
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <label class="block text-xs font-bold mb-1">Tên tuần / Kỳ vinh danh *</label>
+                  <input type="text" id="ynwa-cup-week" required maxlength="60"
+                    value="${esc(editingRec ? editingRec.weekLabel : getDefaultWeekLabel())}"
+                    placeholder="VD: Tuần 48 (23/11 – 29/11/2026)"
+                    class="w-full px-3.5 py-2 rounded-xl border text-xs sm:text-sm font-bold bg-white focus:outline-none"
+                    style="border-color: var(--border-soft);" />
+                </div>
+                <div>
+                  <label class="block text-xs font-bold mb-1">Lời chúc / Ghi chú chung (tùy chọn)</label>
+                  <input type="text" id="ynwa-cup-general-note" maxlength="100"
+                    value="${esc(editingRec?.generalNote || "")}"
+                    placeholder="VD: Tuần thi đua nước rút quá xuất sắc!"
+                    class="w-full px-3.5 py-2 rounded-xl border text-xs sm:text-sm bg-white focus:outline-none"
+                    style="border-color: var(--border-soft);" />
+                </div>
+              </div>
+
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <!-- Ô chọn Cúp Nhất Tuần -->
+                <div class="p-4 rounded-2xl border ynwa-cup-card-gold space-y-2.5">
+                  <div class="flex items-center gap-2 font-heading font-bold text-sm text-amber-900">
+                    <span class="text-xl">🥇</span>
+                    <span>Cúp Nhất Tuần (Quán Quân)</span>
+                  </div>
+                  <select id="ynwa-cup-first-select" onchange="__ynwaToggleManualName('first')"
+                    class="w-full px-3 py-2 rounded-xl border border-amber-300 text-xs sm:text-sm font-bold bg-white focus:outline-none">
+                    ${firstOpts.options}
+                  </select>
+                  <input type="text" id="ynwa-cup-first-manual" maxlength="40"
+                    value="${esc(firstOpts.isManual ? (editingRec?.firstName || "") : "")}"
+                    placeholder="Nhập tên bạn đạt Cúp Nhất..."
+                    class="${firstOpts.isManual ? "" : "hidden"} w-full px-3 py-2 rounded-xl border border-amber-300 text-xs sm:text-sm font-bold bg-white focus:outline-none" />
+                  <input type="text" id="ynwa-cup-first-note" maxlength="60"
+                    value="${esc(editingRec?.firstAchievement || "")}"
+                    placeholder="Thành tích (VD: 24.5 giờ học tuần này)"
+                    class="w-full px-3 py-1.5 rounded-xl border border-amber-200 text-xs bg-white/90 focus:outline-none" />
+                </div>
+
+                <!-- Ô chọn Cúp Nhì Tuần -->
+                <div class="p-4 rounded-2xl border ynwa-cup-card-silver space-y-2.5">
+                  <div class="flex items-center gap-2 font-heading font-bold text-sm text-slate-800">
+                    <span class="text-xl">🥈</span>
+                    <span>Cúp Nhì Tuần (Á Quân)</span>
+                  </div>
+                  <select id="ynwa-cup-second-select" onchange="__ynwaToggleManualName('second')"
+                    class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs sm:text-sm font-bold bg-white focus:outline-none">
+                    ${secondOpts.options}
+                  </select>
+                  <input type="text" id="ynwa-cup-second-manual" maxlength="40"
+                    value="${esc(secondOpts.isManual ? (editingRec?.secondName || "") : "")}"
+                    placeholder="Nhập tên bạn đạt Cúp Nhì..."
+                    class="${secondOpts.isManual ? "" : "hidden"} w-full px-3 py-2 rounded-xl border border-slate-300 text-xs sm:text-sm font-bold bg-white focus:outline-none" />
+                  <input type="text" id="ynwa-cup-second-note" maxlength="60"
+                    value="${esc(editingRec?.secondAchievement || "")}"
+                    placeholder="Thành tích (VD: 21 giờ học tuần này)"
+                    class="w-full px-3 py-1.5 rounded-xl border border-slate-200 text-xs bg-white/90 focus:outline-none" />
+                </div>
+              </div>
+
+              <div class="flex justify-end gap-2">
+                <button type="submit" class="btn-primary px-6 py-2.5 rounded-xl text-xs sm:text-sm font-bold shadow-sm">
+                  ${editingRec ? "💾 Lưu Chỉnh Sửa" : "🏆 Ghi Danh Lên Phòng Trưng Bày"}
+                </button>
+              </div>
+            </form>
+          </div>
+        ` : ""}
+
+        <!-- Bố Cục 2 Cột: Tủ Cúp Thành Viên + Lịch Sử Các Tuần -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <!-- Cột Trái (5 cột): Tủ Cúp Tổng Hợp Theo Thành Viên -->
+          <div class="lg:col-span-5 pastel-card rounded-3xl p-6 bg-white">
+            <h3 class="text-lg font-bold flex items-center gap-2 mb-1" style="color: var(--primary);">
+              <span>🎖️</span>
+              <span>Bảng Vàng Sở Hữu Cúp</span>
+            </h3>
+            <p class="text-xs mb-4" style="color: var(--text-muted);">
+              Tổng số Cúp Nhất & Cúp Nhì tuần mỗi thành viên đã chinh phục
+            </p>
+
+            ${summary.length === 0 ? `
+              <div class="text-center py-8 px-4 rounded-2xl border border-dashed" style="border-color: var(--border-soft); color: var(--text-muted);">
+                <div class="text-3xl mb-2">🏆</div>
+                <p class="text-xs font-bold">Tủ cúp đang chờ những chủ nhân đầu tiên!</p>
+              </div>
+            ` : `
+              <div class="space-y-3">
+                ${summary.map((item, idx) => `
+                  <div class="p-3.5 rounded-2xl border flex items-center justify-between gap-3"
+                    style="background-color: var(--bg-soft); border-color: ${idx === 0 ? "#FCD34D" : "var(--border-soft)"};">
+                    <div class="flex items-center gap-3 min-w-0">
+                      <div class="w-9 h-9 rounded-full flex items-center justify-center font-heading font-extrabold text-sm shrink-0 ${idx === 0 ? "bg-amber-400 text-white" : "bg-white border"}"
+                        style="${idx === 0 ? "" : "border-color: var(--border-soft); color: var(--primary);"}">
+                        ${idx === 0 ? "👑" : `#${idx + 1}`}
+                      </div>
+                      <div class="min-w-0">
+                        <div class="font-bold text-sm truncate">${esc(item.name)}</div>
+                        <div class="text-[11px] truncate mt-0.5" style="color: var(--text-muted);">
+                          ${esc(item.weeks.slice(0, 2).join(" • "))}${item.weeks.length > 2 ? ` (+${item.weeks.length - 2})` : ""}
+                        </div>
+                      </div>
+                    </div>
+                    <div class="flex items-center gap-1.5 shrink-0">
+                      ${item.gold > 0 ? `<span class="px-2.5 py-1 rounded-full text-xs font-extrabold bg-amber-100 text-amber-900 border border-amber-300">🥇 ${item.gold}</span>` : ""}
+                      ${item.silver > 0 ? `<span class="px-2.5 py-1 rounded-full text-xs font-extrabold bg-slate-100 text-slate-700 border border-slate-300">🥈 ${item.silver}</span>` : ""}
+                    </div>
+                  </div>
+                `).join("")}
+              </div>
+            `}
+          </div>
+
+          <!-- Cột Phải (7 cột): Tủ Kính Trưng Bày Từng Tuần -->
+          <div class="lg:col-span-7 pastel-card rounded-3xl p-6 bg-white">
+            <h3 class="text-lg font-bold flex items-center gap-2 mb-1" style="color: var(--primary);">
+              <span>📜</span>
+              <span>Lịch Sử Vinh Danh Qua Các Tuần</span>
+            </h3>
+            <p class="text-xs mb-4" style="color: var(--text-muted);">
+              Ghi danh các bạn xuất sắc nhất mỗi tuần do Quản trị viên công nhận
+            </p>
+
+            ${trophyRecords.length === 0 ? `
+              <div class="text-center py-10 px-4 rounded-2xl border border-dashed" style="border-color: var(--border-soft); color: var(--text-muted);">
+                <p class="text-xs sm:text-sm font-semibold">Chưa có tuần nào được ghi danh.</p>
+                ${isAdmin ? `<p class="text-[11px] mt-1">Admin hãy dùng biểu mẫu phía trên để trao 🥇 Cúp Nhất & 🥈 Cúp Nhì tuần đầu tiên nhé!</p>` : ""}
+              </div>
+            ` : `
+              <div class="space-y-4">
+                ${trophyRecords.map(rec => `
+                  <div class="p-4 rounded-2xl border bg-white space-y-3" style="border-color: var(--border-soft); box-shadow: 0 4px 14px -6px var(--shadow-soft);">
+                    <div class="flex flex-wrap items-center justify-between gap-2 pb-2 border-b" style="border-color: var(--border-soft);">
+                      <div class="flex items-center gap-2">
+                        <span class="px-3 py-1 rounded-full text-xs font-extrabold" style="background-color: var(--bg-soft); color: var(--primary);">
+                          📅 ${esc(rec.weekLabel)}
+                        </span>
+                      </div>
+                      ${isAdmin ? `
+                        <div class="flex items-center gap-1.5">
+                          <button type="button" onclick="__ynwaEditTrophyRecord('${esc(rec.id)}')"
+                            class="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-sky-50 text-sky-700 hover:bg-sky-100 transition">
+                            ✏️ Sửa
+                          </button>
+                          <button type="button" onclick="__ynwaDeleteTrophyRecord('${esc(rec.id)}')"
+                            class="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-rose-50 text-rose-600 hover:bg-rose-100 transition">
+                            🗑️ Xóa
+                          </button>
+                        </div>
+                      ` : ""}
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <!-- Thẻ Nhất Tuần -->
+                      <div class="p-3.5 rounded-2xl border ynwa-cup-card-gold flex items-center gap-3">
+                        <div class="w-11 h-11 rounded-2xl bg-white/90 border border-amber-300 flex items-center justify-center text-2xl shrink-0">
+                          🥇
+                        </div>
+                        <div class="min-w-0">
+                          <div class="text-[10px] font-extrabold uppercase tracking-wider text-amber-800">Cúp Nhất Tuần</div>
+                          <div class="font-heading text-sm sm:text-base font-extrabold text-amber-950 truncate">
+                            ${rec.firstName ? esc(rec.firstName) : '<span class="italic font-normal opacity-60">Chưa ghi danh</span>'}
+                          </div>
+                          ${rec.firstAchievement ? `<div class="text-[11px] font-semibold text-amber-900/80 truncate mt-0.5">✨ ${esc(rec.firstAchievement)}</div>` : ""}
+                        </div>
+                      </div>
+
+                      <!-- Thẻ Nhì Tuần -->
+                      <div class="p-3.5 rounded-2xl border ynwa-cup-card-silver flex items-center gap-3">
+                        <div class="w-11 h-11 rounded-2xl bg-white/90 border border-slate-300 flex items-center justify-center text-2xl shrink-0">
+                          🥈
+                        </div>
+                        <div class="min-w-0">
+                          <div class="text-[10px] font-extrabold uppercase tracking-wider text-slate-600">Cúp Nhì Tuần</div>
+                          <div class="font-heading text-sm sm:text-base font-extrabold text-slate-900 truncate">
+                            ${rec.secondName ? esc(rec.secondName) : '<span class="italic font-normal opacity-60">Chưa ghi danh</span>'}
+                          </div>
+                          ${rec.secondAchievement ? `<div class="text-[11px] font-semibold text-slate-700 truncate mt-0.5">✨ ${esc(rec.secondAchievement)}</div>` : ""}
+                        </div>
+                      </div>
+                    </div>
+
+                    ${rec.generalNote ? `
+                      <div class="text-xs px-3 py-2 rounded-xl italic" style="background-color: var(--bg-soft); color: var(--text-muted);">
+                        💬 ${esc(rec.generalNote)}
+                      </div>
+                    ` : ""}
+                  </div>
+                `).join("")}
+              </div>
+            `}
+          </div>
+        </div>
+      `;
+    }
+
+    // -----------------------------------------------------------------
+    // 5. NÂNG CẤP BẢNG XẾP HẠNG CHĂM CHỈ: SỐ GIỜ HỌC ALL-TIME + ADMIN CHỈNH GIỜ
+    // -----------------------------------------------------------------
+    function renderDiligentAllTimeLeaderboard() {
+      const lbEl = document.getElementById("leaderboard-list");
+      if (!lbEl || allUsers.length === 0) return;
+
+      // Đổi nhãn tiêu đề phụ của Bảng Xếp Hạng Chăm Chỉ thành "All-Time (Giờ)"
+      const card = lbEl.closest(".pastel-card");
+      if (card) {
+        const subLabel = Array.from(card.querySelectorAll("span")).find(
+          s => s.textContent && (s.textContent.trim() === "Tổng phút" || s.textContent.trim() === "All-Time (Giờ)")
+        );
+        if (subLabel) subLabel.textContent = "All-Time (Giờ)";
+      }
+
+      const isAdmin = isCurrentUserAdmin();
+      const visibleMembers = allUsers.filter(m => !m.isBanned);
+      const ranked = [...visibleMembers].sort((a, b) => (b.totalMinutes || 0) - (a.totalMinutes || 0));
+      const maxMins = Math.max(1, ranked[0]?.totalMinutes || 1);
+
+      isUpdatingLbDom = true;
+      try {
+        if (ranked.length === 0) {
+          lbEl.innerHTML = `<p class="text-center text-xs py-4" style="color: var(--text-muted);">Chưa có dữ liệu xếp hạng</p>`;
+        } else {
+          lbEl.innerHTML = ranked.map((m, idx) => {
+            const rankIcon = idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : `#${idx + 1}`;
+            const hrs = formatAllTimeHours(m.totalMinutes || 0);
+            const pct = Math.min(100, Math.round((hrs.mins / maxMins) * 100));
+            const cupBadge = getMemberCupBadge(m);
+
+            return `
+              <div class="p-2.5 rounded-2xl border" style="background-color: var(--bg-soft); border-color: var(--border-soft);">
+                <div class="flex items-center justify-between gap-2 text-xs mb-1">
+                  <div class="flex items-center gap-1.5 min-w-0">
+                    <span class="font-heading font-extrabold w-6 text-center shrink-0">${rankIcon}</span>
+                    <span class="font-bold truncate">${esc(m.displayName || "Học viên")}</span>
+                    ${cupBadge}
+                  </div>
+                  <div class="flex items-center gap-1.5 shrink-0">
+                    <div class="text-right leading-tight">
+                      <div class="font-extrabold" style="color: var(--primary);">⏱️ ${hrs.decimalHours} giờ</div>
+                      <div class="text-[10px] font-semibold" style="color: var(--text-muted);">${hrs.detail} • All-time</div>
+                    </div>
+                    ${isAdmin ? `
+                      <button type="button" onclick="__ynwaOpenEditTimeModal('${esc(m.uid)}')" title="Admin chỉnh thời gian học"
+                        class="px-2 py-1 rounded-lg text-[10px] font-extrabold bg-white border hover:bg-sky-50 transition"
+                        style="border-color: var(--border-soft); color: var(--primary);">
+                        ✏️ Sửa
+                      </button>
+                    ` : ""}
+                  </div>
+                </div>
+                <div class="w-full h-1.5 rounded-full overflow-hidden bg-white mt-1.5">
+                  <div class="h-full rounded-full transition-all" style="width: ${pct}%; background-color: var(--primary);"></div>
+                </div>
+              </div>
+            `;
+          }).join("");
+        }
+      } finally {
+        setTimeout(() => { isUpdatingLbDom = false; }, 30);
+      }
+    }
+
+    function observeLeaderboard() {
+      const lbEl = document.getElementById("leaderboard-list");
+      if (!lbEl || lbObserver) return;
+      lbObserver = new MutationObserver(() => {
+        if (!isUpdatingLbDom && allUsers.length > 0) {
+          renderDiligentAllTimeLeaderboard();
+        }
+      });
+      lbObserver.observe(lbEl, { childList: true });
+    }
+
+    // -----------------------------------------------------------------
+    // 6. MODAL ADMIN CHỈNH THỜI GIAN HỌC CỦA THÀNH VIÊN (SET HOẶC CỘNG/TRỪ)
+    // -----------------------------------------------------------------
+    let editTimeTargetUid = null;
+    let editTimeMode = "set"; // "set" | "delta"
+
+    function ensureEditTimeModal() {
+      if (document.getElementById("modal-ynwa-edit-time")) return;
+      const modal = document.createElement("div");
+      modal.id = "modal-ynwa-edit-time";
+      modal.className = "fixed inset-0 z-50 hidden items-center justify-center p-4 bg-black/35 backdrop-blur-xs";
+      modal.innerHTML = `
+        <div class="pastel-card rounded-3xl max-w-md w-full p-6 relative animate-pop-in bg-white">
+          <button type="button" onclick="__ynwaCloseEditTimeModal()"
+            class="absolute top-4 right-4 w-8 h-8 rounded-full flex items-center justify-center text-lg font-bold hover:bg-gray-100"
+            style="color: var(--text-muted);">×</button>
+
+          <h3 class="text-lg font-bold flex items-center gap-2 mb-1" style="color: var(--primary);">
+            <span>⏱️</span>
+            <span>Chỉnh Thời Gian Học Thành Viên</span>
+          </h3>
+          <p id="ynwa-et-member-info" class="text-xs font-semibold mb-4" style="color: var(--text-muted);"></p>
+
+          <!-- Chuyển chế độ Đặt trực tiếp / Cộng Trừ -->
+          <div class="grid grid-cols-2 gap-1.5 p-1 rounded-2xl mb-4 border" style="background-color: var(--bg-soft); border-color: var(--border-soft);">
+            <button type="button" id="ynwa-et-mode-set" onclick="__ynwaSwitchEditTimeMode('set')"
+              class="py-1.5 rounded-xl text-xs font-bold transition btn-primary">
+              🎯 Đặt thời gian mới
+            </button>
+            <button type="button" id="ynwa-et-mode-delta" onclick="__ynwaSwitchEditTimeMode('delta')"
+              class="py-1.5 rounded-xl text-xs font-bold transition" style="color: var(--text-main);">
+              ➕ / ➖ Cộng hoặc trừ
+            </button>
+          </div>
+
+          <form onsubmit="__ynwaSubmitEditTime(event)" class="space-y-3.5">
+            <!-- Chế độ 1: Đặt trực tiếp Giờ & Phút All-Time -->
+            <div id="ynwa-et-set-box" class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block text-xs font-bold mb-1">Số giờ All-Time</label>
+                <input type="number" id="ynwa-et-set-hours" min="0" step="1" value="0" oninput="__ynwaPreviewEditTime()"
+                  class="w-full px-3 py-2 rounded-xl border text-sm font-extrabold bg-white focus:outline-none"
+                  style="border-color: var(--border-soft); color: var(--primary);" />
+              </div>
+              <div>
+                <label class="block text-xs font-bold mb-1">Số phút lẻ (0–59)</label>
+                <input type="number" id="ynwa-et-set-mins" min="0" max="59" step="1" value="0" oninput="__ynwaPreviewEditTime()"
+                  class="w-full px-3 py-2 rounded-xl border text-sm font-extrabold bg-white focus:outline-none"
+                  style="border-color: var(--border-soft); color: var(--primary);" />
+              </div>
+            </div>
+
+            <!-- Chế độ 2: Cộng / Trừ thêm -->
+            <div id="ynwa-et-delta-box" class="hidden space-y-2.5">
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="block text-xs font-bold mb-1">Cộng / Trừ giờ (+/-)</label>
+                  <input type="number" id="ynwa-et-delta-hours" step="1" value="0" oninput="__ynwaPreviewEditTime()"
+                    class="w-full px-3 py-2 rounded-xl border text-sm font-extrabold bg-white focus:outline-none"
+                    style="border-color: var(--border-soft);" />
+                </div>
+                <div>
+                  <label class="block text-xs font-bold mb-1">Cộng / Trừ phút (+/-)</label>
+                  <input type="number" id="ynwa-et-delta-mins" step="5" value="0" oninput="__ynwaPreviewEditTime()"
+                    class="w-full px-3 py-2 rounded-xl border text-sm font-extrabold bg-white focus:outline-none"
+                    style="border-color: var(--border-soft);" />
+                </div>
+              </div>
+              <div class="flex flex-wrap gap-1.5">
+                <button type="button" onclick="__ynwaQuickDeltaMins(30)" class="btn-soft px-2.5 py-1 rounded-lg text-[11px] font-bold">+30p</button>
+                <button type="button" onclick="__ynwaQuickDeltaMins(60)" class="btn-soft px-2.5 py-1 rounded-lg text-[11px] font-bold">+1 giờ</button>
+                <button type="button" onclick="__ynwaQuickDeltaMins(120)" class="btn-soft px-2.5 py-1 rounded-lg text-[11px] font-bold">+2 giờ</button>
+                <button type="button" onclick="__ynwaQuickDeltaMins(-30)" class="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-rose-50 text-rose-600">-30p</button>
+                <button type="button" onclick="__ynwaQuickDeltaMins(-60)" class="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-rose-50 text-rose-600">-1 giờ</button>
+              </div>
+            </div>
+
+            <!-- Tùy chọn chỉnh luôn phút hôm nay -->
+            <div class="p-3 rounded-2xl border" style="background-color: var(--bg-soft); border-color: var(--border-soft);">
+              <label class="block text-[11px] font-bold mb-1" style="color: var(--text-muted);">
+                Phút học hôm nay (để trống nếu giữ nguyên):
+              </label>
+              <input type="number" id="ynwa-et-today-mins" min="0" placeholder="VD: 90"
+                class="w-full px-3 py-1.5 rounded-xl border text-xs font-bold bg-white focus:outline-none"
+                style="border-color: var(--border-soft);" />
+            </div>
+
+            <!-- Xem trước kết quả -->
+            <div id="ynwa-et-preview" class="p-3 rounded-2xl border text-xs font-bold text-center bg-amber-50 border-amber-200 text-amber-900"></div>
+
+            <div class="flex items-center justify-end gap-2 pt-1">
+              <button type="button" onclick="__ynwaCloseEditTimeModal()" class="btn-soft px-4 py-2 rounded-xl text-xs font-bold">
+                Hủy
+              </button>
+              <button type="submit" class="btn-primary px-5 py-2 rounded-xl text-xs sm:text-sm font-bold shadow-sm">
+                💾 Lưu thời gian
+              </button>
+            </div>
+          </form>
+        </div>
+      `;
+      document.body.appendChild(modal);
+    }
+
+    window.__ynwaOpenEditTimeModal = function (uid) {
+      if (!isCurrentUserAdmin()) {
+        notify("Chỉ Admin mới có quyền chỉnh thời gian thành viên!", "🔒");
+        return;
+      }
+      const user = allUsers.find(u => u.uid === uid);
+      if (!user) return;
+
+      ensureEditTimeModal();
+      editTimeTargetUid = uid;
+      const hrs = formatAllTimeHours(user.totalMinutes || 0);
+
+      document.getElementById("ynwa-et-member-info").textContent =
+        `Thành viên: ${user.displayName || "Học viên"} • Hiện tại: ${hrs.decimalHours} giờ (${hrs.detail} / ${hrs.mins} phút)`;
+      document.getElementById("ynwa-et-set-hours").value = hrs.h;
+      document.getElementById("ynwa-et-set-mins").value = hrs.m;
+      document.getElementById("ynwa-et-delta-hours").value = 0;
+      document.getElementById("ynwa-et-delta-mins").value = 0;
+      document.getElementById("ynwa-et-today-mins").value = "";
+
+      window.__ynwaSwitchEditTimeMode("set");
+
+      const modal = document.getElementById("modal-ynwa-edit-time");
+      modal.classList.remove("hidden");
+      modal.classList.add("flex");
+    };
+
+    window.__ynwaCloseEditTimeModal = function () {
+      const modal = document.getElementById("modal-ynwa-edit-time");
+      if (modal) {
+        modal.classList.add("hidden");
+        modal.classList.remove("flex");
+      }
+      editTimeTargetUid = null;
+    };
+
+    window.__ynwaSwitchEditTimeMode = function (mode) {
+      editTimeMode = mode;
+      const setBtn = document.getElementById("ynwa-et-mode-set");
+      const deltaBtn = document.getElementById("ynwa-et-mode-delta");
+      const setBox = document.getElementById("ynwa-et-set-box");
+      const deltaBox = document.getElementById("ynwa-et-delta-box");
+
+      if (mode === "set") {
+        setBtn.classList.add("btn-primary");
+        setBtn.style.color = "#FFFFFF";
+        deltaBtn.classList.remove("btn-primary");
+        deltaBtn.style.color = "var(--text-main)";
+        setBox.classList.remove("hidden");
+        deltaBox.classList.add("hidden");
+      } else {
+        deltaBtn.classList.add("btn-primary");
+        deltaBtn.style.color = "#FFFFFF";
+        setBtn.classList.remove("btn-primary");
+        setBtn.style.color = "var(--text-main)";
+        deltaBox.classList.remove("hidden");
+        setBox.classList.add("hidden");
+      }
+      window.__ynwaPreviewEditTime();
+    };
+
+    window.__ynwaQuickDeltaMins = function (minsDelta) {
+      const inp = document.getElementById("ynwa-et-delta-mins");
+      if (!inp) return;
+      inp.value = (parseInt(inp.value, 10) || 0) + minsDelta;
+      window.__ynwaPreviewEditTime();
+    };
+
+    function computeNextTotalMinutes() {
+      const user = allUsers.find(u => u.uid === editTimeTargetUid);
+      const curMins = Number(user?.totalMinutes || 0);
+      if (editTimeMode === "set") {
+        const h = Math.max(0, parseInt(document.getElementById("ynwa-et-set-hours")?.value, 10) || 0);
+        const m = Math.max(0, parseInt(document.getElementById("ynwa-et-set-mins")?.value, 10) || 0);
+        return h * 60 + m;
+      } else {
+        const dh = parseInt(document.getElementById("ynwa-et-delta-hours")?.value, 10) || 0;
+        const dm = parseInt(document.getElementById("ynwa-et-delta-mins")?.value, 10) || 0;
+        return Math.max(0, curMins + dh * 60 + dm);
+      }
+    }
+
+    window.__ynwaPreviewEditTime = function () {
+      const previewEl = document.getElementById("ynwa-et-preview");
+      if (!previewEl) return;
+      const nextMins = computeNextTotalMinutes();
+      const hrs = formatAllTimeHours(nextMins);
+      previewEl.textContent = `Sau khi lưu: ${hrs.decimalHours} giờ All-Time (${hrs.detail} — ${hrs.mins} phút)`;
+    };
+
+    window.__ynwaSubmitEditTime = async function (e) {
+      e.preventDefault();
+      if (!isCurrentUserAdmin() || !editTimeTargetUid || !db) return;
+
+      const user = allUsers.find(u => u.uid === editTimeTargetUid);
+      if (!user) return;
+
+      const nextTotalMins = computeNextTotalMinutes();
+      const todayRaw = (document.getElementById("ynwa-et-today-mins")?.value || "").trim();
+      const updatePayload = { totalMinutes: nextTotalMins };
+
+      if (todayRaw !== "") {
+        const nextToday = Math.max(0, parseInt(todayRaw, 10) || 0);
+        updatePayload.todayMinutes = nextToday;
+        updatePayload.todayDate = new Date().toISOString().slice(0, 10);
+      }
+
+      try {
+        await updateDoc(doc(db, "artifacts", appId, "public", "data", "users", editTimeTargetUid), updatePayload);
+
+        // Đồng bộ lại localStorage của bộ đếm cũ để tránh bị ghi đè ngược khi giảm giờ
+        const slugUid = "member_" + normalizeSlug(user.displayName || "");
+        try {
+          localStorage.setItem("ynwa_diligent_total_mins_" + slugUid, String(nextTotalMins));
+        } catch (_) {}
+
+        const hrs = formatAllTimeHours(nextTotalMins);
+        window.__ynwaCloseEditTimeModal();
+        notify(`Đã cập nhật thời gian học của ${user.displayName} thành ${hrs.decimalHours} giờ (${hrs.mins}p)!`, "⏱️");
+      } catch (err) {
+        notify("Lỗi cập nhật thời gian: " + (err.message || "Không xác định"), "⚠️");
+      }
+    };
+
+    // -----------------------------------------------------------------
+    // 7. KHỞI CHẠY & ĐỒNG BỘ TỰ ĐỘNG
+    // -----------------------------------------------------------------
+    loadLocalTrophies();
+
+    const bootInterval = setInterval(() => {
+      mountTrophyHallTab();
+      observeLeaderboard();
+      if (!db) {
+        attachFirebaseListeners();
+      }
+      if (document.getElementById("btn-tab-trophy-hall") && db) {
+        clearInterval(bootInterval);
+      }
+    }, 600);
+  })();
+</script>
 </body></html>
