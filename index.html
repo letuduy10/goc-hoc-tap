@@ -13398,4 +13398,64 @@ service cloud.firestore {
     }, 500);
   })();
 </script>
+  <!-- =====================================================================
+     ĐỒNG BỘ MÀU NỀN & BỎ VIỀN CHO 2 MỤC "NUÔI MÈO" VÀ "XẾP HẠNG & NHIỆM VỤ"
+     (Dán ngay trước thẻ </body> trong file index (2).html)
+     ===================================================================== -->
+<style>
+  .ynwa-menu-unified {
+    border: none !important;
+    box-shadow: none !important;
+  }
+</style>
+
+<script>
+  (function () {
+    function unifyMenuColors() {
+      const refBtn = document.getElementById("tab-btn-room");
+      const navContainer = refBtn ? refBtn.parentElement : document.body;
+      const buttons = Array.from(navContainer.querySelectorAll("button"));
+
+      buttons.forEach((btn) => {
+        const label = (btn.textContent || "").toLowerCase();
+        const isTarget =
+          label.includes("nuôi mèo") ||
+          label.includes("xếp hạng & nhiệm vụ") ||
+          label.includes("xếp hạng và nhiệm vụ");
+
+        if (!isTarget) return;
+
+        // Xóa các class nền trắng / viền xanh của Tailwind hoặc btn-soft
+        const classesToRemove = Array.from(btn.classList).filter(
+          (c) =>
+            c === "bg-white" ||
+            c === "btn-soft" ||
+            c === "border" ||
+            c.startsWith("border-") ||
+            c.startsWith("bg-sky-") ||
+            c.startsWith("bg-blue-")
+        );
+        classesToRemove.forEach((c) => btn.classList.remove(c));
+
+        btn.classList.add("ynwa-menu-unified");
+
+        // Nếu nút không đang ở trạng thái được chọn (active) thì đặt về var(--bg-soft)
+        const isActive =
+          btn.classList.contains("btn-primary") ||
+          btn.classList.contains("active") ||
+          (btn.style.backgroundColor || "").includes("var(--primary)");
+
+        if (!isActive) {
+          btn.style.backgroundColor = "var(--bg-soft)";
+          btn.style.color = "var(--text-main)";
+        }
+        btn.style.border = "none";
+      });
+    }
+
+    unifyMenuColors();
+    setTimeout(unifyMenuColors, 300);
+    setTimeout(unifyMenuColors, 1000);
+  })();
+</script>
 </body></html>
