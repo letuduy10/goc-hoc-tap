@@ -12685,5 +12685,717 @@ service cloud.firestore {
     }, 500);
   })();
 </script>
-  
+  <!-- =====================================================================
+     MỤC THỐNG KÊ GIỜ HỌC CÁC NGÀY TRONG TUẦN CỦA CÁC THÀNH VIÊN (T2 -> CN)
+     (Dán đoạn này ngay trước thẻ </body> trong file index (2).html)
+     ===================================================================== -->
+<style>
+  .ynwa-ws-bar-col {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+    height: 150px;
+    gap: 6px;
+  }
+  .ynwa-ws-bar-track {
+    width: 100%;
+    max-width: 44px;
+    height: 108px;
+    border-radius: 12px;
+    background: var(--bg-soft, #f1f5f9);
+    border: 1px solid var(--border-soft, #e2e8f0);
+    display: flex;
+    align-items: flex-end;
+    overflow: hidden;
+    padding: 2px;
+  }
+  .ynwa-ws-bar-fill {
+    width: 100%;
+    border-radius: 9px;
+    background: var(--primary, #4f46e5);
+    transition: height 0.35s ease;
+    min-height: 0;
+  }
+  .ynwa-ws-table-wrap {
+    width: 100%;
+    overflow-x: auto;
+    border-radius: 18px;
+    border: 1px solid var(--border-soft, #e2e8f0);
+    background: #ffffff;
+  }
+  .ynwa-ws-table {
+    width: 100%;
+    min-width: 720px;
+    border-collapse: collapse;
+    font-size: 12.5px;
+  }
+  .ynwa-ws-table th,
+  .ynwa-ws-table td {
+    padding: 10px 8px;
+    border-bottom: 1px solid var(--border-soft, #f1f5f9);
+    text-align: center;
+  }
+  .ynwa-ws-table thead th {
+    background: var(--bg-soft, #f8fafc);
+    font-weight: 800;
+    color: var(--text-main, #1e293b);
+    white-space: nowrap;
+  }
+  .ynwa-ws-table th:first-child,
+  .ynwa-ws-table td:first-child {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    background: #ffffff;
+    text-align: left;
+    padding-left: 14px;
+    min-width: 165px;
+    border-right: 1px solid var(--border-soft, #e2e8f0);
+  }
+  .ynwa-ws-table thead th:first-child {
+    background: var(--bg-soft, #f8fafc);
+    z-index: 2;
+  }
+  .ynwa-ws-today-col {
+    background: rgba(99, 102, 241, 0.06) !important;
+  }
+  .ynwa-ws-cell-pill {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 9999px;
+    font-weight: 800;
+    font-size: 11.5px;
+    white-space: nowrap;
+  }
+  .ynwa-ws-lvl-0 { color: #cbd5e1; font-weight: 600; }
+  .ynwa-ws-lvl-1 { background: #eef2ff; color: #3730a3; }
+  .ynwa-ws-lvl-2 { background: #c7d2fe; color: #312e81; }
+  .ynwa-ws-lvl-3 { background: #818cf8; color: #ffffff; }
+  .ynwa-ws-lvl-4 { background: #4f46e5; color: #ffffff; }
+  .ynwa-ws-editable { cursor: pointer; }
+  .ynwa-ws-editable:hover { outline: 1.5px dashed var(--primary, #4f46e5); border-radius: 8px; }
+</style>
+
+<script type="module">
+  import { getApps, getApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+  import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+  import {
+    getFirestore,
+    collection,
+    doc,
+    setDoc,
+    increment,
+    onSnapshot,
+    serverTimestamp
+  } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+  (function () {
+    if (window.__ynwaWeeklyStatsLoaded) return;
+    window.__ynwaWeeklyStatsLoaded = true;
+
+    const appId = typeof __app_id !== "undefined" ? __app_id : "goc-hoc-nho-prod";
+
+    const WEEKDAYS = [
+      { key: "T2", label: "Thứ 2", offset: 0 },
+      { key: "T3", label: "Thứ 3", offset: 1 },
+      { key: "T4", label: "Thứ 4", offset: 2 },
+      { key: "T5", label: "Thứ 5", offset: 3 },
+      { key: "T6", label: "Thứ 6", offset: 4 },
+      { key: "T7", label: "Thứ 7", offset: 5 },
+      { key: "CN", label: "Chủ nhật", offset: 6 }
+    ];
+
+    let db = null;
+    let auth = null;
+    let currentUid = null;
+    let allUsers = [];
+    let dailyLogs = new Map(); // docId ("uid_YYYY-MM-DD") -> { uid, displayName, date, minutes }
+    let weekOffset = 0;        // 0 = tuần hiện tại, -1 = tuần trước, +1 = tuần sau
+    let unitMode = "hours";    // "hours" (vd: 2.5h) | "hm" (vd: 2g 30p)
+    let searchKeyword = "";
+    let prevMyTotalMins = null;
+
+    // -----------------------------------------------------------------
+    // 1. HÀM TIỆN ÍCH NGÀY / TUẦN & ĐỊNH DẠNG GIỜ
+    // -----------------------------------------------------------------
+    function esc(str) {
+      return String(str ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }
+
+    function notify(msg, icon = "📊") {
+      if (typeof window.showToast === "function") window.showToast(msg, icon);
+      else console.log(icon, msg);
+    }
+
+    function isCurrentUserAdmin() {
+      if (currentUid) {
+        const me = allUsers.find(u => u.uid === currentUid);
+        if (me) return me.role === "admin" || me.isAdmin === true;
+      }
+      const adminTabBtn = document.getElementById("tab-btn-admin");
+      return Boolean(adminTabBtn && !adminTabBtn.classList.contains("hidden"));
+    }
+
+    function toDateStr(d) {
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      return `${y}-${m}-${day}`;
+    }
+
+    function toShortDate(d) {
+      return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}`;
+    }
+
+    function getMondayOfWeek(offsetWeeks = 0) {
+      const now = new Date();
+      const base = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const jsDay = base.getDay(); // 0 = CN, 1 = T2 ... 6 = T7
+      const diffToMon = jsDay === 0 ? -6 : 1 - jsDay;
+      base.setDate(base.getDate() + diffToMon + offsetWeeks * 7);
+      return base;
+    }
+
+    function getWeekDaysDates(offsetWeeks = 0) {
+      const monday = getMondayOfWeek(offsetWeeks);
+      return WEEKDAYS.map(wd => {
+        const dt = new Date(monday);
+        dt.setDate(monday.getDate() + wd.offset);
+        return {
+          ...wd,
+          dateObj: dt,
+          dateStr: toDateStr(dt),
+          shortDate: toShortDate(dt)
+        };
+      });
+    }
+
+    function formatMinutes(minsRaw) {
+      const mins = Math.max(0, Math.round(Number(minsRaw) || 0));
+      if (mins === 0) return "-";
+      if (unitMode === "hm") {
+        const h = Math.floor(mins / 60);
+        const m = mins % 60;
+        if (h === 0) return `${m}p`;
+        return m > 0 ? `${h}g ${m}p` : `${h}g`;
+      }
+      const hrs = (mins / 60).toFixed(1).replace(/\.0$/, "");
+      return `${hrs}h`;
+    }
+
+    function formatMinutesFull(minsRaw) {
+      const mins = Math.max(0, Math.round(Number(minsRaw) || 0));
+      const h = Math.floor(mins / 60);
+      const m = mins % 60;
+      const dec = (mins / 60).toFixed(1).replace(/\.0$/, "");
+      return `${dec} giờ (${h}g ${m}p)`;
+    }
+
+    function getHeatClass(mins) {
+      if (!mins || mins <= 0) return "ynwa-ws-lvl-0";
+      if (mins < 60) return "ynwa-ws-lvl-1";
+      if (mins < 150) return "ynwa-ws-lvl-2";
+      if (mins < 270) return "ynwa-ws-lvl-3";
+      return "ynwa-ws-lvl-4";
+    }
+
+    // -----------------------------------------------------------------
+    // 2. TỰ ĐỘNG GHI NHẬN GIỜ HỌC MỖI NGÀY VÀO FIRESTORE
+    // -----------------------------------------------------------------
+    async function recordMyStudyMinutes(deltaMins, absoluteTodayMins = null) {
+      if (!db || !currentUid) return;
+      const todayStr = toDateStr(new Date());
+      const docId = `${currentUid}_${todayStr}`;
+      const me = allUsers.find(u => u.uid === currentUid);
+      const displayName = me?.displayName || auth?.currentUser?.displayName || "Học viên";
+
+      try {
+        const ref = doc(db, "artifacts", appId, "public", "data", "daily_study_logs", docId);
+        if (absoluteTodayMins !== null) {
+          await setDoc(ref, {
+            uid: currentUid,
+            displayName,
+            date: todayStr,
+            minutes: Math.max(0, Math.round(absoluteTodayMins)),
+            updatedAt: serverTimestamp()
+          }, { merge: true });
+        } else if (deltaMins > 0) {
+          await setDoc(ref, {
+            uid: currentUid,
+            displayName,
+            date: todayStr,
+            minutes: increment(Math.round(deltaMins)),
+            updatedAt: serverTimestamp()
+          }, { merge: true });
+        }
+      } catch (err) {
+        console.warn("Không thể ghi log giờ học ngày:", err);
+      }
+    }
+
+    function getMemberDayMinutes(user, dateStr, todayStr) {
+      const logEntry = dailyLogs.get(`${user.uid}_${dateStr}`);
+      const loggedMins = Math.max(0, Math.round(Number(logEntry?.minutes) || 0));
+
+      // Đồng bộ thêm với todayMinutes của user nếu ngày đang xét là hôm nay
+      if (dateStr === todayStr && user.todayDate === todayStr) {
+        const todayMins = Math.max(0, Math.round(Number(user.todayMinutes) || 0));
+        return Math.max(loggedMins, todayMins);
+      }
+      return loggedMins;
+    }
+
+    // -----------------------------------------------------------------
+    // 3. GẮN MỤC "THỐNG KÊ GIỜ HỌC TUẦN" VÀO THANH MENU BÊN TRÁI
+    // -----------------------------------------------------------------
+    function mountWeeklyStatsTab() {
+      const roomBtn = document.getElementById("tab-btn-room");
+      const focusPanel = document.getElementById("panel-focus");
+      if (!roomBtn || !focusPanel) return;
+
+      const navBar = roomBtn.parentElement;
+      const panelsHost = focusPanel.parentElement;
+
+      if (!document.getElementById("btn-tab-weekly-stats") && navBar) {
+        const btn = document.createElement("button");
+        btn.id = "btn-tab-weekly-stats";
+        btn.type = "button";
+        btn.className = "tab-nav-btn px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap flex items-center gap-1.5 transition";
+        btn.style.backgroundColor = "var(--bg-soft)";
+        btn.style.color = "var(--text-main)";
+        btn.innerHTML = `<span>📊</span><span>Thống Kê Giờ Tuần</span>`;
+
+        const adminBtn = document.getElementById("tab-btn-admin");
+        if (adminBtn && adminBtn.parentElement === navBar) {
+          navBar.insertBefore(btn, adminBtn);
+        } else {
+          navBar.appendChild(btn);
+        }
+
+        btn.addEventListener("click", openWeeklyStatsTab);
+
+        navBar.addEventListener("click", (e) => {
+          const clicked = e.target.closest("button");
+          if (clicked && clicked.id !== "btn-tab-weekly-stats") {
+            deactivateWeeklyStatsTab();
+          }
+        });
+      }
+
+      if (!document.getElementById("tab-weekly-stats") && panelsHost) {
+        const panel = document.createElement("section");
+        panel.id = "tab-weekly-stats";
+        panel.className = "hidden animate-tab space-y-6";
+        panelsHost.appendChild(panel);
+        renderWeeklyStatsPanel();
+      }
+
+      if (typeof window.switchTab === "function" && !window.__ynwaWeeklySwitchWrapped) {
+        const origSwitchTab = window.switchTab;
+        window.switchTab = function () {
+          deactivateWeeklyStatsTab();
+          return origSwitchTab.apply(this, arguments);
+        };
+        window.__ynwaWeeklySwitchWrapped = true;
+      }
+    }
+
+    function deactivateWeeklyStatsTab() {
+      const panel = document.getElementById("tab-weekly-stats");
+      const btn = document.getElementById("btn-tab-weekly-stats");
+      if (panel) panel.classList.add("hidden");
+      if (btn) {
+        btn.classList.remove("btn-primary", "active");
+        btn.style.backgroundColor = "var(--bg-soft)";
+        btn.style.color = "var(--text-main)";
+      }
+    }
+
+    function openWeeklyStatsTab() {
+      const btn = document.getElementById("btn-tab-weekly-stats");
+      const panel = document.getElementById("tab-weekly-stats");
+      if (!btn || !panel) return;
+
+      const navBar = btn.parentElement;
+      if (navBar) {
+        Array.from(navBar.querySelectorAll("button")).forEach(b => {
+          b.classList.remove("btn-primary", "active");
+          b.style.backgroundColor = "var(--bg-soft)";
+          b.style.color = "var(--text-main)";
+        });
+      }
+      btn.style.backgroundColor = "var(--primary)";
+      btn.style.color = "#FFFFFF";
+
+      document.querySelectorAll(".animate-tab, #tab-trophy-hall, #tab-public-tkb").forEach(p => {
+        if (p.id !== "tab-weekly-stats") p.classList.add("hidden");
+      });
+
+      panel.classList.remove("hidden");
+      renderWeeklyStatsPanel();
+    }
+
+    // -----------------------------------------------------------------
+    // 4. RENDER GIAO DIỆN BIỂU ĐỒ & BẢNG THỐNG KÊ T2 -> CN
+    // -----------------------------------------------------------------
+    function renderWeeklyStatsPanel() {
+      const panel = document.getElementById("tab-weekly-stats");
+      if (!panel) return;
+
+      const todayStr = toDateStr(new Date());
+      const weekDates = getWeekDaysDates(weekOffset);
+      const isAdmin = isCurrentUserAdmin();
+
+      const activeMembers = allUsers.filter(u => !u.isBanned);
+
+      // Tính toán dữ liệu từng thành viên theo 7 ngày trong tuần đang chọn
+      const memberRows = activeMembers
+        .map(u => {
+          const daysData = weekDates.map(d => ({
+            ...d,
+            minutes: getMemberDayMinutes(u, d.dateStr, todayStr)
+          }));
+          const totalWeekMins = daysData.reduce((sum, d) => sum + d.minutes, 0);
+          return {
+            uid: u.uid,
+            displayName: u.displayName || "Học viên",
+            daysData,
+            totalWeekMins
+          };
+        })
+        .sort((a, b) => {
+          if (b.totalWeekMins !== a.totalWeekMins) return b.totalWeekMins - a.totalWeekMins;
+          return a.displayName.localeCompare(b.displayName, "vi");
+        });
+
+      const filteredRows = searchKeyword.trim()
+        ? memberRows.filter(r => r.displayName.toLowerCase().includes(searchKeyword.trim().toLowerCase()))
+        : memberRows;
+
+      // Tổng hợp cả phòng theo từng ngày T2 -> CN
+      const dayTotals = weekDates.map((d, idx) => {
+        const mins = memberRows.reduce((sum, r) => sum + r.daysData[idx].minutes, 0);
+        return { ...d, minutes: mins };
+      });
+
+      const roomWeekTotalMins = dayTotals.reduce((s, d) => s + d.minutes, 0);
+      const maxDayMins = Math.max(1, ...dayTotals.map(d => d.minutes));
+      const bestDay = [...dayTotals].sort((a, b) => b.minutes - a.minutes)[0];
+      const topMember = memberRows[0];
+
+      const rangeText = `${weekDates[0].shortDate} – ${weekDates[6].shortDate}/${weekDates[6].dateObj.getFullYear()}`;
+      const weekTitle = weekOffset === 0
+        ? `Tuần này (${rangeText})`
+        : weekOffset === -1
+          ? `Tuần trước (${rangeText})`
+          : weekOffset === 1
+            ? `Tuần sau (${rangeText})`
+            : `Tuần ${rangeText}`;
+
+      panel.innerHTML = `
+        <!-- Thanh điều hướng tuần & Tiêu đề -->
+        <div class="pastel-card rounded-3xl p-6 bg-white">
+          <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+            <div>
+              <h2 class="font-heading text-xl sm:text-2xl font-bold flex items-center gap-2" style="color: var(--primary);">
+                <span>📊</span>
+                <span>Thống Kê Giờ Học Trong Tuần</span>
+              </h2>
+              <p class="text-xs sm:text-sm mt-0.5" style="color: var(--text-muted);">
+                Theo dõi chi tiết thời gian học từ Thứ 2 đến Chủ nhật của từng thành viên trong phòng
+              </p>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-2">
+              <button type="button" id="ynwa-ws-prev" class="btn-soft px-3 py-2 rounded-xl text-xs font-bold">
+                ◀ Tuần trước
+              </button>
+              <div class="px-3.5 py-2 rounded-xl border text-xs sm:text-sm font-extrabold bg-white"
+                style="border-color: var(--border-soft); color: var(--primary);">
+                📅 ${esc(weekTitle)}
+              </div>
+              <button type="button" id="ynwa-ws-next" class="btn-soft px-3 py-2 rounded-xl text-xs font-bold">
+                Tuần sau ▶
+              </button>
+              ${weekOffset !== 0 ? `
+                <button type="button" id="ynwa-ws-today" class="btn-primary px-3 py-2 rounded-xl text-xs font-bold">
+                  Hiện tại
+                </button>
+              ` : ""}
+            </div>
+          </div>
+
+          <!-- 3 Thẻ tổng quan nhanh -->
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-5">
+            <div class="p-4 rounded-2xl border" style="background-color: var(--bg-soft); border-color: var(--border-soft);">
+              <div class="text-xs font-bold" style="color: var(--text-muted);">⏱️ Tổng giờ học cả phòng</div>
+              <div class="text-lg sm:text-xl font-extrabold mt-1" style="color: var(--primary);">
+                ${formatMinutesFull(roomWeekTotalMins)}
+              </div>
+            </div>
+            <div class="p-4 rounded-2xl border" style="background-color: var(--bg-soft); border-color: var(--border-soft);">
+              <div class="text-xs font-bold" style="color: var(--text-muted);">🔥 Ngày chăm chỉ nhất tuần</div>
+              <div class="text-lg sm:text-xl font-extrabold mt-1 text-emerald-700">
+                ${bestDay && bestDay.minutes > 0 ? `${bestDay.label} (${formatMinutes(bestDay.minutes)})` : "Chưa có dữ liệu"}
+              </div>
+            </div>
+            <div class="p-4 rounded-2xl border" style="background-color: var(--bg-soft); border-color: var(--border-soft);">
+              <div class="text-xs font-bold" style="color: var(--text-muted);">🥇 Dẫn đầu tuần này</div>
+              <div class="text-lg sm:text-xl font-extrabold mt-1 text-amber-700 truncate">
+                ${topMember && topMember.totalWeekMins > 0 ? `${esc(topMember.displayName)} (${formatMinutes(topMember.totalWeekMins)})` : "Chưa có dữ liệu"}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Biểu đồ cột tổng giờ học từng ngày T2 -> CN -->
+        <div class="pastel-card rounded-3xl p-6 bg-white">
+          <div class="flex items-center justify-between gap-2 mb-4">
+            <h3 class="text-base sm:text-lg font-bold" style="color: var(--primary);">
+              📈 Biểu Đồ Tổng Giờ Học Theo Ngày (T2 – CN)
+            </h3>
+            <span class="text-xs font-semibold" style="color: var(--text-muted);">Đơn vị: ${unitMode === "hm" ? "Giờ & Phút" : "Giờ"}</span>
+          </div>
+
+          <div class="grid grid-cols-7 gap-2 sm:gap-4 pt-2">
+            ${dayTotals.map(d => {
+              const pct = d.minutes > 0 ? Math.max(8, Math.round((d.minutes / maxDayMins) * 100)) : 0;
+              const isToday = d.dateStr === todayStr;
+              return `
+                <div class="ynwa-ws-bar-col">
+                  <div class="text-[11px] font-extrabold" style="color: ${d.minutes > 0 ? "var(--primary)" : "var(--text-muted)"};">
+                    ${d.minutes > 0 ? formatMinutes(d.minutes) : "0"}
+                  </div>
+                  <div class="ynwa-ws-bar-track" title="${d.label} (${d.shortDate}): ${formatMinutesFull(d.minutes)}">
+                    <div class="ynwa-ws-bar-fill" style="height: ${pct}%; ${isToday ? "background: #10b981;" : ""}"></div>
+                  </div>
+                  <div class="text-center leading-tight">
+                    <div class="text-xs font-extrabold ${isToday ? "text-emerald-600" : ""}">${d.key}</div>
+                    <div class="text-[10px]" style="color: var(--text-muted);">${d.shortDate}</div>
+                  </div>
+                </div>
+              `;
+            }).join("")}
+          </div>
+        </div>
+
+        <!-- Bảng chi tiết từng thành viên qua các ngày trong tuần -->
+        <div class="pastel-card rounded-3xl p-6 bg-white space-y-4">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h3 class="text-base sm:text-lg font-bold" style="color: var(--primary);">
+                📋 Bảng Chi Tiết Giờ Học Từng Thành Viên
+              </h3>
+              ${isAdmin ? `<p class="text-[11px] font-semibold text-amber-700 mt-0.5">👑 Chế độ Admin: Bấm vào bất kỳ ô ngày nào của thành viên để chỉnh sửa số phút học ngày đó.</p>` : ""}
+            </div>
+
+            <div class="flex flex-wrap items-center gap-2">
+              <input type="text" id="ynwa-ws-search" value="${esc(searchKeyword)}"
+                placeholder="🔍 Tìm thành viên..."
+                class="px-3 py-1.5 rounded-xl border text-xs font-semibold bg-white focus:outline-none"
+                style="border-color: var(--border-soft);" />
+              <button type="button" id="ynwa-ws-unit-toggle" class="btn-soft px-3 py-1.5 rounded-xl text-xs font-bold">
+                ${unitMode === "hours" ? "🔄 Xem dạng Giờ & Phút" : "🔄 Xem dạng Số giờ (h)"}
+              </button>
+            </div>
+          </div>
+
+          <div class="ynwa-ws-table-wrap">
+            <table class="ynwa-ws-table">
+              <thead>
+                <tr>
+                  <th>Thành viên</th>
+                  ${weekDates.map(d => `
+                    <th class="${d.dateStr === todayStr ? "ynwa-ws-today-col" : ""}">
+                      <div>${d.label}</div>
+                      <div class="text-[10px] font-semibold" style="color: var(--text-muted);">${d.shortDate}</div>
+                    </th>
+                  `).join("")}
+                  <th>Tổng tuần</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${filteredRows.length === 0 ? `
+                  <tr>
+                    <td colspan="9" class="py-8 text-center" style="color: var(--text-muted);">
+                      Không tìm thấy thành viên nào phù hợp.
+                    </td>
+                  </tr>
+                ` : filteredRows.map((row, idx) => {
+                  const rankBadge = idx === 0 && row.totalWeekMins > 0 ? "🥇"
+                    : idx === 1 && row.totalWeekMins > 0 ? "🥈"
+                    : idx === 2 && row.totalWeekMins > 0 ? "🥉"
+                    : `#${idx + 1}`;
+                  return `
+                    <tr>
+                      <td>
+                        <div class="flex items-center gap-2">
+                          <span class="font-extrabold text-xs w-6 text-center shrink-0">${rankBadge}</span>
+                          <span class="font-bold truncate">${esc(row.displayName)}</span>
+                        </div>
+                      </td>
+                      ${row.daysData.map(cell => {
+                        const isToday = cell.dateStr === todayStr;
+                        const heatCls = getHeatClass(cell.minutes);
+                        return `
+                          <td class="${isToday ? "ynwa-ws-today-col" : ""}">
+                            <span
+                              class="ynwa-ws-cell-pill ${heatCls} ${isAdmin ? "ynwa-ws-editable" : ""}"
+                              ${isAdmin ? `data-ws-edit-uid="${esc(row.uid)}" data-ws-edit-name="${esc(row.displayName)}" data-ws-edit-date="${cell.dateStr}" data-ws-edit-label="${cell.label} (${cell.shortDate})" data-ws-edit-mins="${cell.minutes}"` : ""}
+                              title="${esc(row.displayName)} • ${cell.label} (${cell.shortDate}): ${formatMinutesFull(cell.minutes)}">
+                              ${formatMinutes(cell.minutes)}
+                            </span>
+                          </td>
+                        `;
+                      }).join("")}
+                      <td>
+                        <span class="px-2.5 py-1 rounded-full text-xs font-extrabold"
+                          style="background-color: var(--bg-soft); color: var(--primary);">
+                          ${formatMinutes(row.totalWeekMins)}
+                        </span>
+                      </td>
+                    </tr>
+                  `;
+                }).join("")}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `;
+
+      // Gắn sự kiện điều khiển trong tab Thống kê
+      document.getElementById("ynwa-ws-prev")?.addEventListener("click", () => {
+        weekOffset -= 1;
+        renderWeeklyStatsPanel();
+      });
+      document.getElementById("ynwa-ws-next")?.addEventListener("click", () => {
+        weekOffset += 1;
+        renderWeeklyStatsPanel();
+      });
+      document.getElementById("ynwa-ws-today")?.addEventListener("click", () => {
+        weekOffset = 0;
+        renderWeeklyStatsPanel();
+      });
+      document.getElementById("ynwa-ws-unit-toggle")?.addEventListener("click", () => {
+        unitMode = unitMode === "hours" ? "hm" : "hours";
+        renderWeeklyStatsPanel();
+      });
+      document.getElementById("ynwa-ws-search")?.addEventListener("input", (e) => {
+        searchKeyword = e.target.value;
+        renderWeeklyStatsPanel();
+        const inp = document.getElementById("ynwa-ws-search");
+        if (inp) {
+          inp.focus();
+          inp.setSelectionRange(inp.value.length, inp.value.length);
+        }
+      });
+
+      // Quyền Admin bấm vào ô ngày để chỉnh sửa số phút học ngày đó
+      if (isAdmin) {
+        panel.querySelectorAll("[data-ws-edit-uid]").forEach(el => {
+          el.addEventListener("click", async () => {
+            const targetUid = el.getAttribute("data-ws-edit-uid");
+            const targetName = el.getAttribute("data-ws-edit-name");
+            const targetDate = el.getAttribute("data-ws-edit-date");
+            const targetLabel = el.getAttribute("data-ws-edit-label");
+            const curMins = parseInt(el.getAttribute("data-ws-edit-mins"), 10) || 0;
+
+            const raw = prompt(
+              `Admin chỉnh thời gian học của ${targetName}\nNgày: ${targetLabel}\n\nNhập số PHÚT học mới (hiện tại: ${curMins} phút = ${(curMins / 60).toFixed(1)} giờ):`,
+              String(curMins)
+            );
+            if (raw === null) return;
+            const nextMins = Math.max(0, Math.round(Number(raw)));
+            if (!Number.isFinite(nextMins)) {
+              notify("Vui lòng nhập số phút hợp lệ!", "⚠️");
+              return;
+            }
+
+            try {
+              await setDoc(doc(db, "artifacts", appId, "public", "data", "daily_study_logs", `${targetUid}_${targetDate}`), {
+                uid: targetUid,
+                displayName: targetName,
+                date: targetDate,
+                minutes: nextMins,
+                updatedAt: serverTimestamp()
+              }, { merge: true });
+              notify(`Đã cập nhật ${targetName} (${targetLabel}): ${nextMins} phút!`, "✅");
+            } catch (err) {
+              notify("Lỗi cập nhật: " + err.message, "⚠️");
+            }
+          });
+        });
+      }
+    }
+
+    // -----------------------------------------------------------------
+    // 5. KẾT NỐI FIREBASE REALTIME
+    // -----------------------------------------------------------------
+    function attachFirebase() {
+      if (!getApps().length) return false;
+      const app = getApp();
+      auth = getAuth(app);
+      db = getFirestore(app);
+
+      onAuthStateChanged(auth, (user) => {
+        currentUid = user ? user.uid : null;
+        prevMyTotalMins = null;
+        if (!user) return;
+
+        // 1) Lắng nghe danh sách thành viên & tự động ghi nhận khi phút học tăng lên
+        const usersCol = collection(db, "artifacts", appId, "public", "data", "users");
+        onSnapshot(usersCol, (snap) => {
+          allUsers = snap.docs.map(d => ({ id: d.id, uid: d.id, ...d.data() }));
+
+          const me = allUsers.find(u => u.uid === currentUid);
+          if (me) {
+            const curTotal = Math.max(0, Math.round(Number(me.totalMinutes) || 0));
+            const todayStr = toDateStr(new Date());
+
+            if (prevMyTotalMins === null) {
+              // Đồng bộ phút học hôm nay lần đầu mở trang nếu đã có sẵn
+              const todayMins = me.todayDate === todayStr ? Math.max(0, Math.round(Number(me.todayMinutes) || 0)) : 0;
+              const existingLog = dailyLogs.get(`${currentUid}_${todayStr}`);
+              if (todayMins > 0 && (!existingLog || (existingLog.minutes || 0) < todayMins)) {
+                recordMyStudyMinutes(0, todayMins);
+              }
+            } else if (curTotal > prevMyTotalMins) {
+              // Mỗi khi học xong/tăng thêm phút Pomodoro -> cộng tự động vào ngày hôm nay
+              recordMyStudyMinutes(curTotal - prevMyTotalMins, null);
+            }
+            prevMyTotalMins = curTotal;
+          }
+
+          renderWeeklyStatsPanel();
+        });
+
+        // 2) Lắng nghe log giờ học theo từng ngày của toàn bộ thành viên
+        const logsCol = collection(db, "artifacts", appId, "public", "data", "daily_study_logs");
+        onSnapshot(logsCol, (snap) => {
+          dailyLogs.clear();
+          snap.docs.forEach(d => {
+            dailyLogs.set(d.id, { id: d.id, ...d.data() });
+          });
+          renderWeeklyStatsPanel();
+        });
+      });
+
+      return true;
+    }
+
+    const bootInterval = setInterval(() => {
+      mountWeeklyStatsTab();
+      if (!db) attachFirebase();
+      if (document.getElementById("btn-tab-weekly-stats") && db) {
+        clearInterval(bootInterval);
+      }
+    }, 500);
+  })();
+</script>
 </body></html>
